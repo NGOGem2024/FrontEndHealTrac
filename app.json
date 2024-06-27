@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "PhysioFront",
+    "slug": "PhysioFront",
+    "version": "1.0.0",
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "physio.gem.auth"
+    },
+    "plugins": [["@react-native-google-signin/google-signin"]]
+  }
+}
