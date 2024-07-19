@@ -92,7 +92,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
       console.log(patientId);
       console.log(patientData);
       const response = await axios.post(
-        `http://192.168.120.43:5000/patient/update/${patientId}`,
+        `https://healtrackapp-production.up.railway.app/patient/update/${patientId}`,
         patientData
       );
       console.log("Response:", response.data);

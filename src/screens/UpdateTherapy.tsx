@@ -2,22 +2,19 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  Button,
-  Modal,
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  TextInput,
-  Platform,
+  ImageBackground,
+  Modal,
   Alert,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
+import Icon from "react-native-vector-icons/FontAwesome";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
+import { openBrowserAsync } from "expo-web-browser";
 import { useSession } from "../context/SessionContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { refreshGoogleTokens } from "../context/SessionContext";
 
 interface Therapy {
@@ -30,43 +27,30 @@ interface Therapy {
   therepy_date: string;
   therepy_start_time?: string;
   therepy_end_time?: string;
+  therepy_cost?: string;
 }
 
-interface TherapyResponse {
-  therepys: Therapy[];
-  responseData: {
-    HostJoinUrl: string;
-  };
-}
-
-type PatientScreenProps = {
-  navigation: StackNavigationProp<RootStackParamList, "Patient">;
+type TherapyHistoryScreenProps = {
+  navigation: StackNavigationProp<RootStackParamList, "TherapyHistory">;
   route: { params: { patientId: string } };
 };
 
-const TherapyTable: React.FC<PatientScreenProps> = ({ route }) => {
+const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const { session } = useSession();
-  const { patientId } = route.params;
+  const patientId = route.params?.patientId;
+
   const [therapies, setTherapies] = useState<Therapy[] | undefined>(undefined);
-  const [showPopup, setShowPopup] = useState<boolean>(false);
-  const [showHostPopup, setShowHostPopup] = useState<boolean>(false);
-  const [showRecPopup, setShowRecPopup] = useState<boolean>(false);
-  const [showStartTherapyBut, setShowStartTherapyBut] =
-    useState<boolean>(false);
-  const [joinurl, setJoinurl] = useState<string>("");
-  const [recUrl, setRecUrl] = useState<string>("");
-  const [iframeUrl, setIframeUrl] = useState<string>("");
+  const [pastTherapies, setPastTherapies] = useState<Therapy[]>([]);
+  const [upcomingTherapies, setUpcomingTherapies] = useState<Therapy[]>([]);
+  const [showPastTherapies, setShowPastTherapies] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    therapyType: "",
-    remarks: "",
-    therapyDate: new Date(),
-    startTime: new Date(),
-    endTime: new Date(),
-  });
-  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
-  const [showStartPicker, setShowStartPicker] = useState<boolean>(false);
-  const [showEndPicker, setShowEndPicker] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showRecPopup, setShowRecPopup] = useState<boolean>(false);
+  const [recUrl, setRecUrl] = useState<string>("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [googleToken, setGoogleToken] = useState(null);
 
   useEffect(() => {
@@ -83,88 +67,78 @@ const TherapyTable: React.FC<PatientScreenProps> = ({ route }) => {
 
     getGoogleToken();
   }, []);
+
   useEffect(() => {
+    if (!patientId) {
+      setError("No patient ID provided.");
+      return;
+    }
+
     fetchTherapies();
   }, [patientId, session]);
 
   const fetchTherapies = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch(
-        `http://192.168.31.171:5000/therepy/${patientId}`
-      );
-      const data = await response.json();
-      setTherapies(data.therepys);
-    } catch (error) {
-      console.error("Error fetching therapy data:", error);
-    }
-  };
-
-  const handleAddTherapy = async () => {
-    if (!googleToken) {
-      const newTokens = await refreshGoogleTokens();
-      if (!newTokens) {
-        throw new Error("Failed to refresh Google token");
-      }
-      setGoogleToken(newTokens.accessToken);
-    }
-    if (!session) {
-      Alert.alert("Error", "Please log in to add a therapy.");
-      return;
-    }
-    try {
-      const formatTime = (date: Date) => {
-        return date.toTimeString().split(" ")[0].substr(0, 5);
-      };
-
-      const requestBody = {
-        contactId: patientId,
-        message: "Please click the following LiveSwitch conversation link.",
-        type: "LiveConversation",
-        autoStartRecording: true,
-        sendSmsNotification: true,
-        remarks: formData.remarks,
-        therepy_type: formData.therapyType,
-        therepy_date: formData.therapyDate.toISOString().split("T")[0],
-        therepy_start_time: formatTime(formData.startTime),
-        therepy_end_time: formatTime(formData.endTime),
-      };
-
-      const response = await fetch(
-        `http://192.168.31.171:5000/therepy/create`,
+        `https://healtrackapp-production.up.railway.app/therepy/${patientId}`,
         {
-          method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + googleToken,
-            refresh_token: session.refresh_token,
+            Authorization: "Bearer " + session.access_token,
           },
-          body: JSON.stringify(requestBody),
         }
       );
 
-      if (response.ok) {
-        const data: TherapyResponse = await response.json();
-        await fetchTherapies(); // Refresh the therapies list
-        setJoinurl(data.responseData.HostJoinUrl);
-        setShowHostPopup(true);
-        setShowPopup(false);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.therepys && Array.isArray(data.therepys)) {
+        setTherapies(data.therepys);
+        const now = new Date();
+        const past = data.therepys.filter(
+          (therapy: Therapy) => new Date(therapy.therepy_date) < now
+        );
+        const upcoming = data.therepys.filter(
+          (therapy: Therapy) => new Date(therapy.therepy_date) >= now
+        );
+
+        setPastTherapies(past);
+        setUpcomingTherapies(upcoming);
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || "Failed to add therapy.");
+        console.error("Unexpected data structure:", data);
+        setError("Unexpected data structure received from server");
       }
     } catch (error) {
-      setError("An error occurred while adding therapy.");
+      console.error("Error fetching therapy data:", error);
+      setError("Failed to fetch therapy data. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  const selectTherapyType = (type: "past" | "upcoming") => {
+    setShowPastTherapies(type === "past");
+    toggleDropdown();
   };
 
   const handleRecTherapy = async () => {
     try {
-      const response = await fetch(`http://192.168.31.171:5000/recording`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `https://healtrackapp-production.up.railway.app/recording`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session.access_token,
+          },
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -178,212 +152,266 @@ const TherapyTable: React.FC<PatientScreenProps> = ({ route }) => {
     }
   };
 
-  const handleStartTherapy = (joinUrl: string) => {
-    setIframeUrl(joinUrl);
-    setShowStartTherapyBut(true);
+  const handleJoinSession = (joinUrl: string) => {
+    openBrowserAsync(joinUrl);
   };
 
-  const handleStopTherapy = () => {
-    setIframeUrl("");
-    setShowStartTherapyBut(false);
-  };
-
-  const handleChange = (name: string, value: any) => {
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const onDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || formData.therapyDate;
-    setShowDatePicker(Platform.OS === "ios");
-    handleChange("therapyDate", currentDate);
-  };
-
-  const onStartChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || formData.startTime;
-    setShowStartPicker(Platform.OS === "ios");
-    handleChange("startTime", currentDate);
-  };
-
-  const onEndChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || formData.endTime;
-    setShowEndPicker(Platform.OS === "ios");
-    handleChange("endTime", currentDate);
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
+  const renderTherapyItem = ({ item }: { item: Therapy }) => (
+    <View style={styles.therapyCard}>
+      <View style={styles.therapyHeader}>
+        <MaterialIcons name="event" size={24} color="#119FB3" />
+        <Text style={styles.therapyType}>{item.therepy_type}</Text>
+      </View>
+      <View style={styles.therapyDetails}>
+        <Text style={styles.therapyText}>Date: {item.therepy_date}</Text>
+        <Text style={styles.therapyText}>
+          Start Time: {item.therepy_start_time}
+        </Text>
+        <Text style={styles.therapyText}>
+          End Time: {item.therepy_end_time}
+        </Text>
+        <Text style={styles.therapyText}>Cost: {item.therepy_cost}</Text>
+        <Text style={styles.therapyText}>Remarks: {item.therepy_remarks}</Text>
+      </View>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.joinButton]}
+          onPress={() => handleJoinSession(item.therepy_link)}
+        >
+          <Text style={styles.buttonText}>Join Session</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.recordButton]}
+          onPress={handleRecTherapy}
+        >
+          <Text style={styles.buttonText}>Get Recording</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Therapy Table</Text>
-      {error && <Text style={styles.error}>{error}</Text>}
-      <FlatList
-        data={therapies}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => (
-          <View style={styles.therapyItem}>
-            <Text>Type: {item.therepy_type}</Text>
-            <Text>Date: {item.therepy_date}</Text>
-            <Text>Start Time: {item.therepy_start_time}</Text>
-            <Text>End Time: {item.therepy_end_time}</Text>
-            <Text>Remarks: {item.therepy_remarks}</Text>
-            <TouchableOpacity style={styles.join}>
-              <LinearGradient colors={["#d3eaf2", "#d3eaf2"]}>
-                <Button
-                  color="#2a7fba"
-                  title="Join"
-                  onPress={() => handleStartTherapy(item.therepy_link)}
-                />
-              </LinearGradient>
+    <ImageBackground
+      source={require("../assets/bac2.jpg")}
+      style={styles.backgroundImage}
+    >
+      <View style={styles.container}>
+        <Text style={styles.title}>Therapy Session</Text>
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        <TouchableOpacity
+          onPress={toggleDropdown}
+          style={styles.dropdownButton}
+        >
+          <Text style={styles.dropdownButtonText}>
+            {showPastTherapies ? "Past Therapies" : "Upcoming Therapies"}
+          </Text>
+          <Icon
+            name={isDropdownOpen ? "chevron-up" : "chevron-down"}
+            size={16}
+            color="#FFFFFF"
+          />
+        </TouchableOpacity>
+
+        {isDropdownOpen && (
+          <View style={styles.dropdownContent}>
+            <TouchableOpacity
+              onPress={() => selectTherapyType("past")}
+              style={styles.dropdownItem}
+            >
+              <Text>Past Therapies</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => selectTherapyType("upcoming")}
+              style={styles.dropdownItem}
+            >
+              <Text>Upcoming Therapies</Text>
             </TouchableOpacity>
           </View>
         )}
-      />
-      <View style={styles.btnContainer}>
-        <View style={styles.btn}>
-          <Button
-            color="#2a7fba"
-            title="Add Therapy"
-            onPress={() => setShowPopup(true)}
+
+        {isLoading ? (
+          <Text style={styles.loadingText}>Loading therapies...</Text>
+        ) : (
+          <FlatList
+            data={showPastTherapies ? pastTherapies : upcomingTherapies}
+            keyExtractor={(item) => item._id}
+            renderItem={renderTherapyItem}
+            ListEmptyComponent={
+              <Text style={styles.noTherapyText}>
+                No {showPastTherapies ? "past" : "upcoming"} therapies available
+              </Text>
+            }
           />
-        </View>
-        <View style={styles.btn}>
-          <Button
-            color="#2a7fba"
-            title="Get Recording"
-            onPress={handleRecTherapy}
-          />
-        </View>
-      </View>
-      <Modal visible={showPopup} animationType="slide">
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Add New Therapy</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Therapy Type"
-            value={formData.therapyType}
-            onChangeText={(value) => handleChange("therapyType", value)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Remarks"
-            value={formData.remarks}
-            onChangeText={(value) => handleChange("remarks", value)}
-          />
-          <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-            <Text style={styles.input}>
-              Therapy Date: {formData.therapyDate.toDateString()}
-            </Text>
-          </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={formData.therapyDate}
-              mode="date"
-              display="default"
-              onChange={onDateChange}
-            />
-          )}
-          <TouchableOpacity onPress={() => setShowStartPicker(true)}>
-            <Text style={styles.input}>
-              Start Time: {formatTime(formData.startTime)}
-            </Text>
-          </TouchableOpacity>
-          {showStartPicker && (
-            <DateTimePicker
-              value={formData.startTime}
-              mode="time"
-              display="default"
-              onChange={onStartChange}
-            />
-          )}
-          <TouchableOpacity onPress={() => setShowEndPicker(true)}>
-            <Text style={styles.input}>
-              End Time: {formatTime(formData.endTime)}
-            </Text>
-          </TouchableOpacity>
-          {showEndPicker && (
-            <DateTimePicker
-              value={formData.endTime}
-              mode="time"
-              display="default"
-              onChange={onEndChange}
-            />
-          )}
-          <Button
-            color="#2a7fba"
-            title="Add Therapy"
-            onPress={handleAddTherapy}
-          />
-          <Button
-            color="#d9534f"
-            title="Cancel"
-            onPress={() => setShowPopup(false)}
-          />
-        </View>
-      </Modal>
-      <Modal visible={showHostPopup} animationType="slide">
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Join Therapy Session</Text>
-          <Text>{joinurl}</Text>
-          <Button
-            color="#2a7fba"
-            title="Join"
-            onPress={() => {
-              setShowHostPopup(false);
-              setShowStartTherapyBut(true);
-            }}
-          />
-          <Button
-            color="#d9534f"
-            title="Close"
-            onPress={() => setShowHostPopup(false)}
-          />
-        </View>
-      </Modal>
-      <Modal visible={showRecPopup} animationType="slide">
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Recording URL</Text>
-          <Text>{recUrl}</Text>
-          <Button
-            color="#d9534f"
-            title="Close"
-            onPress={() => setShowRecPopup(false)}
-          />
-        </View>
-      </Modal>
-      {showStartTherapyBut && (
-        <Modal visible={true} animationType="slide">
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Therapy Session</Text>
-            <Text>{iframeUrl}</Text>
-            <Button
-              color="#d9534f"
-              title="Stop Therapy"
-              onPress={handleStopTherapy}
-            />
+        )}
+
+        <Modal visible={showRecPopup} animationType="slide" transparent={true}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Recording URL</Text>
+              <Text>{recUrl}</Text>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.closeButton]}
+                onPress={() => setShowRecPopup(false)}
+              >
+                <Text style={styles.modalButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Modal>
-      )}
-    </View>
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#fff" },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 16 },
-  btnContainer: {
+  backgroundImage: {
+    flex: 1,
+    resizeMode: "cover",
+  },
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: "rgba(17, 159, 179, 0.1)",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 10,
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    marginTop: 20,
+  },
+  error: {
+    color: "#FF6B6B",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  loadingText: {
+    color: "#FFFFFF",
+    textAlign: "center",
+    fontSize: 16,
+  },
+  therapyCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 4,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  therapyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  therapyType: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#119FB3",
+    marginLeft: 8,
+  },
+  therapyDetails: {
+    marginBottom: 12,
+  },
+  therapyText: {
+    fontSize: 14,
+    color: "#333333",
+    marginBottom: 4,
+  },
+  buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: 16,
   },
-  btn: { margin: 8 },
-  therapyItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: "#ccc" },
-  input: { borderBottomWidth: 1, borderBottomColor: "#ccc", marginBottom: 16 },
-  modalContent: { flex: 1, padding: 16, justifyContent: "center" },
-  modalTitle: { fontSize: 24, fontWeight: "bold", marginBottom: 16 },
-  error: { color: "red", marginBottom: 16 },
-  join: { marginTop: 10, backgroundColor: "#d3eaf2", borderRadius: 5 },
+  actionButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    width: "40%",
+    elevation: 2,
+  },
+  joinButton: {
+    backgroundColor: "#119FB3",
+  },
+  recordButton: {
+    backgroundColor: "#2596be",
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  noTherapyText: {
+    color: "#FFFFFF",
+    textAlign: "center",
+    fontSize: 16,
+    marginTop: 20,
+  },
+  dropdownButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "rgba(17, 159, 179, 0.8)",
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  dropdownButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  dropdownContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 5,
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  dropdownItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEEEEE",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 20,
+    width: "90%",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#119FB3",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  modalButton: {
+    backgroundColor: "#119FB3",
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 12,
+    marginTop: 20,
+  },
+  closeButton: {
+    backgroundColor: "#FF6B6B",
+  },
+  modalButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
 });
 
-export default TherapyTable;
+export default TherapyHistory;

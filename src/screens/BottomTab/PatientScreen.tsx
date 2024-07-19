@@ -23,6 +23,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { LinearGradient } from "expo-linear-gradient";
 import { Title } from "react-native-paper";
 import TherapyTable from "../UpdateTherapy"; // Update with the correct pat
+import { useSession } from "../../context/SessionContext";
 
 type PatientScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Patient">;
@@ -30,21 +31,33 @@ type PatientScreenProps = {
 };
 
 const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
+  const { session } = useSession();
   const { patientId } = route.params;
   const [patientData, setPatientData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [therapyHistoryVisible, setTherapyHistoryVisible] =
     useState<boolean>(false);
 
   useEffect(() => {
     const fetchPatientData = async () => {
+      if (!session) return;
       try {
+        setIsLoading(true);
         const response = await fetch(
-          `http://192.168.31.171:5000/patient/${patientId}`
+          `https://healtrackapp-production.up.railway.app/patient/${patientId}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + session.access_token,
+            },
+          }
         );
         const data = await response.json();
         setPatientData(data.patientData);
       } catch (error) {
         console.error(error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -172,7 +185,15 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
               <Octicons name="chevron-right" size={24} color="black" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.linkContainer}>
+            <TouchableOpacity
+              style={styles.linkContainer}
+              onPress={() =>
+                navigation.navigate("CreateTherapy", {
+                  patientId: patientData?.patient_id,
+                })
+              }
+              disabled={!patientData}
+            >
               <View style={styles.iconleft}>
                 <MaterialCommunityIcons
                   name="file"
@@ -180,7 +201,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
                   color="#6e54ef"
                   style={[styles.iconlist, styles.reportsicon]}
                 />
-                <Text style={styles.link}>Reports</Text>
+                <Text style={styles.link}>Create Therapy</Text>
               </View>
               <Octicons name="chevron-right" size={24} color="black" />
             </TouchableOpacity>

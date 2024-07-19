@@ -9,12 +9,20 @@ import PatientScreen from "./BottomTab/PatientScreen";
 import TherapyScreen from "./BottomTab/TherapyHistory";
 import TherapyTable from "./UpdateTherapy";
 import TabScreen from "./BottomTab/TabScreen";
+import CreateTherapy from "./createTherepy";
+import DoctorDashboard from "./DoctorDashboard";
+import DoctorProfileEdit from "./DoctorProfileUpdate";
 
 const Stack = createNativeStackNavigator();
 
 const HomeStackNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="AllPatients">
+    <Stack.Navigator initialRouteName="DoctorDashboard">
+      <Stack.Screen
+        name="DoctorDashboard"
+        component={DoctorDashboard}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen
         name="AllPatients"
         component={AllPatients}
@@ -31,6 +39,12 @@ const HomeStackNavigator = () => {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="DoctorProfileEdit"
+        component={DoctorProfileEdit}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
         name="UpdatePatient"
         component={UpdatePatient}
         options={{ headerShown: false }}
@@ -38,6 +52,11 @@ const HomeStackNavigator = () => {
       <Stack.Screen
         name="Patient"
         component={PatientScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CreateTherapy"
+        component={CreateTherapy}
         options={{ headerShown: false }}
       />
       <Stack.Screen

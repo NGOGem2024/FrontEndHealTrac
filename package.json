@@ -14,7 +14,7 @@
     "@expo/metro-runtime": "~3.2.1",
     "@expo/vector-icons": "^14.0.0",
     "@react-native-async-storage/async-storage": "1.23.1",
-    "@react-native-community/datetimepicker": "8.0.0",
+    "@react-native-community/datetimepicker": "^8.2.0",
     "@react-native-google-signin/google-signin": "^12.2.1",
     "@react-native-picker/picker": "2.7.5",
     "@react-navigation/bottom-tabs": "^6.5.20",
@@ -45,7 +45,8 @@
     "react-native-vector-icons": "^10.0.3",
     "react-native-web": "~0.19.6",
     "react-native-webview": "13.8.6",
-    "typescript": "~5.3.3"
+    "typescript": "~5.3.3",
+    "expo-web-browser": "~13.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

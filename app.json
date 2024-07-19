@@ -3,10 +3,21 @@
     "name": "PhysioFront",
     "slug": "PhysioFront",
     "version": "1.0.0",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "android": {
       "package": "physio.gem.auth"
     },
-    "plugins": [["@react-native-google-signin/google-signin"]]
+    "plugins": [
+      [
+        "@react-native-google-signin/google-signin"
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e235042f-1c9c-444c-867f-3d66a7c2d63e"
+      }
+    }
   }
 }

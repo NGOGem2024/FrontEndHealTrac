@@ -12,6 +12,7 @@ import { GoogleSignin } from "@react-native-google-signin/google-signin";
 interface SessionContextProps {
   session: any;
   setSession: (session: any) => void;
+  logout: () => Promise<void>;
 }
 
 interface GoogleTokens {
@@ -111,9 +112,27 @@ export const SessionContextProvider: React.FC<{ children: ReactNode }> = ({
     const interval = setInterval(refreshTokens, 50 * 60 * 1000); // Refresh tokens every 50 minutes
     return () => clearInterval(interval);
   }, []);
+  const logout = async () => {
+    try {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
 
+      // Sign out from Google
+      await GoogleSignin.signOut();
+
+      // Clear AsyncStorage
+      await AsyncStorage.removeItem("userSession");
+      await AsyncStorage.removeItem("googleTokens");
+      await AsyncStorage.removeItem("tokenExpirationTime");
+
+      // Clear the session state
+      setSession(null);
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
   return (
-    <SessionContext.Provider value={{ session, setSession }}>
+    <SessionContext.Provider value={{ session, setSession, logout }}>
       {children}
     </SessionContext.Provider>
   );

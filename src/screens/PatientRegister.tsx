@@ -19,14 +19,16 @@ import {
 import axios from "axios";
 import * as Animatable from "react-native-animatable";
 import { Ionicons } from "@expo/vector-icons";
+import { useSession } from "../context/SessionContext";
 
 type PatientRegisterScreenProps = {
-  navigation: StackNavigationProp<RootStackParamList, "PaitentRegister">;
+  navigation: StackNavigationProp<RootStackParamList, "PatientRegister">;
 };
 
 const PaitentRegister: React.FC<PatientRegisterScreenProps> = ({
   navigation,
 }) => {
+  const { session } = useSession();
   const [patientData, setPatientData] = useState({
     patient_first_name: "",
     patient_last_name: "",
@@ -43,12 +45,20 @@ const PaitentRegister: React.FC<PatientRegisterScreenProps> = ({
       };
 
       const response = await axios.post(
-        "http://192.168.120.43:5000/patient/registration",
-        formattedData
+        "https://healtrackapp-production.up.railway.app/patient/registration",
+        formattedData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session.access_token,
+          },
+        }
       );
       console.log("Response:", response.data);
       Alert.alert("Success", "Patient registered successfully");
-      // navigation.navigate("UpdatePatient");
+      navigation.navigate("UpdatePatient", {
+        patientId: response.data.patient.patient_id,
+      });
     } catch (error) {
       console.error("Error registering patient:", error);
       Alert.alert("Error", "Failed to register patient");

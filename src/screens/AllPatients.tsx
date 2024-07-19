@@ -8,14 +8,14 @@ import {
   StyleSheet,
   TextInput,
   ImageBackground,
+  ActivityIndicator,
 } from "react-native";
 import axios from "axios";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { NavigationProp, ParamListBase } from "@react-navigation/native";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-
-// Import the background image
+import { useSession } from "../context/SessionContext";
 
 interface Props {
   navigation: NavigationProp<ParamListBase>;
@@ -31,26 +31,40 @@ interface Patient {
 }
 
 const AllPatients: React.FC<Props> = ({ navigation }) => {
+  const { session } = useSession();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [filterOption, setFilterOption] = useState("all");
   const [sortOption, setSortOption] = useState("date");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchPatients = async () => {
+      if (!session) return; // Ensure googleToken is available
+      console.log(session);
       try {
+        setIsLoading(true);
         const response = await axios.get(
-          "http://192.168.31.171:5000/patient/getall"
+          "https://healtrackapp-production.up.railway.app/patient/getall",
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + session.access_token,
+            },
+          }
         );
         setPatients(response.data);
         setFilteredPatients(response.data);
       } catch (error) {
-        console.error("Error fetching patients:", error);
+        console.log(error);
+      } finally {
+        setIsLoading(false);
       }
     };
+
     fetchPatients();
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     const filtered = patients.filter((patient) => {
@@ -107,6 +121,9 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
       console.error("Invalid patient ID:", patientId);
     }
   };
+  if (isLoading) {
+    return <ActivityIndicator size="large" color="#119FB3" />;
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -128,7 +145,6 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
       <View style={styles.container}>
-        {/* <Text style={styles.title}>Patients List</Text> */}
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchBar}
@@ -145,7 +161,6 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
           />
         </View>
         <View style={styles.filtersContainer1}>
-          {/* <Text style={styles.filterLabel}>Filter:</Text> */}
           <View style={styles.filterContainer}>
             <Picker
               style={styles.picker}
@@ -158,7 +173,6 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
               <Picker.Item label="One Year" value="oneYear" />
             </Picker>
           </View>
-          {/* <Text style={styles.filterLabel}>Sort By:</Text> */}
           <View style={styles.filterContainer}>
             <Picker
               style={styles.picker}
@@ -177,30 +191,20 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity onPress={() => navigateToPatient(item._id)}>
               <View style={styles.patientCard}>
                 <View
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    justifyContent: "flex-start",
-                  }}
+                  style={{ flexDirection: "row", justifyContent: "flex-start" }}
                 >
                   <Image
                     style={{
                       width: 60,
                       height: 60,
-                      borderRadius: 140 / 2,
+                      borderRadius: 30,
                       marginTop: 10,
                       borderWidth: 3,
                       borderColor: "white",
                     }}
                     source={require("../assets/profile3.jpg")}
                   />
-                  <View
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      marginLeft: 10,
-                    }}
-                  >
+                  <View style={{ flexDirection: "column", marginLeft: 10 }}>
                     <Text style={styles.patientName}>
                       {item.patient_first_name} {item.patient_last_name}
                     </Text>
@@ -232,6 +236,7 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
     </ImageBackground>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -356,7 +361,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   microicon: {
-    display: "flex",
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
