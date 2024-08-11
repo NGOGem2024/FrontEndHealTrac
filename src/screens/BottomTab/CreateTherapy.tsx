@@ -10,16 +10,17 @@ import {
   KeyboardTypeOptions,
   ActivityIndicator,
   ScrollView,
+  TurboModuleRegistry,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { RootStackParamList } from "../types/types";
+import { RootStackParamList } from "../../types/types";
 import axios from "axios";
 import { MaterialIcons, FontAwesome, AntDesign } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
-import { useSession } from "../context/SessionContext";
-import { refreshGoogleTokens } from "../context/SessionContext";
+import { useSession } from "../../context/SessionContext";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type AddNewTherapyScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "CreateTherapy">;
@@ -30,7 +31,7 @@ const CreateTherapy: React.FC<AddNewTherapyScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { session } = useSession();
+  const { session, refreshAllTokens } = useSession();
   const { patientId } = route.params;
   const [isLoading, setIsLoading] = useState(false);
   const [therapyData, setTherapyData] = useState({
@@ -41,7 +42,6 @@ const CreateTherapy: React.FC<AddNewTherapyScreenProps> = ({
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [error, setError] = useState("");
-  const [googleToken, setGoogleToken] = useState(null);
 
   const categories = ["Virtual", "In Clinic", "InHome"];
 
@@ -54,28 +54,7 @@ const CreateTherapy: React.FC<AddNewTherapyScreenProps> = ({
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
-  const [fadeAnim] = useState(new Animated.Value(0));
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-
-    const getGoogleToken = async () => {
-      try {
-        const newTokens = await refreshGoogleTokens();
-        if (newTokens) {
-          setGoogleToken(newTokens.accessToken);
-        }
-      } catch (error) {
-        console.error("Error retrieving Google token:", error);
-      }
-    };
-
-    getGoogleToken();
-  }, []);
+  const [fadeAnim] = useState(new Animated.Value(1));
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
@@ -112,33 +91,15 @@ const CreateTherapy: React.FC<AddNewTherapyScreenProps> = ({
     setShowEndTimePicker(true);
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      const tokens = await GoogleSignin.getTokens();
-      setGoogleToken(tokens.accessToken);
-      Alert.alert("Success", "Google sign-in successful");
-    } catch (error) {
-      console.error("Error signing in with Google:", error);
-      Alert.alert("Error", "Failed to sign in with Google. Please try again.");
-    }
-  };
-
   const handleAddTherapy = async () => {
-    if (!googleToken) {
-      const newTokens = await refreshGoogleTokens();
-      if (!newTokens) {
-        throw new Error("Failed to refresh Google token");
-      }
-      setGoogleToken(newTokens.accessToken);
-    }
-    if (!session) {
+    if (!session || !session.tokens || !session.tokens.idToken) {
       Alert.alert("Error", "Please log in to add a therapy.");
       return;
     }
-
+    setIsLoading(true);
     try {
+      const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
+      console.log(liveSwitchToken);
       const formatTime = (date: Date) => {
         return date.toTimeString().split(" ")[0].substr(0, 5);
       };
@@ -155,18 +116,19 @@ const CreateTherapy: React.FC<AddNewTherapyScreenProps> = ({
         therepy_start_time: formatTime(startTime),
         therepy_end_time: formatTime(endTime), // Added end time
       };
-      console.log(requestBody);
       const response = await axios.post(
         "https://healtrackapp-production.up.railway.app/therepy/create",
         requestBody,
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-            auth: `Bearer ${googleToken}`,
+            Authorization: `Bearer ${session.tokens.idToken}`,
+            auth: `Bearer ${session.tokens.accessToken}`,
+            "X-liveSwitch-token": liveSwitchToken,
           },
         }
       );
+      console.log(requestBody);
 
       if (response.status === 200 || response.status === 201) {
         Alert.alert("Success", "Therapy added successfully");
@@ -235,7 +197,6 @@ const CreateTherapy: React.FC<AddNewTherapyScreenProps> = ({
         />
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
         <TouchableOpacity
           style={styles.saveButton}
           onPress={handleAddTherapy}

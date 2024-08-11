@@ -4,16 +4,12 @@ import React, {
   useState,
   useEffect,
   ReactNode,
+  SetStateAction,
+  Dispatch,
 } from "react";
-import { supabase } from "../utils/supabase"; // Adjust the path if necessary
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
-
-interface SessionContextProps {
-  session: any;
-  setSession: (session: any) => void;
-  logout: () => Promise<void>;
-}
+import { GoogleSignin, User } from "@react-native-google-signin/google-signin";
+import axios from "axios";
 
 interface GoogleTokens {
   accessToken: string;
@@ -21,49 +17,90 @@ interface GoogleTokens {
   refreshToken: string | null;
 }
 
+interface SessionData {
+  user: User;
+  tokens: GoogleTokens;
+}
+
+interface SessionContextProps {
+  session: SessionData | null;
+  setSession: (session: SessionData | null) => void;
+  logout: () => Promise<void>;
+  refreshAllTokens: () => Promise<void>;
+}
+
 const SessionContext = createContext<SessionContextProps | undefined>(
   undefined
 );
 
-export const refreshGoogleTokens = async (): Promise<GoogleTokens | null> => {
+const STORAGE_KEYS = {
+  USER_SESSION: "userSession",
+  GOOGLE_TOKENS: "googleTokens",
+  TOKEN_EXPIRATION: "tokenExpirationTime",
+  LIVESWITCH_TOKEN: "liveSwitchToken",
+  LIVESWITCH_EXPIRATION: "liveSwitchTokenExpiresAt",
+};
+
+const API_ENDPOINT =
+  "https://healtrackapp-production.up.railway.app/refresh-token";
+
+const refreshGoogleTokens = async (
+  logoutFunction: () => Promise<void>,
+  setSession: Dispatch<SetStateAction<SessionData | null>>,
+  session: SessionData
+): Promise<GoogleTokens | null> => {
   try {
-    const storedTokens = await AsyncStorage.getItem("googleTokens");
-    if (!storedTokens) {
-      console.warn("No stored tokens found");
-      return null;
+    const [storedTokens, expirationTime, refreshToken] = await Promise.all([
+      AsyncStorage.getItem(STORAGE_KEYS.GOOGLE_TOKENS),
+      AsyncStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRATION),
+      AsyncStorage.getItem("googleRefreshToken"),
+    ]);
+
+    if (!refreshToken) {
+      throw new Error("No refresh token found");
     }
 
-    const parsedTokens: GoogleTokens = JSON.parse(storedTokens);
-
-    // Check if the access token is close to expiration (e.g., within 5 minutes)
-    const expirationTime = await AsyncStorage.getItem("tokenExpirationTime");
-    const currentTime = Date.now();
-    if (
-      expirationTime &&
-      currentTime < parseInt(expirationTime) - 5 * 60 * 1000
-    ) {
-      console.log("Token still valid, no need to refresh");
-      return parsedTokens;
+    const now = Date.now();
+    if (storedTokens && expirationTime && parseInt(expirationTime) > now) {
+      console.log("Google tokens are still valid");
+      return JSON.parse(storedTokens);
     }
 
     console.log("Refreshing Google tokens");
-    const { accessToken, idToken } = await GoogleSignin.getTokens();
-
+    const { data } = await axios.post(API_ENDPOINT, { refreshToken });
+    const { accessToken, idToken } = data;
+    console.log(data);
     const newTokens: GoogleTokens = {
       accessToken,
       idToken,
-      refreshToken: parsedTokens.refreshToken, // Keep the existing refresh token
+      refreshToken: "",
     };
+    const newExpirationTime = now + 120000;
 
-    // Store the new tokens
-    await AsyncStorage.setItem("googleTokens", JSON.stringify(newTokens));
+    await Promise.all([
+      AsyncStorage.setItem(
+        STORAGE_KEYS.GOOGLE_TOKENS,
+        JSON.stringify(newTokens)
+      ),
+      AsyncStorage.setItem(
+        STORAGE_KEYS.TOKEN_EXPIRATION,
+        newExpirationTime.toString()
+      ),
+    ]);
 
-    // Set the new expiration time (1 hour from now, as Google tokens typically last for 1 hour)
-    const newExpirationTime = Date.now() + 60 * 60 * 1000;
-    await AsyncStorage.setItem(
-      "tokenExpirationTime",
-      newExpirationTime.toString()
-    );
+    await checkLiveSwitchTokenExpiration(logoutFunction);
+
+    const userInfo = await GoogleSignin.getCurrentUser();
+    if (userInfo) {
+      const sessionData: SessionData = { user: userInfo, tokens: newTokens };
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.USER_SESSION,
+        JSON.stringify(sessionData)
+      );
+      setSession(sessionData);
+      console.log("New session created:", sessionData);
+      console.log(session);
+    }
 
     return newTokens;
   } catch (error) {
@@ -72,67 +109,114 @@ export const refreshGoogleTokens = async (): Promise<GoogleTokens | null> => {
   }
 };
 
+const checkLiveSwitchTokenExpiration = async (
+  logoutFunction: () => Promise<void>
+) => {
+  const [liveSwitchToken, liveSwitchExpiresAt] = await Promise.all([
+    AsyncStorage.getItem(STORAGE_KEYS.LIVESWITCH_TOKEN),
+    AsyncStorage.getItem(STORAGE_KEYS.LIVESWITCH_EXPIRATION),
+  ]);
+
+  if (liveSwitchToken && liveSwitchExpiresAt) {
+    const liveSwitchExpiration = parseInt(liveSwitchExpiresAt);
+    if (Date.now() >= liveSwitchExpiration) {
+      console.log("LiveSwitch token has expired");
+      await logoutFunction();
+    }
+  }
+};
+
 export const SessionContextProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<SessionData | null>(null);
 
   useEffect(() => {
     const fetchSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Error fetching session:", error);
-      } else {
-        setSession(data.session);
+      try {
+        const storedSession = await AsyncStorage.getItem(
+          STORAGE_KEYS.USER_SESSION
+        );
+        if (storedSession) {
+          setSession(JSON.parse(storedSession));
+          console.log("Session restored from AsyncStorage");
+        } else {
+          console.log("No stored session found in AsyncStorage");
+        }
+      } catch (error) {
+        console.error("Error fetching session from AsyncStorage:", error);
       }
     };
 
     fetchSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-      }
-    );
-
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
   }, []);
 
   useEffect(() => {
-    const refreshTokens = async () => {
-      const newTokens = await refreshGoogleTokens();
-      if (newTokens) {
-        console.log("Tokens refreshed successfully");
-        // You can update your session or state here if needed
+    const persistSession = async () => {
+      if (session) {
+        try {
+          await refreshAllTokens();
+          console.log("Session persisted to AsyncStorage");
+        } catch (error) {
+          console.error("Error persisting session to AsyncStorage:", error);
+        }
       }
     };
 
-    const interval = setInterval(refreshTokens, 50 * 60 * 1000); // Refresh tokens every 50 minutes
-    return () => clearInterval(interval);
-  }, []);
+    persistSession();
+  }, [session]);
+
+  const refreshAllTokens = async () => {
+    try {
+      const newGoogleTokens = await refreshGoogleTokens(
+        logout,
+        setSession,
+        session
+      );
+      if (newGoogleTokens) {
+        console.log("Google tokens refreshed successfully");
+      }
+    } catch (error) {
+      console.error("Error refreshing tokens:", error);
+    }
+  };
+
   const logout = async () => {
     try {
-      // Sign out from Supabase
-      await supabase.auth.signOut();
-
-      // Sign out from Google
+      await GoogleSignin.configure();
       await GoogleSignin.signOut();
-
-      // Clear AsyncStorage
-      await AsyncStorage.removeItem("userSession");
-      await AsyncStorage.removeItem("googleTokens");
-      await AsyncStorage.removeItem("tokenExpirationTime");
-
-      // Clear the session state
+      await Promise.all([
+        AsyncStorage.removeItem(STORAGE_KEYS.USER_SESSION),
+        AsyncStorage.removeItem(STORAGE_KEYS.GOOGLE_TOKENS),
+        AsyncStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRATION),
+        AsyncStorage.removeItem(STORAGE_KEYS.LIVESWITCH_TOKEN),
+        AsyncStorage.removeItem(STORAGE_KEYS.LIVESWITCH_EXPIRATION),
+      ]);
       setSession(null);
+      console.log("Logout successful");
     } catch (error) {
       console.error("Error during logout:", error);
     }
   };
+
+  const setSessionAndPersist = async (newSession: SessionData | null) => {
+    setSession((prevSession) => {
+      if (JSON.stringify(prevSession) !== JSON.stringify(newSession)) {
+        return newSession;
+      }
+      return prevSession;
+    });
+  };
+
   return (
-    <SessionContext.Provider value={{ session, setSession, logout }}>
+    <SessionContext.Provider
+      value={{
+        session,
+        setSession: setSessionAndPersist,
+        logout,
+        refreshAllTokens,
+      }}
+    >
       {children}
     </SessionContext.Provider>
   );
@@ -140,7 +224,7 @@ export const SessionContextProvider: React.FC<{ children: ReactNode }> = ({
 
 export const useSession = () => {
   const context = useContext(SessionContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useSession must be used within a SessionContextProvider");
   }
   return context;

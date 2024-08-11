@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,16 +6,17 @@ import {
   StyleSheet,
   FlatList,
   ImageBackground,
-  Modal,
   Alert,
+  RefreshControl,
+  ScrollView,
+  Dimensions,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
-import { MaterialIcons, Ionicons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
 import { openBrowserAsync } from "expo-web-browser";
 import { useSession } from "../context/SessionContext";
-import { refreshGoogleTokens } from "../context/SessionContext";
 
 interface Therapy {
   _id: string;
@@ -39,7 +40,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { session } = useSession();
+  const { session, refreshAllTokens } = useSession();
   const patientId = route.params?.patientId;
 
   const [therapies, setTherapies] = useState<Therapy[] | undefined>(undefined);
@@ -48,25 +49,8 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
   const [showPastTherapies, setShowPastTherapies] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showRecPopup, setShowRecPopup] = useState<boolean>(false);
-  const [recUrl, setRecUrl] = useState<string>("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [googleToken, setGoogleToken] = useState(null);
-
-  useEffect(() => {
-    const getGoogleToken = async () => {
-      try {
-        const newTokens = await refreshGoogleTokens();
-        if (newTokens) {
-          setGoogleToken(newTokens.accessToken);
-        }
-      } catch (error) {
-        console.error("Error retrieving Google token:", error);
-      }
-    };
-
-    getGoogleToken();
-  }, []);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!patientId) {
@@ -79,12 +63,13 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
 
   const fetchTherapies = async () => {
     setIsLoading(true);
+    await refreshAllTokens();
     try {
       const response = await fetch(
         `https://healtrackapp-production.up.railway.app/therepy/${patientId}`,
         {
           headers: {
-            Authorization: "Bearer " + session.access_token,
+            Authorization: "Bearer " + session.tokens.idToken,
           },
         }
       );
@@ -112,7 +97,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
       }
     } catch (error) {
       console.error("Error fetching therapy data:", error);
-      setError("Failed to fetch therapy data. Please try again.");
+      Alert.alert("No therapies found", "You are new..");
     } finally {
       setIsLoading(false);
     }
@@ -127,28 +112,13 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
     toggleDropdown();
   };
 
-  const handleRecTherapy = async () => {
+  const handleRecTherapy = async (therepy_id: string) => {
+    const recordingUrl = `https://app.contact.liveswitch.com/conversations/${therepy_id}`;
     try {
-      const response = await fetch(
-        `https://healtrackapp-production.up.railway.app/recording`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + session.access_token,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setRecUrl(data.RecordingLink);
-        setShowRecPopup(true);
-      } else {
-        setError("Failed to fetch recording URL.");
-      }
+      await openBrowserAsync(recordingUrl);
     } catch (error) {
-      setError("An error occurred while fetching recording URL.");
+      console.error("Error opening recording URL:", error);
+      Alert.alert("Error", "Failed to open the recording. Please try again.");
     }
   };
 
@@ -156,39 +126,69 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
     openBrowserAsync(joinUrl);
   };
 
-  const renderTherapyItem = ({ item }: { item: Therapy }) => (
-    <View style={styles.therapyCard}>
-      <View style={styles.therapyHeader}>
-        <MaterialIcons name="event" size={24} color="#119FB3" />
-        <Text style={styles.therapyType}>{item.therepy_type}</Text>
-      </View>
-      <View style={styles.therapyDetails}>
-        <Text style={styles.therapyText}>Date: {item.therepy_date}</Text>
-        <Text style={styles.therapyText}>
-          Start Time: {item.therepy_start_time}
-        </Text>
-        <Text style={styles.therapyText}>
-          End Time: {item.therepy_end_time}
-        </Text>
-        <Text style={styles.therapyText}>Cost: {item.therepy_cost}</Text>
-        <Text style={styles.therapyText}>Remarks: {item.therepy_remarks}</Text>
-      </View>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.joinButton]}
-          onPress={() => handleJoinSession(item.therepy_link)}
-        >
-          <Text style={styles.buttonText}>Join Session</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.recordButton]}
-          onPress={handleRecTherapy}
-        >
-          <Text style={styles.buttonText}>Get Recording</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchTherapies();
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  const renderTherapyItem = ({ item }: { item: Therapy }) => {
+    const isPassedSession = new Date(item.therepy_date) < new Date();
+
+    return (
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View style={styles.therapyCard}>
+          <View style={styles.therapyHeader}>
+            <MaterialIcons name="event" size={24} color="#119FB3" />
+            <Text style={styles.therapyType}>{item.therepy_type}</Text>
+          </View>
+          <View style={styles.therapyDetails}>
+            <Text style={styles.therapyText}>Date: {item.therepy_date}</Text>
+            <Text style={styles.therapyText}>
+              Start Time: {item.therepy_start_time}
+            </Text>
+            <Text style={styles.therapyText}>
+              End Time: {item.therepy_end_time}
+            </Text>
+            <Text style={styles.therapyText}>Cost: {item.therepy_cost}</Text>
+            <Text style={styles.therapyText}>
+              Remarks: {item.therepy_remarks}
+            </Text>
+          </View>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.joinButton,
+                isPassedSession && styles.disabledButton,
+              ]}
+              onPress={() => handleJoinSession(item.therepy_link)}
+              disabled={isPassedSession}
+            >
+              <Text style={styles.buttonText}>Join Session</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.recordButton]}
+              onPress={() => handleRecTherapy(item.therepy_id)}
+            >
+              <Text style={styles.buttonText}>Get Recording</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    );
+  };
 
   return (
     <ImageBackground
@@ -244,25 +244,12 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
             }
           />
         )}
-
-        <Modal visible={showRecPopup} animationType="slide" transparent={true}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Recording URL</Text>
-              <Text>{recUrl}</Text>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.closeButton]}
-                onPress={() => setShowRecPopup(false)}
-              >
-                <Text style={styles.modalButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
       </View>
     </ImageBackground>
   );
 };
+
+const windowWidth = Dimensions.get("window").width;
 
 const styles = StyleSheet.create({
   backgroundImage: {
@@ -289,6 +276,9 @@ const styles = StyleSheet.create({
     color: "#FF6B6B",
     marginBottom: 16,
     textAlign: "center",
+  },
+  scrollView: {
+    flex: 1,
   },
   loadingText: {
     color: "#FFFFFF",
@@ -333,8 +323,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 10,
-    width: "40%",
+    width: windowWidth > 360 ? 150 : "40%",
     elevation: 2,
+    justifyContent: "center",
+    alignItems: "center",
   },
   joinButton: {
     backgroundColor: "#119FB3",
@@ -342,10 +334,15 @@ const styles = StyleSheet.create({
   recordButton: {
     backgroundColor: "#2596be",
   },
+  disabledButton: {
+    backgroundColor: "#A0A0A0",
+    opacity: 0.7,
+  },
   buttonText: {
     color: "#FFFFFF",
     fontWeight: "bold",
     textAlign: "center",
+    fontSize: windowWidth > 360 ? 16 : 14,
   },
   noTherapyText: {
     color: "#FFFFFF",
@@ -377,40 +374,6 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#EEEEEE",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    padding: 20,
-    width: "90%",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#119FB3",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  modalButton: {
-    backgroundColor: "#119FB3",
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-    marginTop: 20,
-  },
-  closeButton: {
-    backgroundColor: "#FF6B6B",
-  },
-  modalButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    textAlign: "center",
   },
 });
 

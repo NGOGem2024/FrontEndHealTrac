@@ -3,29 +3,28 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  Animated,
+  KeyboardTypeOptions,
+  ActivityIndicator,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
-import {
-  GestureHandlerRootView,
-  ScrollView,
-} from "react-native-gesture-handler";
+import { ScrollView } from "react-native-gesture-handler";
 import axios from "axios";
 import {
   Ionicons,
   MaterialIcons,
-  Entypo,
   FontAwesome,
-  FontAwesome5,
-  FontAwesome6,
   AntDesign,
 } from "@expo/vector-icons";
-import { BsClockHistory } from "react-icons/bs";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import BackTabTop from "./BackTopTab";
+import { Picker } from "@react-native-picker/picker";
+import { useSession } from "../context/SessionContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type UpdatePatientProps = {
   navigation: StackNavigationProp<RootStackParamList, "UpdatePatient">;
@@ -34,7 +33,9 @@ type UpdatePatientProps = {
 
 const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
   const { patientId } = route.params;
+  const { session, refreshAllTokens } = useSession();
 
+  const [isLoading, setIsLoading] = useState(false);
   const [patientData, setPatientData] = useState({
     patient_first_name: "",
     patient_last_name: "",
@@ -46,16 +47,51 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
     patient_age: "",
     patient_bloodGroup: "",
     patient_symptoms: "",
+    therepy_category: "",
     patient_diagnosis: "",
     patient_therapy_type: "",
-    therepy_duration: "",
+    therapy_duration: "",
+    patient_id: "",
   });
 
-  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
-  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [duration, setDuration] = useState("");
+
+  const [fadeAnim] = useState(new Animated.Value(0));
+
+  const handleTextChange = (inputText: string, text: any) => {
+    // Filter out non-alphabetic characters
+    const filteredText = inputText.replace(/[^a-zA-Z]/g, "");
+    setPatientData({ ...patientData, patient_symptoms: filteredText });
+  };
+
+  const handleEmailChange = (value: string) => {
+    const lowerCaseValue = value.toLowerCase(); // Convert to lowercase
+    setPatientData({ ...patientData, patient_email: lowerCaseValue });
+  };
+
+  const categories = [
+    "Musculoskeletal",
+    "Neurological",
+    "Cardiorespiratory",
+    "Paediatrics",
+    "Women's Health",
+    "Geriatrics",
+    "Post surgical rehabilitation",
+  ];
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+    fetchPatientData();
+  }, []);
 
   useEffect(() => {
     if (startDate && endDate) {
@@ -64,6 +100,58 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
       setDuration(`${diffDays} days`);
     }
   }, [startDate, endDate]);
+
+  const fetchPatientData = async () => {
+    setIsLoading(true);
+    await refreshAllTokens();
+    try {
+      const response = await axios.get(
+        `https://healtrackapp-production.up.railway.app/patient/${patientId}`,
+        {
+          headers: {
+            Authorization: "Bearer " + session.tokens.idToken,
+          },
+        }
+      );
+      const patientInfo = response.data.patientData;
+      setPatientData({
+        ...patientData,
+        patient_first_name: patientInfo.patient_first_name || "",
+        patient_last_name: patientInfo.patient_last_name || "",
+        patient_email: patientInfo.patient_email || "",
+        patient_phone: patientInfo.patient_phone || "",
+        patient_address1: patientInfo.patient_address1 || "",
+        patient_address2: patientInfo.patient_address2 || "",
+        patient_age: patientInfo.patient_age || "",
+        patient_symptoms: patientInfo.patient_symptoms || "",
+        patient_diagnosis: patientInfo.patient_diagnosis || "",
+        patient_id: patientInfo.patient_id,
+      });
+      setSelectedCategory(patientInfo.patient_therepy_category || "");
+      setDuration(patientInfo.therepy_duration || "");
+
+      // Handle potentially empty date values
+      if (patientInfo.therepy_start) {
+        setStartDate(parseDateString(patientInfo.therepy_start));
+      }
+      if (patientInfo.therepy_end) {
+        setEndDate(parseDateString(patientInfo.therepy_end));
+      }
+    } catch (error) {
+      console.error("Error fetching patient data:", error);
+      Alert.alert("Error", "Failed to fetch patient data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const parseDateString = (dateString: string): Date | null => {
+    const parts = dateString.split("-");
+    if (parts.length === 3) {
+      return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    }
+    return null;
+  };
 
   const onChangeStartDate = (event: any, selectedDate?: Date) => {
     setShowStartDatePicker(false);
@@ -88,379 +176,363 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
   };
 
   const handlePatientUpdate = async () => {
+    setIsLoading(true);
+
     try {
-      console.log(patientId);
-      console.log(patientData);
+      const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
+      const formattedStartDate = startDate ? formatDate(startDate) : "";
+      const formattedEndDate = endDate ? formatDate(endDate) : "";
+      await refreshAllTokens();
       const response = await axios.post(
-        `https://healtrackapp-production.up.railway.app/patient/update/${patientId}`,
-        patientData
+        `https://healtrackapp-production.up.railway.app/patient/update/${patientData.patient_id}`,
+        {
+          ...patientData,
+          patient_therepy_category: selectedCategory,
+          therepy_start: formattedStartDate,
+          therepy_end: formattedEndDate,
+          therepy_duration: duration,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session.tokens.idToken,
+            "x-liveswitch-token": liveSwitchToken,
+          },
+        }
       );
       console.log("Response:", response.data);
-      // Handle successful registration, e.g., show a success message
-      Alert.alert("Success", "Patient registered successfully");
-      navigation.navigate("UpdatePatient");
+      Alert.alert("Success", "Patient updated successfully");
+      navigation.navigate("AllPatients");
     } catch (error) {
-      console.error("Error registering patient:", error);
-      // Handle error, e.g., show an error message
-      Alert.alert("Error", "Failed to register patient");
+      console.error("Error updating patient:", error);
+      Alert.alert("Error", "Failed to update patient");
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const formatDate = (date: Date): string => {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
+  };
+
+  const formatDateForDisplay = (date: Date): string => {
+    return date.toLocaleDateString("en-GB"); // This will format as DD/MM/YYYY
+  };
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ScrollView>
-        <View style={styles.container}>
+    <>
+      <BackTabTop />
+      <ScrollView style={styles.scrollView}>
+        <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
           <Text style={styles.title}>Update Patient</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="person" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_first_name}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_first_name: text })
-              }
-              placeholder="First Name"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="person" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_last_name}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_last_name: text })
-              }
-              placeholder="Last Name"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <MaterialIcons name="email" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_email}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_email: text })
-              }
-              placeholder="Email"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="call" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_phone}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_phone: text })
-              }
-              keyboardType="numeric"
-              placeholder="Contact No"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="person" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_gender}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_gender: text })
-              }
-              placeholder="Gender"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <MaterialIcons name="bloodtype" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_bloodGroup}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_bloodGroup: text })
-              }
-              placeholder="Blood Group"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <MaterialIcons name="numbers" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_age}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_age: text })
-              }
-              keyboardType="numeric"
-              placeholder="Age"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Entypo name="address" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_address1}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_address1: text })
-              }
-              placeholder="Address"
-            />
-          </View>
-          {/* 
-          <View style={styles.inputContainer}>
-            <Entypo name="address" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_address2}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_address2: text })
-              }
-              placeholder="Address"
-            />
-          </View> */}
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="id-card" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_symptoms}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_symptoms: text })
-              }
-              placeholder="Symptom Details"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <FontAwesome5 name="diagnoses" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_diagnosis}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_diagnosis: text })
-              }
-              placeholder="Diagnosis Details"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Ionicons name="id-card" size={24} color="black" />
-            <TextInput
-              style={styles.input}
-              value={patientData.patient_therapy_type}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, patient_therapy_type: text })
-              }
-              placeholder="Therapy Type"
-            />
-          </View>
-
+          <InputField
+            icon={<Ionicons name="person" size={24} color="#119FB3" />}
+            placeholder="First Name"
+            value={patientData.patient_first_name}
+            onChangeText={(text) =>
+              handleTextChange("patient_first_name", text)
+            }
+          />
+          <InputField
+            icon={<Ionicons name="person" size={24} color="#119FB3" />}
+            placeholder="Last Name"
+            value={patientData.patient_last_name}
+            onChangeText={(text) => handleTextChange("patient_last_name", text)}
+          />
+          <InputField
+            icon={<MaterialIcons name="email" size={24} color="#119FB3" />}
+            placeholder="Email"
+            value={patientData.patient_email}
+            onChangeText={handleEmailChange}
+          />
+          <InputField
+            icon={<Ionicons name="call" size={24} color="#119FB3" />}
+            placeholder="Contact No"
+            value={patientData.patient_phone}
+            onChangeText={(text) =>
+              setPatientData({ ...patientData, patient_phone: text })
+            }
+          />
+          <InputField
+            icon={<Ionicons name="location" size={24} color="#119FB3" />}
+            placeholder="Address 1"
+            value={patientData.patient_address1}
+            onChangeText={(text) =>
+              setPatientData({ ...patientData, patient_address1: text })
+            }
+          />
+          <InputField
+            icon={<Ionicons name="location" size={24} color="#119FB3" />}
+            placeholder="Address 2"
+            value={patientData.patient_address2}
+            onChangeText={(text) =>
+              setPatientData({ ...patientData, patient_address2: text })
+            }
+          />
+          <InputField
+            icon={<MaterialIcons name="numbers" size={24} color="#119FB3" />}
+            placeholder="Age"
+            value={patientData.patient_age}
+            onChangeText={(text) =>
+              setPatientData({ ...patientData, patient_age: text })
+            }
+            keyboardType="numeric"
+          />
+          <InputField
+            icon={<Ionicons name="medkit" size={24} color="#119FB3" />}
+            placeholder="Symptom Details"
+            value={patientData.patient_symptoms}
+            onChangeText={handleTextChange}
+          />
+          <Dropdown
+            value={selectedCategory}
+            onValueChange={(itemValue) => setSelectedCategory(itemValue)}
+            items={categories}
+          />
+          <InputField
+            icon={<FontAwesome name="stethoscope" size={24} color="#119FB3" />}
+            placeholder="Diagnosis Details"
+            value={patientData.patient_diagnosis}
+            onChangeText={(text) =>
+              setPatientData({ ...patientData, patient_diagnosis: text })
+            }
+          />
           <View style={styles.dateRow}>
-            <View style={styles.dateBlock}>
-              {/* <Text style={styles.date}>Start Date</Text> */}
-              <View style={styles.dateContainer}>
-                <TextInput
-                  style={styles.input}
-                  value={startDate?.toLocaleDateString()}
-                  editable={false}
-                />
-                <TouchableOpacity onPress={showStartDatepicker}>
-                  <FontAwesome name="calendar" size={24} color="black" />
-                </TouchableOpacity>
-              </View>
-              {showStartDatePicker && (
-                <DateTimePicker
-                  testID="dateTimePickerStart"
-                  value={startDate || new Date()}
-                  mode="date"
-                  display="default"
-                  onChange={onChangeStartDate}
-                />
-              )}
-            </View>
-
-            <View style={styles.dateBlock}>
-              {/* <Text style={styles.date}>End Date</Text> */}
-              <View style={styles.dateContainer1}>
-                <TextInput
-                  style={styles.input}
-                  value={endDate?.toLocaleDateString()}
-                  editable={false}
-                />
-                <TouchableOpacity onPress={showEndDatepicker}>
-                  <FontAwesome name="calendar" size={24} color="black" />
-                </TouchableOpacity>
-              </View>
-              {showEndDatePicker && (
-                <DateTimePicker
-                  testID="dateTimePickerEnd"
-                  value={endDate || new Date()}
-                  mode="date"
-                  display="default"
-                  onChange={onChangeEndDate}
-                />
-              )}
-            </View>
+            <DatePickerField
+              label="Start Date"
+              date={startDate}
+              showDatePicker={showStartDatePicker}
+              onPress={showStartDatepicker}
+              onChange={onChangeStartDate}
+              formatDate={formatDateForDisplay}
+            />
+            <DatePickerField
+              label="End Date"
+              date={endDate}
+              showDatePicker={showEndDatePicker}
+              onPress={showEndDatepicker}
+              onChange={onChangeEndDate}
+              formatDate={formatDateForDisplay}
+            />
           </View>
-          <View style={styles.input_dur}>
-            <AntDesign name="clockcircle" size={24} color="black" />
+          <View style={styles.durationContainer}>
+            <AntDesign name="clockcircle" size={24} color="#119FB3" />
             <Text style={styles.durationValue}>{duration}</Text>
-
-            <TextInput
-              style={styles.input}
-              value={patientData.therepy_duration}
-              onChangeText={(text) =>
-                setPatientData({ ...patientData, therepy_duration: text })
-              }
-              editable={false}
-            />
           </View>
-
-          <View style={styles.btn}>
-            <Button
-              color="#2a7fba"
-              title="Save"
-              onPress={handlePatientUpdate}
-            />
-          </View>
-        </View>
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handlePatientUpdate}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveButtonText}>Save</Text>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
-    </GestureHandlerRootView>
+    </>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 30,
-    backgroundColor: "#fff", // Set background color here
-    marginTop: 10,
-    marginLeft: -15,
-    height: "100%",
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  durationValue: {
-    fontSize: 16,
-    marginLeft: 20,
-  },
-  durationContainer: {
-    marginTop: 10,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  durationLabel: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  date: {
-    marginTop: 15,
-    marginLeft: 25,
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  formContainer: {
-    flex: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    width: "100%",
-    maxWidth: 500,
-    backgroundColor: "#fff", // Set background color here
-  },
+const InputField = ({
+  icon,
+  placeholder,
+  value,
+  onChangeText,
+  keyboardType = "default" as KeyboardTypeOptions,
+  editable = true,
+}) => (
+  <View style={styles.inputContainer}>
+    {icon}
+    <TextInput
+      style={[styles.input, !editable && styles.disabledInput]}
+      placeholder={placeholder}
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType}
+      placeholderTextColor="#A0A0A0"
+      editable={editable}
+    />
+  </View>
+);
 
+const DatePickerField = ({
+  label,
+  date,
+  showDatePicker,
+  onPress,
+  onChange,
+  formatDate,
+}) => (
+  <View style={styles.dateBlock}>
+    <Text style={styles.dateLabel}>{label}</Text>
+    <TouchableOpacity style={styles.dateContainer} onPress={onPress}>
+      <Text style={styles.dateText}>
+        {date ? formatDate(date) : "Select date"}
+      </Text>
+      <FontAwesome name="calendar" size={24} color="#119FB3" />
+    </TouchableOpacity>
+    {showDatePicker && (
+      <DateTimePicker
+        value={date || new Date()}
+        mode="date"
+        display="default"
+        onChange={onChange}
+      />
+    )}
+  </View>
+);
+
+const Dropdown = ({ value, onValueChange, items }) => (
+  <View style={styles.inputContainer}>
+    <MaterialIcons name="category" size={24} color="#119FB3" />
+    <Picker
+      selectedValue={value}
+      onValueChange={onValueChange}
+      style={styles.picker}
+    >
+      <Picker.Item label="Therapy Category" value="" />
+      {items.map((item, index) => (
+        <Picker.Item key={index} label={item} value={item} />
+      ))}
+    </Picker>
+  </View>
+);
+
+const styles = StyleSheet.create({
+  scrollView: {
+    backgroundColor: "#F0F8FF",
+  },
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "#F0F8FF",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#119FB3",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  disabledInput: {
+    backgroundColor: "#F0F0F0",
+    color: "#888888",
+  },
   inputContainer: {
     flexDirection: "row",
-    marginVertical: 0,
-    width: "90%",
-    backgroundColor: "#d3eaf2",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    elevation: 1,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
-    marginTop: 13,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    elevation: 2,
   },
   input: {
     flex: 1,
     marginLeft: 10,
-    color: "black",
-    alignItems: "center",
+    color: "#333333",
+    fontSize: 16,
+    paddingVertical: 12,
   },
-  input_dur: {
-    flexDirection: "row",
-    marginVertical: 0,
-    width: "50%",
-    backgroundColor: "#d3eaf2",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    elevation: 1,
+  genderContainer: {
+    marginBottom: 15,
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
-    marginTop: 13,
-    maxWidth: "50%",
-    justifyContent: "space-evenly",
-    textAlign: "center",
+    padding: 15,
+    elevation: 2,
+  },
+  genderLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#A0A0A0",
+    marginBottom: 10,
+  },
+  genderButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  genderButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.1)",
+  },
+  genderButtonSelected: {
+    borderColor: "#119FB3",
+    backgroundColor: "#E6F7FB",
+  },
+  genderButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#333333",
+  },
+  genderButtonTextSelected: {
+    color: "#119FB3",
+    fontWeight: "bold",
   },
   dateRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
-    width: "85%",
+    marginBottom: 15,
   },
   dateBlock: {
     flex: 1,
-    // alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  dateLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#119FB3",
+    marginBottom: 5,
   },
   dateContainer: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 15,
-    borderWidth: 1,
-    // borderColor: "#2a7fba",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
-    borderColor: "#fff",
-    gap: 5,
-    width: "100%",
-    backgroundColor: "#d3eaf2",
-    marginHorizontal: -7,
-    marginBottom: -10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    elevation: 2,
   },
-  dateContainer1: {
+  dateText: {
+    fontSize: 16,
+    color: "#333333",
+  },
+  durationContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 15,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    marginBottom: 20,
+  },
+  durationValue: {
+    fontSize: 16,
+    marginLeft: 10,
+    color: "#333333",
+  },
+  saveButton: {
+    backgroundColor: "#119FB3",
+    paddingVertical: 15,
     borderRadius: 10,
-    borderColor: "#fff",
-    marginHorizontal: 8,
-    gap: 5,
-    width: "100%",
-    marginBottom: -10,
-    backgroundColor: "#d3eaf2",
+    alignItems: "center",
   },
-  title: {
-    marginTop: 30,
-    fontSize: 30,
-    marginBottom: 10,
-    color: "#2a7fba",
-    textAlign: "center",
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "bold",
   },
-  btn: {
-    marginTop: 20,
-    backgroundColor: "#2a7fba",
-    color: "white",
-    width: "50%",
-    height: 40,
+  picker: {
+    flex: 1,
+    marginLeft: 10,
+    color: "#333333",
   },
 });
 

@@ -85,6 +85,9 @@ android {
 
     namespace 'physio.gem.auth'
     defaultConfig {
+// @generated begin react-native-auth0-manifest-placeholder - expo prebuild (DO NOT MODIFY) sync-fa68c886aa6e2572764d4250dfbba6e9bca3d569
+manifestPlaceholders = [auth0Domain: "dev-e2ng22nf1lkiirzs.us.auth0.com", auth0Scheme: "physio.gem.auth.auth0"]
+// @generated end react-native-auth0-manifest-placeholder
         applicationId 'physio.gem.auth'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,17 +11,17 @@ import {
   FlatList,
   Linking,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
 import axios from "axios";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useTheme } from "./ThemeContext";
 import { getTheme } from "./Theme";
-import ThemeSelector from "./BottomTab/ThemeSelector";
 import { useNavigation } from "@react-navigation/native";
 import { useSession } from "../context/SessionContext";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-
-const { width, height } = Dimensions.get("window");
+import { RefreshControl } from "react-native";
+import { refreshAsync } from "expo-auth-session";
 
 interface DoctorInfo {
   _id: string;
@@ -30,6 +30,9 @@ interface DoctorInfo {
   doctor_email: string;
   doctor_phone: string;
   organization_name?: string;
+  is_admin: boolean;
+  qualification: string;
+  patients?: any[];
 }
 
 interface Appointment {
@@ -43,7 +46,8 @@ interface Appointment {
 type RootStackParamList = {
   AllPatients: undefined;
   PatientRegister: undefined;
-  // Add other screen names here
+  Logout: undefined;
+  DoctorRegister: undefined;
 };
 
 type DashboardScreenNavigationProp =
@@ -55,84 +59,75 @@ type Item = {
   screen?: keyof RootStackParamList | undefined;
 };
 
-const items: Item[] = [
-  {
-    icon: "person-add-outline",
-    label: "Add Patient",
-    screen: "PatientRegister",
-  },
-  { icon: "list-outline", label: "View Patients", screen: "AllPatients" },
-  { icon: "document-text-outline", label: "Dashboard" },
-];
+const API_BASE_URL = "https://healtrackapp-production.up.railway.app";
 
 const DoctorDashboard: React.FC = () => {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(getTheme(theme)), [theme]);
   const navigation = useNavigation<DashboardScreenNavigationProp>();
-  const { session } = useSession();
-
+  const { session, refreshAllTokens } = useSession();
+  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [doctorInfo, setDoctorInfo] = useState<DoctorInfo | null>(null);
-  const [patientCount, setPatientCount] = useState(0);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { width } = useWindowDimensions();
 
-  useEffect(() => {
-    if (session && session.access_token) {
-      fetchData();
-    } else {
-      setLoading(false);
-    }
-  }, [session]);
+  const fetchData = useCallback(async () => {
+    if (!session?.tokens?.idToken) return;
 
-  const fetchData = async () => {
     setLoading(true);
     try {
-      await Promise.all([fetchDoctorInfo(), fetchAppointments()]);
+      await refreshAllTokens;
+      const [doctorResponse, appointmentsResponse] = await Promise.all([
+        axios.get(`${API_BASE_URL}/doctor`, {
+          headers: { Authorization: `Bearer ${session.tokens.idToken}` },
+        }),
+        axios.get(`${API_BASE_URL}/appointments/getevents`, {
+          headers: { Authorization: `Bearer ${session.tokens.idToken}` },
+        }),
+      ]);
+
+      setDoctorInfo(doctorResponse.data);
+      setAppointments(appointmentsResponse.data.appointments);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [session]);
 
-  const fetchDoctorInfo = async () => {
-    if (!session || !session.access_token) return;
-
-    try {
-      const response = await axios.get(
-        "https://healtrackapp-production.up.railway.app/doctor",
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
-      setDoctorInfo(response.data);
-      setPatientCount(response.data.patients.length);
-    } catch (error) {
-      console.error("Error fetching doctor info:", error);
+  useEffect(() => {
+    if (session?.tokens?.accessToken) {
+      fetchData();
+    } else {
+      setLoading(false);
     }
-  };
+  }, [session, fetchData]);
 
-  const fetchAppointments = async () => {
-    if (!session || !session.access_token) return;
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, [fetchData]);
 
-    try {
-      const response = await axios.get(
-        "https://healtrackapp-production.up.railway.app/appointments/getevents",
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      );
-      setAppointments(response.data.appointments);
-    } catch (error) {
-      console.error("Error fetching appointments:", error);
-    }
-  };
+  const items: Item[] = useMemo(
+    () => [
+      {
+        icon: "person-add-outline",
+        label: "Add Patient",
+        screen: "PatientRegister",
+      },
+      { icon: "list-outline", label: "View Patients", screen: "AllPatients" },
+      {
+        icon: "add-circle-outline",
+        label: "Add Doctor",
+        screen: doctorInfo?.is_admin ? "DoctorRegister" : undefined,
+      },
+    ],
+    [doctorInfo]
+  );
 
-  const formatDate = (date: string) => {
+  const formatDate = useCallback((date: string) => {
     const options: Intl.DateTimeFormatOptions = {
       weekday: "long",
       year: "numeric",
@@ -140,43 +135,57 @@ const DoctorDashboard: React.FC = () => {
       day: "numeric",
     };
     return new Date(date).toLocaleDateString("en-US", options);
-  };
+  }, []);
 
-  const todayAppointments = appointments.filter(
-    (appointment) =>
-      formatDate(appointment.therepy_date) ===
-      formatDate(new Date().toISOString())
+  const todayAppointments = useMemo(
+    () =>
+      appointments.filter(
+        (appointment) =>
+          formatDate(appointment.therepy_date) ===
+          formatDate(new Date().toISOString())
+      ),
+    [appointments, formatDate]
   );
 
-  const renderAppointment = ({ item }: { item: Appointment }) => (
-    <View style={styles.appointmentItem}>
-      <Icon
-        name={
-          item.therepy_type.toLowerCase().includes("video")
-            ? "videocam-outline"
-            : "person-outline"
-        }
-        size={24}
-        color={styles.iconColor.color}
-      />
-      <View style={styles.appointmentInfo}>
-        <Text style={styles.appointmentTime}>{item.therepy_start_time}</Text>
-        <Text style={styles.appointmentType}>{item.therepy_type}</Text>
+  const renderAppointment = useCallback(
+    ({ item }: { item: Appointment }) => (
+      <View style={styles.appointmentItem}>
+        <Icon
+          name={
+            item.therepy_type.toLowerCase().includes("video")
+              ? "videocam-outline"
+              : "person-outline"
+          }
+          size={24}
+          color={styles.iconColor.color}
+        />
+        <View style={styles.appointmentInfo}>
+          <Text style={styles.appointmentTime}>{item.therepy_start_time}</Text>
+          <Text style={styles.appointmentType}>{item.therepy_type}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.joinButton}
+          onPress={() => Linking.openURL(item.therepy_link)}
+        >
+          <Text style={styles.joinButtonText}>Join</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={styles.joinButton}
-        onPress={() => Linking.openURL(item.therepy_link)}
-      >
-        <Text style={styles.joinButtonText}>Join</Text>
-      </TouchableOpacity>
-    </View>
+    ),
+    [styles]
   );
 
-  const handleNavigation = (screen?: keyof RootStackParamList) => {
-    if (screen) {
-      navigation.navigate(screen);
-    }
-  };
+  const handleNavigation = useCallback(
+    (screen?: keyof RootStackParamList) => {
+      if (screen) {
+        navigation.navigate(screen);
+      }
+    },
+    [navigation]
+  );
+
+  const handleLogout = useCallback(() => {
+    navigation.navigate("Logout");
+  }, [navigation]);
 
   if (loading) {
     return (
@@ -187,7 +196,7 @@ const DoctorDashboard: React.FC = () => {
     );
   }
 
-  if (!session || !session.access_token) {
+  if (!session?.tokens?.accessToken) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>
@@ -199,27 +208,24 @@ const DoctorDashboard: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Dashboard</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Icon
-              name="notifications-outline"
-              size={24}
-              color={styles.headerIcon.color}
-            />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationText}>3</Text>
-            </View>
-          </TouchableOpacity>
-          <ThemeSelector />
-        </View>
-      </View>
-
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
+        <View style={styles.header}>
+          <Text style={styles.headerText}>
+            {doctorInfo?.is_admin ? "Admin Dashboard" : "Doctor Dashboard"}
+          </Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.iconButton} onPress={handleLogout}>
+              <Icon name="log-out-outline" size={30} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {doctorInfo && (
           <View style={styles.profileSection}>
             <Image
@@ -230,8 +236,9 @@ const DoctorDashboard: React.FC = () => {
               <Text style={styles.profileName}>
                 Dr. {doctorInfo.doctor_first_name} {doctorInfo.doctor_last_name}
               </Text>
-              <Text style={styles.profileDetailText}>MD, MBBS</Text>
-
+              <Text style={styles.profileDetailText}>
+                {doctorInfo.qualification}
+              </Text>
               {doctorInfo.organization_name && (
                 <Text style={styles.profileOrg}>
                   {doctorInfo.organization_name}
@@ -263,7 +270,9 @@ const DoctorDashboard: React.FC = () => {
 
         <View style={styles.statsSection}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{patientCount}</Text>
+            <Text style={styles.statNumber}>
+              {doctorInfo?.patients?.length || 0}
+            </Text>
             <Text style={styles.statLabel}>Patient Joined</Text>
           </View>
           <View style={styles.statDivider} />
@@ -274,13 +283,18 @@ const DoctorDashboard: React.FC = () => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Patient Management</Text>
+          <Text style={styles.sectionTitle}>Management</Text>
           <View style={styles.cardContainer}>
             {items.map((item, index) => (
               <TouchableOpacity
                 key={index}
-                style={styles.card}
+                style={[
+                  styles.card,
+                  !item.screen && { opacity: 0.5 },
+                  { width: (width - 64) / 3 },
+                ]}
                 onPress={() => item.screen && handleNavigation(item.screen)}
+                disabled={!item.screen}
               >
                 <Icon
                   name={item.icon}
@@ -292,7 +306,6 @@ const DoctorDashboard: React.FC = () => {
             ))}
           </View>
         </View>
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Today's Appointments</Text>
           <Text style={styles.dateText}>
@@ -489,6 +502,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     section: {
       display: "flex",
       margin: 16,
+
       marginBottom: 0,
       backgroundColor: "#119FB3",
     },
@@ -542,7 +556,6 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       backgroundColor: theme.colors.card,
       padding: 16,
       borderRadius: 16,
-      width: (width - 64) / 3,
       marginBottom: 16,
       alignItems: "center",
       elevation: 3,

@@ -1,45 +1,121 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
-  TextInput,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Platform,
 } from "react-native";
-import {
-  GoogleSignin,
-  GoogleSigninButton,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
-import { supabase } from "../utils/supabase";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { useNavigation } from "@react-navigation/native";
-import { StackNavigationProp } from "@react-navigation/stack";
-import { RootStackParamList } from "../types/types";
+import { RootStackNavProps } from "../types/types";
 import { useSession } from "../context/SessionContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AntDesign } from "@expo/vector-icons";
+import * as WebBrowser from "expo-web-browser";
+import { makeRedirectUri } from "expo-auth-session";
+import * as Linking from "expo-linking";
+import axios from "axios";
 
-type AuthNavigationProp = StackNavigationProp<RootStackParamList, "Auth">;
+const CALLBACK_URL = "physio.gem.auth://callback";
+const GOOGLE_WEB_CLIENT_ID =
+  "1038698506388-eegihlhipbg4d1cubdjk4p44gv74sv5i.apps.googleusercontent.com";
+const LIVESWITCH_CLIENT_ID = "ADRTBpRcrev3ebDN2Jdpd2ednNlFbw7B";
+const API_BASE_URL = "https://healtrackapp-production.up.railway.app";
 
 export default function Auth() {
-  const navigation = useNavigation<AuthNavigationProp>();
-  const { setSession } = useSession();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const navigation = useNavigation<RootStackNavProps<"Auth">["navigation"]>();
+  const { setSession, refreshAllTokens } = useSession();
+  const [liveSwitchToken, setLiveSwitchToken] = useState("");
 
-  React.useEffect(() => {
-    GoogleSignin.configure({
-      scopes: [
-        "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/userinfo.profile",
-        "https://www.googleapis.com/auth/calendar.events",
-      ],
-      webClientId:
-        "1038698506388-eegihlhipbg4d1cubdjk4p44gv74sv5i.apps.googleusercontent.com",
-    });
+  useEffect(() => {
+    const configureGoogleSignIn = async () => {
+      await GoogleSignin.configure({
+        scopes: [
+          "https://www.googleapis.com/auth/calendar",
+          "https://www.googleapis.com/auth/userinfo.email",
+          "https://www.googleapis.com/auth/userinfo.profile",
+          "https://www.googleapis.com/auth/calendar.events",
+        ],
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        offlineAccess: true,
+        forceCodeForRefreshToken: true, // This ensures that you always get a refresh token.
+        // Added prompt parameter
+      });
+    };
+
+    configureGoogleSignIn();
+
+    const subscription = Linking.addEventListener("url", handleRedirect);
+    return () => subscription.remove();
   }, []);
+
+  const handleRedirect = useCallback(async (event: Linking.EventType) => {
+    if (Platform.OS === "ios") {
+      WebBrowser.dismissAuthSession();
+    }
+
+    if (event.url) {
+      const url = event.url;
+
+      if (url.includes("access_token=")) {
+        const token = url.split("access_token=")[1].split("&")[0];
+        const expiresIn = url.split("expires_in=")[1].split("&")[0];
+
+        setLiveSwitchToken(token);
+        await AsyncStorage.setItem("liveSwitchToken", token);
+        const expiresAt = Date.now() + parseInt(expiresIn) * 1000;
+        await AsyncStorage.setItem(
+          "liveSwitchTokenExpiresAt",
+          expiresAt.toString()
+        );
+
+        await completeAuthentication();
+      } else {
+        console.log("No access_token found in URL");
+        Alert.alert(
+          "Authentication Error",
+          "Failed to obtain LiveSwitch token."
+        );
+      }
+    } else {
+      console.log("No URL in redirect event");
+      Alert.alert("Authentication Error", "No redirect URL received.");
+    }
+  }, []);
+
+  const signInWithLiveSwitch = async () => {
+    try {
+      const redirectUri = makeRedirectUri({ native: CALLBACK_URL });
+      const authUrl = `https://public-api.production.liveswitch.com/v1/tokens?responseType=Token&clientId=${LIVESWITCH_CLIENT_ID}&callbackUrl=${encodeURIComponent(
+        CALLBACK_URL
+      )}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        redirectUri,
+        {
+          showInRecents: true,
+        }
+      );
+
+      if (result.type === "success" && result.url) {
+        await handleRedirect({ url: result.url } as Linking.EventType);
+      } else {
+        Alert.alert(
+          "Authentication Issue",
+          `Authentication was not completed. Result: ${result.type}`
+        );
+      }
+    } catch (error) {
+      console.error("Error during LiveSwitch authentication:", error);
+      Alert.alert(
+        "Authentication Error",
+        "An error occurred during LiveSwitch authentication."
+      );
+    }
+  };
 
   const signInWithGoogle = async () => {
     try {
@@ -48,95 +124,82 @@ export default function Auth() {
       const tokens = await GoogleSignin.getTokens();
 
       await AsyncStorage.setItem("googleTokens", JSON.stringify(tokens));
-      const expirationTime = Date.now() + 60 * 60 * 1000; // 1 hour from now
+      const expirationTime = Date.now() + 120000; // 1 hour from now
+      console.log(expirationTime);
       await AsyncStorage.setItem(
         "tokenExpirationTime",
         expirationTime.toString()
       );
 
-      console.log(JSON.stringify(userInfo, null, 2));
-      if (userInfo.idToken) {
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: "google",
-          token: userInfo.idToken,
-        });
-        console.log(error, data);
-        if (data) {
-          setSession(data.session);
-          navigation.navigate("AllPatients");
-        } else {
-          throw new Error("Authentication failed");
+      if (userInfo.serverAuthCode) {
+        try {
+          const response = await axios.post(`${API_BASE_URL}/exchange`, {
+            serverAuthCode: userInfo.serverAuthCode,
+          });
+
+          const { refreshToken } = response.data;
+          if (refreshToken) {
+            await AsyncStorage.setItem("googleRefreshToken", refreshToken);
+          } else {
+            console.warn("No refresh token received from server");
+          }
+        } catch (error) {
+          console.error(
+            "Error exchanging auth code:",
+            error.response ? error.response.data : error.message
+          );
         }
       } else {
-        throw new Error("No id token Present");
+        console.warn("No serverAuthCode present in userInfo");
       }
-    } catch (error: any) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // user cancelled the login flow
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        // operation (e.g. sign in) is in progress already
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        // play services not available or outdated
+
+      if (userInfo.idToken) {
+        const sessionData = { user: userInfo, tokens };
+        await AsyncStorage.setItem("userSession", JSON.stringify(sessionData));
+        await signInWithLiveSwitch();
       } else {
-        // some other error happened
-        console.error(error);
+        throw new Error("No id token present");
       }
+    } catch (error) {
+      console.error("Error during Google Sign-In:", error);
+      Alert.alert("Error", "Failed to sign in with Google.");
     }
   };
 
-  const signInWithEmail = async () => {
+  const completeAuthentication = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setSession(data.session);
-        navigation.navigate("AllPatients");
+      await refreshAllTokens();
+      const storedSession = await AsyncStorage.getItem("userSession");
+      if (storedSession) {
+        const sessionData = JSON.parse(storedSession);
+        await setSession(sessionData);
+        navigation.navigate("DoctorDashboard");
+      } else {
+        throw new Error("No stored session found");
       }
     } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Failed to sign in. Please check your credentials.");
+      console.error("Error completing authentication:", error);
+      Alert.alert("Error", "Failed to complete authentication.");
     }
   };
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require("../assets/logo.png")}
-        resizeMode="cover"
-        style={styles.logo}
-      />
-      <Text style={styles.title}>Welcome to HealTrac</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      <Text style={styles.title}>Sign In</Text>
+      <Text style={styles.title1}>Welcome to HealTrac</Text>
       <Text style={styles.subtitle}>
-        It is recommended to Login With Google for a better experience
+        Please sign in with Google for the best experience
       </Text>
-      <TouchableOpacity style={styles.loginButton} onPress={signInWithEmail}>
-        <Text style={styles.buttonText}>Sign in with Email</Text>
-      </TouchableOpacity>
       <TouchableOpacity style={styles.googleButton} onPress={signInWithGoogle}>
-        <Text style={styles.buttonText}>Sign in with Google</Text>
+        <View style={styles.googleButtonContent}>
+          <AntDesign
+            name="google"
+            size={24}
+            color="white"
+            style={styles.googleIcon}
+          />
+          <Text style={styles.googleButtonText}>Sign in with Google</Text>
+        </View>
       </TouchableOpacity>
     </View>
   );
@@ -148,54 +211,46 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#f5f5f5",
+    paddingHorizontal: 50,
+    marginTop: "10%",
+    marginVertical: 50,
   },
-  logo: {
-    width: 120,
-    height: 120,
-    marginTop: -50,
-    marginBottom: 10,
-    borderRadius: 100,
-  },
-  title: {
-    fontSize: 18,
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    marginBottom: 30,
-    textAlign: "center",
-    paddingHorizontal: 20,
-  },
-  input: {
-    width: "80%",
-    height: 40,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 10,
-  },
-  googleButton: {
-    backgroundColor: "#4285F4",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    marginBottom: 15,
-    width: "80%",
+  googleButtonContent: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
   },
-  loginButton: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    marginBottom: 15,
-    width: "80%",
-    alignItems: "center",
+  googleIcon: {
+    marginRight: 10,
   },
-  buttonText: {
+  googleButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  title1: {
+    fontSize: 18,
+    marginBottom: 10,
+  },
+  title: {
+    fontSize: 50,
+    marginBottom: 20,
+    color: "black",
+  },
+  subtitle: {
+    fontSize: 12,
+    marginBottom: 20,
+    textAlign: "center",
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
+  googleButton: {
+    backgroundColor: "#2a7fba",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    marginBottom: 15,
+    width: "95%",
+    alignItems: "center",
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   TextInput,
   ImageBackground,
   ActivityIndicator,
+  RefreshControl,
+  Dimensions,
+  ScaledSize,
 } from "react-native";
 import axios from "axios";
 import Icon from "react-native-vector-icons/FontAwesome";
@@ -27,44 +30,64 @@ interface Patient {
   patient_last_name: string;
   patient_phone: string;
   patient_email: string;
-  createdAt: string;
+  patient_registration_date: string;
 }
 
 const AllPatients: React.FC<Props> = ({ navigation }) => {
-  const { session } = useSession();
+  const { session, refreshAllTokens } = useSession();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [filterOption, setFilterOption] = useState("all");
   const [sortOption, setSortOption] = useState("date");
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [screenDimensions, setScreenDimensions] = useState(
+    Dimensions.get("window")
+  );
 
   useEffect(() => {
-    const fetchPatients = async () => {
-      if (!session) return; // Ensure googleToken is available
-      console.log(session);
-      try {
-        setIsLoading(true);
-        const response = await axios.get(
-          "https://healtrackapp-production.up.railway.app/patient/getall",
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + session.access_token,
-            },
-          }
-        );
-        setPatients(response.data);
-        setFilteredPatients(response.data);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setIsLoading(false);
-      }
+    const updateDimensions = ({ window }: { window: ScaledSize }) => {
+      setScreenDimensions(window);
     };
 
+    const subscription = Dimensions.addEventListener(
+      "change",
+      updateDimensions
+    );
+
+    return () => {
+      // Newer versions of React Native use the `remove` method
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     fetchPatients();
   }, [session]);
+
+  const fetchPatients = async () => {
+    if (!session) return;
+    try {
+      setIsLoading(true);
+      await refreshAllTokens();
+      const response = await axios.get(
+        "https://healtrackapp-production.up.railway.app/patient/getall",
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session.tokens.idToken,
+          },
+        }
+      );
+      setPatients(response.data);
+      setFilteredPatients(response.data);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const filtered = patients.filter((patient) => {
@@ -72,13 +95,13 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
         return true;
       } else if (filterOption === "oneWeek") {
         const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        return new Date(patient.createdAt) >= oneWeekAgo;
+        return new Date(patient.patient_registration_date) >= oneWeekAgo;
       } else if (filterOption === "oneMonth") {
         const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        return new Date(patient.createdAt) >= oneMonthAgo;
+        return new Date(patient.patient_registration_date) >= oneMonthAgo;
       } else if (filterOption === "oneYear") {
         const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
-        return new Date(patient.createdAt) >= oneYearAgo;
+        return new Date(patient.patient_registration_date) >= oneYearAgo;
       }
       return true;
     });
@@ -95,10 +118,14 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
 
     const sorted =
       sortOption === "date"
-        ? searchFiltered.sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )
+        ? searchFiltered.sort((a, b) => {
+            const dateA = new Date(a.patient_registration_date);
+            const dateB = new Date(b.patient_registration_date);
+            if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+            if (isNaN(dateA.getTime())) return 1;
+            if (isNaN(dateB.getTime())) return -1;
+            return dateB.getTime() - dateA.getTime();
+          })
         : searchFiltered.sort((a, b) => {
             const fullName1 =
               `${a.patient_first_name} ${a.patient_last_name}`.toLowerCase();
@@ -114,6 +141,17 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
     navigation.navigate("PatientRegister");
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchPatients();
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   const navigateToPatient = (patientId: string) => {
     if (patientId) {
       navigation.navigate("Patient", { patientId });
@@ -121,21 +159,29 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
       console.error("Invalid patient ID:", patientId);
     }
   };
-  if (isLoading) {
-    return <ActivityIndicator size="large" color="#119FB3" />;
-  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return "Invalid Date";
+    }
     return date.toLocaleDateString();
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#119FB3" />
+      </View>
+    );
+  }
 
   return (
     <ImageBackground
       source={require("../assets/bac2.jpg")}
       style={styles.backgroundImage}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, { height: screenDimensions.height * 0.1 }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -144,7 +190,9 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.container}>
+      <View
+        style={[styles.container, { height: screenDimensions.height * 0.9 }]}
+      >
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchBar}
@@ -223,11 +271,14 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
                   </View>
                 </View>
                 <Text style={styles.patientDate}>
-                  FV: {formatDate(item.createdAt)}
+                  FV: {formatDate(item.patient_registration_date)}
                 </Text>
               </View>
             </TouchableOpacity>
           )}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         />
         <TouchableOpacity onPress={handleAddPatient} style={styles.addButton}>
           <Icon name="plus" size={24} color="#FFFFFF" />
@@ -246,6 +297,10 @@ const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
     resizeMode: "cover",
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: "#119FB3",
   },
   title: {
     fontSize: 18,
@@ -342,17 +397,23 @@ const styles = StyleSheet.create({
     right: 20,
     elevation: 3,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5FCFF",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
     paddingHorizontal: 20,
-    paddingTop: 40,
     backgroundColor: "#119FB3",
+    justifyContent: "flex-start",
   },
   backButton: {
     flexDirection: "row",
     alignItems: "center",
+    paddingVertical: 10,
   },
   backButtonText: {
     color: "#FFFFFF",

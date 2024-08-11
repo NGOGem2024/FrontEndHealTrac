@@ -13,7 +13,10 @@ const SplashScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Image source={require("../assets/medaxlogo.png")} style={styles.logo} />
+      <Image
+        source={require("../assets/HealTrackLoGO.png")}
+        style={styles.logo}
+      />
     </View>
   );
 };

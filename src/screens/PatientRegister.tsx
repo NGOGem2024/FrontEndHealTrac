@@ -8,10 +8,10 @@ import {
   Alert,
   ActivityIndicator,
   ImageBackground,
+  KeyboardType,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
-import UpdatePatient from "./UpdatePatient";
 import {
   GestureHandlerRootView,
   ScrollView,
@@ -20,15 +20,16 @@ import axios from "axios";
 import * as Animatable from "react-native-animatable";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../context/SessionContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type PatientRegisterScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "PatientRegister">;
 };
 
-const PaitentRegister: React.FC<PatientRegisterScreenProps> = ({
+const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
   navigation,
 }) => {
-  const { session } = useSession();
+  const { session, refreshAllTokens } = useSession();
   const [patientData, setPatientData] = useState({
     patient_first_name: "",
     patient_last_name: "",
@@ -36,9 +37,47 @@ const PaitentRegister: React.FC<PatientRegisterScreenProps> = ({
     patient_phone: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleInputChange = (field: string, value: string) => {
+    let newValue = value;
+    if (field === "patient_first_name" || field === "patient_last_name") {
+      newValue = value.replace(/[^a-zA-Z\s]/g, "");
+    } else if (field === "patient_phone") {
+      newValue = value.replace(/[^0-9]/g, "");
+    } else if (field === "patient_email") {
+      newValue = value.toLowerCase();
+    }
+    setPatientData({ ...patientData, [field]: newValue });
+  };
+
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handlePatientRegister = async () => {
+    if (!patientData.patient_first_name || !patientData.patient_last_name) {
+      Alert.alert("Error", "First name and last name are required");
+      return;
+    }
+
+    if (!isValidEmail(patientData.patient_email)) {
+      Alert.alert("Error", "Please enter a valid email address");
+      return;
+    }
+
+    if (patientData.patient_phone.length !== 10) {
+      Alert.alert("Error", "Please enter a valid 10-digit phone number");
+      return;
+    }
+
     setIsLoading(true);
     try {
+      await refreshAllTokens();
+      const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
+      if (!liveSwitchToken) {
+        throw new Error("LiveSwitch token not available");
+      }
       const formattedData = {
         ...patientData,
         patient_phone: "+91" + patientData.patient_phone,
@@ -50,14 +89,15 @@ const PaitentRegister: React.FC<PatientRegisterScreenProps> = ({
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: "Bearer " + session.access_token,
+            Authorization: "Bearer " + session.tokens.idToken,
+            "X-LiveSwitch-Token": liveSwitchToken,
           },
         }
       );
       console.log("Response:", response.data);
       Alert.alert("Success", "Patient registered successfully");
       navigation.navigate("UpdatePatient", {
-        patientId: response.data.patient.patient_id,
+        patientId: response.data.patient._id,
       });
     } catch (error) {
       console.error("Error registering patient:", error);
@@ -66,6 +106,25 @@ const PaitentRegister: React.FC<PatientRegisterScreenProps> = ({
       setIsLoading(false);
     }
   };
+
+  const renderInput = (
+    placeholder: string,
+    value: string,
+    field: string,
+    keyboardType: KeyboardType = "default"
+  ) => (
+    <Animatable.View animation="fadeInUp" style={styles.inputContainer}>
+      <TextInput
+        style={styles.input}
+        placeholder={placeholder}
+        value={value}
+        onChangeText={(text) => handleInputChange(field, text)}
+        keyboardType={keyboardType}
+        autoCapitalize={field === "patient_email" ? "none" : "sentences"}
+      />
+    </Animatable.View>
+  );
+
   return (
     <ImageBackground
       source={require("../assets/bac2.jpg")}
@@ -84,60 +143,36 @@ const PaitentRegister: React.FC<PatientRegisterScreenProps> = ({
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <Animatable.View animation="fadeInUp" style={styles.container}>
             <Text style={styles.title}>Register Patient</Text>
+            {renderInput(
+              "First Name",
+              patientData.patient_first_name,
+              "patient_first_name"
+            )}
+            {renderInput(
+              "Last Name",
+              patientData.patient_last_name,
+              "patient_last_name"
+            )}
+            {renderInput(
+              "Email",
+              patientData.patient_email,
+              "patient_email",
+              "email-address"
+            )}
             <Animatable.View animation="fadeInUp" style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="First Name"
-                value={patientData.patient_first_name}
-                onChangeText={(text) =>
-                  setPatientData({ ...patientData, patient_first_name: text })
-                }
-              />
-            </Animatable.View>
-            <Animatable.View
-              animation="fadeInUp"
-              delay={200}
-              style={styles.inputContainer}
-            >
-              <TextInput
-                style={styles.input}
-                placeholder="Last Name"
-                value={patientData.patient_last_name}
-                onChangeText={(text) =>
-                  setPatientData({ ...patientData, patient_last_name: text })
-                }
-              />
-            </Animatable.View>
-            <Animatable.View
-              animation="fadeInUp"
-              delay={400}
-              style={styles.inputContainer}
-            >
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                value={patientData.patient_email}
-                onChangeText={(text) =>
-                  setPatientData({ ...patientData, patient_email: text })
-                }
-              />
-            </Animatable.View>
-            <Animatable.View
-              animation="fadeInUp"
-              delay={600}
-              style={styles.inputContainer}
-            >
-              <TextInput
-                style={styles.input}
-                placeholder="+91 Contact No."
-                value={"+91" + patientData.patient_phone}
-                onChangeText={(text) =>
-                  setPatientData({
-                    ...patientData,
-                    patient_phone: text.slice(3),
-                  })
-                }
-              />
+              <View style={styles.phoneInputContainer}>
+                <Text style={styles.phonePrefix}>+91</Text>
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="Contact No."
+                  value={patientData.patient_phone}
+                  onChangeText={(text) =>
+                    handleInputChange("patient_phone", text)
+                  }
+                  keyboardType="numeric"
+                  maxLength={10}
+                />
+              </View>
             </Animatable.View>
             <TouchableOpacity
               style={styles.button}
@@ -152,7 +187,7 @@ const PaitentRegister: React.FC<PatientRegisterScreenProps> = ({
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.backButton1}
-              onPress={() => navigation.navigate("AllPatients")}
+              onPress={() => navigation.navigate("DoctorDashboard")}
             >
               <Text style={styles.backButtonText1}>Back to Home</Text>
             </TouchableOpacity>
@@ -167,6 +202,24 @@ const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
     resizeMode: "cover",
+  },
+  phoneInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D9D9D9",
+    borderRadius: 5,
+    backgroundColor: "#FFFFFF",
+  },
+  phonePrefix: {
+    paddingHorizontal: 10,
+    fontSize: 16,
+    color: "#333333",
+  },
+  phoneInput: {
+    flex: 1,
+    padding: 10,
+    color: "#333333",
   },
   scrollContainer: {
     flex: 1,
@@ -250,4 +303,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PaitentRegister;
+export default PatientRegister;

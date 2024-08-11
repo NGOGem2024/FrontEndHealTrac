@@ -1,23 +1,40 @@
 {
   "expo": {
-    "name": "PhysioFront",
+    "name": "Arogya by HealTrack",
+    "scheme": "physio.gem.auth",
     "slug": "PhysioFront",
     "version": "1.0.0",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "android": {
-      "package": "physio.gem.auth"
+      "package": "physio.gem.auth",
+      "icon": "./src/assets/HealTrackLoGO.png"
     },
     "plugins": [
+      ["@react-native-google-signin/google-signin"],
       [
-        "@react-native-google-signin/google-signin"
+        "react-native-auth0",
+        {
+          "domain": "dev-e2ng22nf1lkiirzs.us.auth0.com"
+        }
       ]
     ],
     "extra": {
       "eas": {
         "projectId": "e235042f-1c9c-444c-867f-3d66a7c2d63e"
       }
+    },
+    "web": {
+      "config": {
+        "auth0": {
+          "domain": "dev-e2ng22nf1lkiirzs.us.auth0.com",
+          "clientId": "cTyv7SZnyRdWw2zUDnbswTjln72W4HA4"
+        }
+      }
+    },
+    "splash": {
+      "image": "./src/assets/HealTrackLoGO.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
     }
   }
 }

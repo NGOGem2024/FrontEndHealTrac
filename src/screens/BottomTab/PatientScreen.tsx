@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
   ImageBackground,
   ImageBackgroundBase,
 } from "react-native";
@@ -27,11 +28,10 @@ import { useSession } from "../../context/SessionContext";
 
 type PatientScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Patient">;
-  route: { params: { patientId: string } };
+  route: { params: { patientId: string; preloadedData?: any } };
 };
-
 const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
-  const { session } = useSession();
+  const { session, refreshAllTokens } = useSession();
   const { patientId } = route.params;
   const [patientData, setPatientData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,15 +40,16 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
 
   useEffect(() => {
     const fetchPatientData = async () => {
-      if (!session) return;
+      if (!session || patientData) return;
       try {
         setIsLoading(true);
+        await refreshAllTokens();
         const response = await fetch(
           `https://healtrackapp-production.up.railway.app/patient/${patientId}`,
           {
             headers: {
               "Content-Type": "application/json",
-              Authorization: "Bearer " + session.access_token,
+              Authorization: "Bearer " + session.tokens.idToken,
             },
           }
         );
@@ -62,8 +63,15 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
     };
 
     fetchPatientData();
-  }, [patientId]);
+  }, [patientId, session, patientData]);
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#119FB3" />
+      </View>
+    );
+  }
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.header}>
@@ -148,7 +156,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
               style={styles.linkContainer}
               onPress={() =>
                 navigation.navigate("UpdatePatient", {
-                  patientId: patientData?.patient_id,
+                  patientId: patientId,
                 })
               }
               disabled={!patientData}
@@ -206,7 +214,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
               <Octicons name="chevron-right" size={24} color="black" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.linkContainer}>
+            {/* <TouchableOpacity style={styles.linkContainer}>
               <View style={styles.iconleft}>
                 <MaterialCommunityIcons
                   name="chat"
@@ -230,7 +238,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
                 <Text style={styles.link}>Media</Text>
               </View>
               <Octicons name="chevron-right" size={24} color="black" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </ScrollView>
       </View>
@@ -352,6 +360,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginLeft: 5,
     fontSize: 18,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5FCFF",
   },
 });
 

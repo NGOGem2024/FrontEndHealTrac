@@ -18,13 +18,18 @@ export type RootStackParamList = {
   CreateTherapy: { patientId?: string };
   DoctorDashboard: undefined;
   DoctorProfileEdit: undefined;
+  DoctorRegister: undefined;
+  TabScreen: {
+    screen?: keyof RootTabParamList;
+    params?: object;
+  };
+  HomeStackNavigator: undefined;
 };
 
 export type RootTabParamList = {
-  Patient: undefined;
+  HomeStackNavigator: undefined;
   AddPatient: undefined;
   DoctorProfileEdit: undefined;
-  Logout: undefined;
 };
 
 export type RootStackNavProps<T extends keyof RootStackParamList> = {
