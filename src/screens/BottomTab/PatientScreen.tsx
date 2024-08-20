@@ -188,7 +188,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
                   color="#55b55b"
                   style={[styles.iconlist, styles.therapyicon]}
                 />
-                <Text style={styles.link}>Therapy</Text>
+                <Text style={styles.link}>Therapy Session</Text>
               </View>
               <Octicons name="chevron-right" size={24} color="black" />
             </TouchableOpacity>

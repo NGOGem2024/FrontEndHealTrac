@@ -82,12 +82,18 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
       if (data.therepys && Array.isArray(data.therepys)) {
         setTherapies(data.therepys);
         const now = new Date();
-        const past = data.therepys.filter(
-          (therapy: Therapy) => new Date(therapy.therepy_date) < now
-        );
-        const upcoming = data.therepys.filter(
-          (therapy: Therapy) => new Date(therapy.therepy_date) >= now
-        );
+        const past = data.therepys.filter((therapy: Therapy) => {
+          const therapyEndTime = new Date(
+            `${therapy.therepy_date}T${therapy.therepy_end_time}`
+          );
+          return therapyEndTime < now;
+        });
+        const upcoming = data.therepys.filter((therapy: Therapy) => {
+          const therapyEndTime = new Date(
+            `${therapy.therepy_date}T${therapy.therepy_end_time}`
+          );
+          return therapyEndTime >= now;
+        });
 
         setPastTherapies(past);
         setUpcomingTherapies(upcoming);
@@ -139,6 +145,16 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
 
   const renderTherapyItem = ({ item }: { item: Therapy }) => {
     const isPassedSession = new Date(item.therepy_date) < new Date();
+    const now = new Date();
+    const therapyStartTime = new Date(
+      `${item.therepy_date}T${item.therepy_start_time}`
+    );
+    const therapyEndTime = new Date(
+      `${item.therepy_date}T${item.therepy_end_time}`
+    );
+    const isUpcoming = therapyStartTime > now;
+    const isOngoing = now >= therapyStartTime && now <= therapyEndTime;
+    const isPast = now > therapyEndTime;
 
     return (
       <ScrollView
@@ -171,12 +187,18 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
               style={[
                 styles.actionButton,
                 styles.joinButton,
-                isPassedSession && styles.disabledButton,
+                (isPast || isUpcoming) && styles.disabledButton,
               ]}
               onPress={() => handleJoinSession(item.therepy_link)}
-              disabled={isPassedSession}
+              disabled={isPast || isUpcoming}
             >
-              <Text style={styles.buttonText}>Join Session</Text>
+              <Text style={styles.buttonText}>
+                {isOngoing
+                  ? "Join Session"
+                  : isPast
+                  ? "Session Ended"
+                  : "Upcoming Session"}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.recordButton]}

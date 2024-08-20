@@ -63,12 +63,15 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
 
   const [fadeAnim] = useState(new Animated.Value(0));
 
-  const handleTextChange = (inputText: string, text: any) => {
-    // Filter out non-alphabetic characters
-    const filteredText = inputText.replace(/[^a-zA-Z]/g, "");
-    setPatientData({ ...patientData, patient_symptoms: filteredText });
+  const handleTextChange = (field: string, inputText: string) => {
+    if (field === "patient_first_name" || field === "patient_last_name") {
+      // Allow any text input for first name and last name
+      setPatientData({ ...patientData, [field]: inputText });
+    } else {
+      // For all other fields, including patient_symptoms, update normally
+      setPatientData({ ...patientData, [field]: inputText });
+    }
   };
-
   const handleEmailChange = (value: string) => {
     const lowerCaseValue = value.toLowerCase(); // Convert to lowercase
     setPatientData({ ...patientData, patient_email: lowerCaseValue });
@@ -285,7 +288,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
             icon={<Ionicons name="medkit" size={24} color="#119FB3" />}
             placeholder="Symptom Details"
             value={patientData.patient_symptoms}
-            onChangeText={handleTextChange}
+            onChangeText={(text) => handleTextChange("patient_symptoms", text)}
           />
           <Dropdown
             value={selectedCategory}

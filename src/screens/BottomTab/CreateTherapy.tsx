@@ -98,6 +98,7 @@ const CreateTherapy: React.FC<AddNewTherapyScreenProps> = ({
     }
     setIsLoading(true);
     try {
+      await refreshAllTokens();
       const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
       console.log(liveSwitchToken);
       const formatTime = (date: Date) => {
@@ -111,6 +112,7 @@ const CreateTherapy: React.FC<AddNewTherapyScreenProps> = ({
         autoStartRecording: true,
         sendSmsNotification: true,
         remarks: therapyData.therapy_remarks,
+        therepy_cost: therapyData.therapy_cost,
         therepy_type: selectedCategory,
         therepy_date: therapyDate.toISOString().split("T")[0],
         therepy_start_time: formatTime(startTime),

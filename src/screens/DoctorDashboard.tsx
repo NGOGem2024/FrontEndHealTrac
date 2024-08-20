@@ -41,6 +41,7 @@ interface Appointment {
   therepy_link: string;
   therepy_start_time: string;
   therepy_date: string;
+  patient_name?: string;
 }
 
 type RootStackParamList = {
@@ -137,15 +138,21 @@ const DoctorDashboard: React.FC = () => {
     return new Date(date).toLocaleDateString("en-US", options);
   }, []);
 
-  const todayAppointments = useMemo(
-    () =>
-      appointments.filter(
-        (appointment) =>
-          formatDate(appointment.therepy_date) ===
-          formatDate(new Date().toISOString())
-      ),
-    [appointments, formatDate]
-  );
+  const sortAppointmentsByTime = useCallback((appointments: Appointment[]) => {
+    return appointments.sort((a, b) => {
+      const dateTimeA = new Date(`${a.therepy_date} ${a.therepy_start_time}`);
+      const dateTimeB = new Date(`${b.therepy_date} ${b.therepy_start_time}`);
+      return dateTimeA.getTime() - dateTimeB.getTime();
+    });
+  }, []);
+
+  const todayAppointments = useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const filteredAppointments = appointments.filter(
+      (appointment) => appointment.therepy_date === today
+    );
+    return sortAppointmentsByTime(filteredAppointments);
+  }, [appointments, sortAppointmentsByTime]);
 
   const renderAppointment = useCallback(
     ({ item }: { item: Appointment }) => (
@@ -160,8 +167,23 @@ const DoctorDashboard: React.FC = () => {
           color={styles.iconColor.color}
         />
         <View style={styles.appointmentInfo}>
-          <Text style={styles.appointmentTime}>{item.therepy_start_time}</Text>
-          <Text style={styles.appointmentType}>{item.therepy_type}</Text>
+          <View style={styles.appointmentMainInfo}>
+            <View>
+              <Text style={styles.appointmentTime}>
+                {item.therepy_start_time}
+              </Text>
+              <Text style={styles.appointmentType}>{item.therepy_type}</Text>
+            </View>
+            {item.patient_name && (
+              <Text
+                style={styles.patientName}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {item.patient_name}
+              </Text>
+            )}
+          </View>
         </View>
         <TouchableOpacity
           style={styles.joinButton}
@@ -423,16 +445,6 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       justifyContent: "center",
       marginBottom: 20,
     },
-    joinButton: {
-      backgroundColor: "#119FB3",
-      padding: 8,
-      borderRadius: 8,
-      marginLeft: "auto",
-    },
-    joinButtonText: {
-      color: "white",
-      fontWeight: "bold",
-    },
     profileName: {
       fontSize: 24,
       fontWeight: "bold",
@@ -531,7 +543,13 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       shadowRadius: 2,
     },
     appointmentInfo: {
+      flex: 1,
       marginLeft: 16,
+    },
+    appointmentMainInfo: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
     },
     appointmentTime: {
       fontSize: 16,
@@ -542,6 +560,24 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontSize: 14,
       color: theme.colors.text,
       opacity: 0.7,
+    },
+    patientName: {
+      fontSize: 14,
+      color: theme.colors.text,
+      opacity: 0.8,
+      marginLeft: 8,
+      flex: 1,
+      textAlign: "right",
+    },
+    joinButton: {
+      backgroundColor: "#119FB3",
+      padding: 8,
+      borderRadius: 8,
+      marginLeft: 8,
+    },
+    joinButtonText: {
+      color: "white",
+      fontWeight: "bold",
     },
     iconColor: {
       // color: theme.colors.primary,
