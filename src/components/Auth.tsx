@@ -73,14 +73,12 @@ export default function Auth() {
 
         await completeAuthentication();
       } else {
-        console.log("No access_token found in URL");
         Alert.alert(
           "Authentication Error",
           "Failed to obtain LiveSwitch token."
         );
       }
     } else {
-      console.log("No URL in redirect event");
       Alert.alert("Authentication Error", "No redirect URL received.");
     }
   }, []);
@@ -124,8 +122,7 @@ export default function Auth() {
       const tokens = await GoogleSignin.getTokens();
 
       await AsyncStorage.setItem("googleTokens", JSON.stringify(tokens));
-      const expirationTime = Date.now() + 120000; // 1 hour from now
-      console.log(expirationTime);
+      const expirationTime = Date.now() + 3300000; // 1 hour from now
       await AsyncStorage.setItem(
         "tokenExpirationTime",
         expirationTime.toString()
@@ -186,7 +183,7 @@ export default function Auth() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sign In</Text>
-      <Text style={styles.title1}>Welcome to HealTrac</Text>
+      <Text style={styles.title1}>Welcome to HealTrack</Text>
       <Text style={styles.subtitle}>
         Please sign in with Google for the best experience
       </Text>

@@ -4,9 +4,10 @@ import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 export type RootStackParamList = {
   Register: undefined;
   Auth: undefined;
+  CreateTherapyPlan: { patientId?: string };
   UpdatePatient: { patientId?: string };
   PatientRegister: undefined;
-  Doctor: undefined;
+  Doctor: { doctorId?: string };
   Patient: undefined;
   TherapyHistory: undefined;
   HomeStack: undefined;
@@ -23,7 +24,12 @@ export type RootStackParamList = {
     screen?: keyof RootTabParamList;
     params?: object;
   };
+  AppointmentDetailsScreen: { therapyId?: string };
+  UpdateDoctor: { doctorId?: string };
   HomeStackNavigator: undefined;
+  TodaysAppointments: undefined;
+  AllDoctors: undefined;
+  SearchPatients: undefined;
 };
 
 export type RootTabParamList = {

@@ -17,8 +17,17 @@ import { useTheme } from "./ThemeContext";
 import { getTheme } from "./Theme";
 import axios from "axios";
 import { useSession } from "../context/SessionContext";
+import { RootStackParamList } from "../types/types";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { Picker } from "@react-native-picker/picker";
+import { RadioButton } from "react-native-paper";
 
 const { width } = Dimensions.get("window");
+
+type DoctorScreenProps = {
+  navigation: StackNavigationProp<RootStackParamList, "UpdateDoctor">;
+  route: { params: { doctorId: string } };
+};
 
 interface ProfileInfo {
   _id: string;
@@ -29,6 +38,8 @@ interface ProfileInfo {
   doctor_email: string;
   doctor_phone: string;
   doctors_photo: string;
+  is_admin: boolean;
+  status: string;
 }
 
 const initialProfileState: ProfileInfo = {
@@ -40,13 +51,15 @@ const initialProfileState: ProfileInfo = {
   doctor_email: "",
   doctor_phone: "",
   doctors_photo: "",
+  is_admin: false,
+  status: "active",
 };
 
-const DoctorProfileEdit: React.FC = () => {
+const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(getTheme(theme)), [theme]);
   const { session, refreshAllTokens } = useSession();
-
+  const { doctorId } = route.params;
   const [profileInfo, setProfileInfo] =
     useState<ProfileInfo>(initialProfileState);
   const [originalProfileInfo, setOriginalProfileInfo] =
@@ -72,7 +85,7 @@ const DoctorProfileEdit: React.FC = () => {
 
     try {
       const response = await axios.get<ProfileInfo>(
-        "https://healtrackapp-production.up.railway.app/doctor",
+        `https://healtrackapp-production.up.railway.app/doctor/${doctorId}`,
         {
           headers: {
             Authorization: `Bearer ${session.tokens.idToken}`,
@@ -89,28 +102,22 @@ const DoctorProfileEdit: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: keyof ProfileInfo, value: string) => {
+  const handleInputChange = (field: keyof ProfileInfo, value: any) => {
     setProfileInfo((prev) => ({ ...prev, [field]: value }));
   };
 
   const hasChanges = () => {
-    return (
-      profileInfo.doctor_first_name !== originalProfileInfo.doctor_first_name ||
-      profileInfo.doctor_last_name !== originalProfileInfo.doctor_last_name ||
-      profileInfo.qualification !== originalProfileInfo.qualification ||
-      profileInfo.doctor_email !== originalProfileInfo.doctor_email ||
-      profileInfo.doctor_phone !== originalProfileInfo.doctor_phone
-    );
+    return JSON.stringify(profileInfo) !== JSON.stringify(originalProfileInfo);
   };
 
   const handleSave = async () => {
     if (!hasChanges()) {
-      Alert.alert("No Changes", "No changes were made to your profile.");
+      Alert.alert("No Changes", "No changes were made to the profile.");
       return;
     }
 
     if (!session || !session.tokens || !session.tokens.idToken) {
-      Alert.alert("Error", "You must be logged in to update your profile");
+      Alert.alert("Error", "You must be logged in to update the profile");
       return;
     }
 
@@ -125,6 +132,8 @@ const DoctorProfileEdit: React.FC = () => {
           qualification: profileInfo.qualification,
           doctor_email: profileInfo.doctor_email,
           doctor_phone: profileInfo.doctor_phone,
+          is_admin: profileInfo.is_admin,
+          status: profileInfo.status,
         },
         {
           headers: {
@@ -137,7 +146,10 @@ const DoctorProfileEdit: React.FC = () => {
       Alert.alert("Success", "Profile updated successfully");
     } catch (error) {
       console.error("Error updating profile:", error);
-      Alert.alert("Error", "Failed to update profile");
+      Alert.alert(
+        "Error",
+        error.response?.data?.msg || "Failed to update profile"
+      );
     } finally {
       setIsSaving(false);
     }
@@ -216,11 +228,11 @@ const DoctorProfileEdit: React.FC = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Organization</Text>
+            <Text style={styles.label}>Email</Text>
             <TextInput
-              style={[styles.input, styles.disabledInput]}
-              value={profileInfo.organization_name}
-              editable={false}
+              style={styles.input}
+              value={profileInfo.doctor_email}
+              onChangeText={(text) => handleInputChange("doctor_email", text)}
             />
           </View>
 
@@ -231,6 +243,43 @@ const DoctorProfileEdit: React.FC = () => {
               value={profileInfo.doctor_phone}
               onChangeText={(text) => handleInputChange("doctor_phone", text)}
             />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Role</Text>
+            <Picker
+              selectedValue={profileInfo.is_admin}
+              style={styles.picker}
+              onValueChange={(itemValue) =>
+                handleInputChange("is_admin", itemValue)
+              }
+            >
+              <Picker.Item label="Doctor" value={false} />
+              <Picker.Item label="Admin" value={true} />
+            </Picker>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Status</Text>
+            <View style={styles.radioButtonContainer}>
+              <RadioButton
+                value="active"
+                status={
+                  profileInfo.status === "active" ? "checked" : "unchecked"
+                }
+                onPress={() => handleInputChange("status", "active")}
+              />
+              <Text style={styles.labelText}>Active</Text>
+
+              <RadioButton
+                value="inactive"
+                status={
+                  profileInfo.status === "inactive" ? "checked" : "unchecked"
+                }
+                onPress={() => handleInputChange("status", "inactive")}
+              />
+              <Text style={styles.labelText}>Inactive</Text>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -316,6 +365,11 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 5,
       fontWeight: "bold",
     },
+    labelText: {
+      fontSize: 16,
+      marginBottom: 5,
+      color: "#333333",
+    },
     input: {
       backgroundColor: "#FFFFFF",
       borderRadius: 10,
@@ -327,6 +381,17 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     disabledInput: {
       backgroundColor: "#F0F0F0",
       color: "#888888",
+    },
+    picker: {
+      borderWidth: 1,
+      borderColor: "#D9D9D9",
+      borderRadius: 5,
+      backgroundColor: "#FFFFFF",
+    },
+    radioButtonContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 20,
     },
     saveButton: {
       backgroundColor: "#119FB3",
@@ -348,4 +413,4 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
   });
 
-export default DoctorProfileEdit;
+export default EditDoctor;

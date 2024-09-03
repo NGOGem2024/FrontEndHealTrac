@@ -62,8 +62,15 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
           },
         }
       );
-      console.log("Response:", response.data);
       Alert.alert("Success", "Doctor registered successfully");
+      setDoctorData({
+        doctor_first_name: "",
+        doctor_last_name: "",
+        doctor_email: "",
+        doctor_phone: "",
+        qualification: "",
+        is_admin: false,
+      });
       navigation.navigate("DoctorDashboard"); // Assuming you have an AllDoctors screen
     } catch (error) {
       console.error("Error registering doctor:", error);

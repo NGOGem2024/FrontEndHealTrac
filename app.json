@@ -4,17 +4,13 @@
     "scheme": "physio.gem.auth",
     "slug": "PhysioFront",
     "version": "1.0.0",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "android": {
       "package": "physio.gem.auth",
       "icon": "./src/assets/HealTrackLoGO.png"
     },
     "plugins": [
-      [
-        "@react-native-google-signin/google-signin"
-      ],
+      ["@react-native-google-signin/google-signin"],
       [
         "react-native-auth0",
         {

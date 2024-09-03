@@ -14,6 +14,11 @@ import DoctorDashboard from "./DoctorDashboard";
 import DoctorProfileEdit from "./DoctorProfileUpdate";
 import LogoutScreen from "./BottomTab/Logout";
 import DoctorRegister from "./Doctorreg";
+import AllDoctors from "./AllDoctors";
+import CreateTherapyPlan from "./Therapyplan";
+import DoctorScreen from "./doctorScreen";
+import EditDoctor from "./updatedoc";
+import SearchPatients from "./searchpatient";
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +33,11 @@ const HomeStackNavigator = () => {
       <Stack.Screen
         name="AllPatients"
         component={AllPatients}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CreateTherapyPlan"
+        component={CreateTherapyPlan}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -48,6 +58,16 @@ const HomeStackNavigator = () => {
       <Stack.Screen
         name="DoctorProfileEdit"
         component={DoctorProfileEdit}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="SearchPatients"
+        component={SearchPatients}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AllDoctors"
+        component={AllDoctors}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -78,6 +98,16 @@ const HomeStackNavigator = () => {
       <Stack.Screen
         name="DoctorRegister"
         component={DoctorRegister}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Doctor"
+        component={DoctorScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="UpdateDoctor"
+        component={EditDoctor}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

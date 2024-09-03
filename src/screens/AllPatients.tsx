@@ -6,12 +6,12 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  TextInput,
   ImageBackground,
   ActivityIndicator,
   RefreshControl,
   Dimensions,
   ScaledSize,
+  TextInput,
 } from "react-native";
 import axios from "axios";
 import Icon from "react-native-vector-icons/FontAwesome";
@@ -36,7 +36,6 @@ interface Patient {
 const AllPatients: React.FC<Props> = ({ navigation }) => {
   const { session, refreshAllTokens } = useSession();
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [filterOption, setFilterOption] = useState("all");
   const [sortOption, setSortOption] = useState("date");
@@ -45,6 +44,9 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
   const [screenDimensions, setScreenDimensions] = useState(
     Dimensions.get("window")
   );
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   useEffect(() => {
     const updateDimensions = ({ window }: { window: ScaledSize }) => {
@@ -57,7 +59,6 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
     );
 
     return () => {
-      // Newer versions of React Native use the `remove` method
       subscription.remove();
     };
   }, []);
@@ -66,13 +67,13 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
     fetchPatients();
   }, [session]);
 
-  const fetchPatients = async () => {
+  const fetchPatients = async (pageNumber = 1) => {
     if (!session) return;
     try {
-      setIsLoading(true);
+      if (pageNumber === 1) setIsLoading(true);
       await refreshAllTokens();
       const response = await axios.get(
-        "https://healtrackapp-production.up.railway.app/patient/getall",
+        `https://healtrackapp-production.up.railway.app/patient/getall?page=${pageNumber}&limit=20`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -80,12 +81,33 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
           },
         }
       );
-      setPatients(response.data);
-      setFilteredPatients(response.data);
+      if (pageNumber === 1) {
+        setPatients(response.data.patients);
+        setFilteredPatients(response.data.patients);
+      } else {
+        setPatients((prevPatients) => [
+          ...prevPatients,
+          ...response.data.patients,
+        ]);
+        setFilteredPatients((prevFiltered) => [
+          ...prevFiltered,
+          ...response.data.patients,
+        ]);
+      }
+      setTotalPages(response.data.totalPages);
+      setPage(response.data.currentPage);
     } catch (error) {
       console.log(error);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (page < totalPages && !isLoadingMore) {
+      setIsLoadingMore(true);
+      fetchPatients(page + 1);
     }
   };
 
@@ -106,19 +128,9 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
       return true;
     });
 
-    const searchFiltered = filtered.filter(
-      (patient) =>
-        patient.patient_first_name
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        patient.patient_last_name
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase())
-    );
-
     const sorted =
       sortOption === "date"
-        ? searchFiltered.sort((a, b) => {
+        ? filtered.sort((a, b) => {
             const dateA = new Date(a.patient_registration_date);
             const dateB = new Date(b.patient_registration_date);
             if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
@@ -126,7 +138,7 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
             if (isNaN(dateB.getTime())) return -1;
             return dateB.getTime() - dateA.getTime();
           })
-        : searchFiltered.sort((a, b) => {
+        : filtered.sort((a, b) => {
             const fullName1 =
               `${a.patient_first_name} ${a.patient_last_name}`.toLowerCase();
             const fullName2 =
@@ -135,16 +147,21 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
           });
 
     setFilteredPatients(sorted);
-  }, [searchQuery, filterOption, sortOption, patients]);
+  }, [filterOption, sortOption, patients]);
 
   const handleAddPatient = () => {
     navigation.navigate("PatientRegister");
   };
 
+  const handleSearch = () => {
+    navigation.navigate("SearchPatients");
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    setPage(1);
     try {
-      await fetchPatients();
+      await fetchPatients(1);
     } catch (error) {
       console.error("Error refreshing data:", error);
     } finally {
@@ -168,7 +185,30 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
     return date.toLocaleDateString();
   };
 
-  if (isLoading) {
+  const renderFooter = () => {
+    if (page >= totalPages) return null;
+
+    return (
+      <TouchableOpacity
+        onPress={loadMore}
+        style={styles.loadMoreButton}
+        disabled={isLoadingMore}
+      >
+        <Text style={styles.loadMoreButtonText}>
+          {isLoadingMore ? "Loading.." : "Load More"}
+        </Text>
+        {isLoadingMore && (
+          <ActivityIndicator
+            size="small"
+            color="#FFFFFF"
+            style={styles.loadingIndicator}
+          />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  if (isLoading && page === 1) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#119FB3" />
@@ -193,21 +233,27 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
       <View
         style={[styles.container, { height: screenDimensions.height * 0.9 }]}
       >
-        <View style={styles.searchContainer}>
+        <TouchableOpacity
+          style={styles.searchContainer}
+          onPress={handleSearch}
+          activeOpacity={1}
+        >
           <TextInput
             style={styles.searchBar}
             placeholder="Search by name"
-            value={searchQuery}
-            onChangeText={(text) => setSearchQuery(text)}
             placeholderTextColor="rgba(255, 255, 255, 0.8)"
+            editable={false}
           />
-          <Icon
-            name="search"
-            size={18}
-            color="#333333"
-            style={styles.searchIcon}
-          />
-        </View>
+          <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+            <Icon
+              name="search"
+              size={18}
+              color="#333333"
+              style={styles.searchIcon}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+
         <View style={styles.filtersContainer1}>
           <View style={styles.filterContainer}>
             <Picker
@@ -279,6 +325,9 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
+          ListFooterComponent={renderFooter}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.1}
         />
         <TouchableOpacity onPress={handleAddPatient} style={styles.addButton}>
           <Icon name="plus" size={24} color="#FFFFFF" />
@@ -312,14 +361,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-    borderRadius: 20,
-    padding: 10,
-    marginBottom: 16,
-  },
   searchBar: {
     flex: 1,
     marginRight: 8,
@@ -330,6 +371,39 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     marginRight: 8,
     color: "#333333",
+  },
+
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    borderRadius: 20,
+    padding: 10,
+    marginBottom: 16,
+  },
+
+  loadingIndicator: {},
+  footerContainer: {
+    flexDirection: "column",
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  loadingText: {
+    color: "#119FB3",
+    marginTop: 5,
+    fontSize: 12,
+    textAlign: "center",
+  },
+  loadMoreButton: {
+    backgroundColor: "#FFFFFF",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  loadMoreButtonText: {
+    color: "#119FB3",
+    fontWeight: "bold",
   },
   filtersContainer1: {
     flexDirection: "row",
@@ -408,7 +482,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     backgroundColor: "#119FB3",
-    justifyContent: "flex-start",
+    justifyContent: "space-between",
   },
   backButton: {
     flexDirection: "row",
@@ -420,6 +494,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginLeft: 5,
     fontSize: 18,
+  },
+  searchButton: {
+    padding: 10,
   },
   microicon: {
     flexDirection: "row",

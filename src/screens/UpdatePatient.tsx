@@ -190,7 +190,6 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
         `https://healtrackapp-production.up.railway.app/patient/update/${patientData.patient_id}`,
         {
           ...patientData,
-          patient_therepy_category: selectedCategory,
           therepy_start: formattedStartDate,
           therepy_end: formattedEndDate,
           therepy_duration: duration,
@@ -203,7 +202,6 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
           },
         }
       );
-      console.log("Response:", response.data);
       Alert.alert("Success", "Patient updated successfully");
       navigation.navigate("AllPatients");
     } catch (error) {
@@ -284,47 +282,6 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
             }
             keyboardType="numeric"
           />
-          <InputField
-            icon={<Ionicons name="medkit" size={24} color="#119FB3" />}
-            placeholder="Symptom Details"
-            value={patientData.patient_symptoms}
-            onChangeText={(text) => handleTextChange("patient_symptoms", text)}
-          />
-          <Dropdown
-            value={selectedCategory}
-            onValueChange={(itemValue) => setSelectedCategory(itemValue)}
-            items={categories}
-          />
-          <InputField
-            icon={<FontAwesome name="stethoscope" size={24} color="#119FB3" />}
-            placeholder="Diagnosis Details"
-            value={patientData.patient_diagnosis}
-            onChangeText={(text) =>
-              setPatientData({ ...patientData, patient_diagnosis: text })
-            }
-          />
-          <View style={styles.dateRow}>
-            <DatePickerField
-              label="Start Date"
-              date={startDate}
-              showDatePicker={showStartDatePicker}
-              onPress={showStartDatepicker}
-              onChange={onChangeStartDate}
-              formatDate={formatDateForDisplay}
-            />
-            <DatePickerField
-              label="End Date"
-              date={endDate}
-              showDatePicker={showEndDatePicker}
-              onPress={showEndDatepicker}
-              onChange={onChangeEndDate}
-              formatDate={formatDateForDisplay}
-            />
-          </View>
-          <View style={styles.durationContainer}>
-            <AntDesign name="clockcircle" size={24} color="#119FB3" />
-            <Text style={styles.durationValue}>{duration}</Text>
-          </View>
           <TouchableOpacity
             style={styles.saveButton}
             onPress={handlePatientUpdate}

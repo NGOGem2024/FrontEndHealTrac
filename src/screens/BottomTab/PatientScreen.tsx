@@ -7,8 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  ImageBackground,
-  ImageBackgroundBase,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../../types/types"; // Update with the correct path
@@ -22,18 +20,42 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { LinearGradient } from "expo-linear-gradient";
-import { Title } from "react-native-paper";
-import TherapyTable from "../UpdateTherapy"; // Update with the correct pat
+import { Title, Card, Paragraph } from "react-native-paper";
+import TherapyTable from "../UpdateTherapy"; // Update with the correct path
 import { useSession } from "../../context/SessionContext";
 
 type PatientScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Patient">;
   route: { params: { patientId: string; preloadedData?: any } };
 };
+
+interface TherapyPlan {
+  therapy_name: string;
+  patient_diagnosis: string;
+  patient_symptoms: string;
+  therapy_duration: string;
+  therapy_end: string;
+  therapy_start: string;
+  patient_therapy_category: string;
+  total_amount: string;
+  received_amount: string;
+  balance: string;
+}
+
+interface PatientData {
+  patient_first_name: string;
+  patient_last_name: string;
+  patient_email: string;
+  patient_phone: string;
+  patient_id: string;
+  patient_address1: string;
+  therapy_plans: TherapyPlan[];
+}
+
 const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
   const { session, refreshAllTokens } = useSession();
   const { patientId } = route.params;
-  const [patientData, setPatientData] = useState<any>(null);
+  const [patientData, setPatientData] = useState<PatientData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [therapyHistoryVisible, setTherapyHistoryVisible] =
     useState<boolean>(false);
@@ -65,6 +87,41 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
     fetchPatientData();
   }, [patientId, session, patientData]);
 
+  const renderTherapyPlanCards = () => {
+    if (!patientData?.therapy_plans || patientData.therapy_plans.length === 0) {
+      return null;
+    }
+
+    return patientData.therapy_plans
+      .slice()
+      .reverse()
+      .map((plan, index) => (
+        <Card key={index} style={styles.therapyPlanCard}>
+          <Card.Content>
+            <Title>
+              {index === 0
+                ? "Current Therapy Plan"
+                : `Past Therapy Plan ${index + 1}`}
+            </Title>
+            <Paragraph>Name: {plan.therapy_name}</Paragraph>
+            <Paragraph>Diagnosis: {plan.patient_diagnosis}</Paragraph>
+            <Paragraph>Symptoms: {plan.patient_symptoms}</Paragraph>
+            <Paragraph>Duration: {plan.therapy_duration}</Paragraph>
+            <Paragraph>
+              Start Date: {new Date(plan.therapy_start).toLocaleDateString()}
+            </Paragraph>
+            <Paragraph>
+              End Date: {new Date(plan.therapy_end).toLocaleDateString()}
+            </Paragraph>
+            <Paragraph>Category: {plan.patient_therapy_category}</Paragraph>
+            <Paragraph>Cost: {plan.total_amount}</Paragraph>
+            <Paragraph>Received: {plan.received_amount}</Paragraph>
+            <Paragraph>Balance: {plan.balance}</Paragraph>
+          </Card.Content>
+        </Card>
+      ));
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -72,6 +129,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
       </View>
     );
   }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.header}>
@@ -83,41 +141,19 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.main}>
-        <Image
-          source={require("../../assets/bac2.jpg")}
-          resizeMode="cover"
-          style={styles.backcover}
-        ></Image>
-        {/* <LinearGradient
-        colors={["#d4dfed", "#3c8ce7"]}
-        style={{ height: "15%" }}
-        /> */}
-        <View
-          style={{
-            paddingLeft: 10,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
-          }}
-        >
+      <ScrollView
+        style={styles.main}
+        contentContainerStyle={styles.mainContent}
+      >
+        <View style={styles.profileContainer}>
           {patientData ? (
             <>
               <Image
-                style={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: 140 / 2,
-                  marginTop: 10,
-                  borderWidth: 3,
-                  borderColor: "white",
-                }}
+                style={styles.profileImage}
                 source={require("../../assets/profile3.jpg")}
               />
 
-              <Title
-                style={{ fontSize: 23, color: "white", fontWeight: "bold" }}
-              >
+              <Title style={styles.patientName}>
                 {patientData.patient_first_name} {patientData.patient_last_name}
               </Title>
 
@@ -149,7 +185,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
           )}
         </View>
 
-        <ScrollView style={styles.botscrview}>
+        <View style={styles.botscrview}>
           <Text style={styles.headlist}>Account Overview</Text>
           <View style={styles.container}>
             <TouchableOpacity
@@ -192,6 +228,26 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
               </View>
               <Octicons name="chevron-right" size={24} color="black" />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.linkContainer}
+              onPress={() =>
+                navigation.navigate("CreateTherapyPlan", {
+                  patientId: patientData?.patient_id,
+                })
+              }
+              disabled={!patientData}
+            >
+              <View style={styles.iconleft}>
+                <Ionicons
+                  name="clipboard"
+                  size={30}
+                  color="#6A0DAD"
+                  style={[styles.iconlist, styles.therapyicon]}
+                />
+                <Text style={styles.link}>Therapy Plan</Text>
+              </View>
+              <Octicons name="chevron-right" size={24} color="black" />
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.linkContainer}
@@ -209,39 +265,15 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
                   color="#6e54ef"
                   style={[styles.iconlist, styles.reportsicon]}
                 />
-                <Text style={styles.link}>Create Therapy</Text>
+                <Text style={styles.link}>Book Appointment</Text>
               </View>
               <Octicons name="chevron-right" size={24} color="black" />
             </TouchableOpacity>
 
-            {/* <TouchableOpacity style={styles.linkContainer}>
-              <View style={styles.iconleft}>
-                <MaterialCommunityIcons
-                  name="chat"
-                  size={30}
-                  color="#e86e2f"
-                  style={[styles.iconlist, styles.remarksicon]}
-                />
-                <Text style={styles.link}>Remarks</Text>
-              </View>
-              <Octicons name="chevron-right" size={24} color="black" />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.linkContainer}>
-              <View style={styles.iconleft}>
-                <MaterialIcons
-                  name="perm-media"
-                  size={30}
-                  color="#c4298e"
-                  style={[styles.iconlist, styles.mediaicon]}
-                />
-                <Text style={styles.link}>Media</Text>
-              </View>
-              <Octicons name="chevron-right" size={24} color="black" />
-            </TouchableOpacity> */}
+            {renderTherapyPlanCards()}
           </View>
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
     </GestureHandlerRootView>
   );
 };
@@ -249,6 +281,10 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   main: {
     flex: 1,
+    backgroundColor: "#119FB3",
+  },
+  mainContent: {
+    flexGrow: 1,
   },
   content: {
     flexDirection: "row",
@@ -256,30 +292,22 @@ const styles = StyleSheet.create({
   },
   mytext: {
     fontSize: 14,
-
     color: "white",
     fontWeight: "bold",
   },
-
   botscrview: {
-    display: "flex",
     backgroundColor: "white",
     width: "100%",
     borderTopLeftRadius: 40,
     marginTop: 20,
     borderTopRightRadius: 40,
     paddingTop: 20,
+    flexGrow: 1,
   },
   container: {
-    display: "flex",
     padding: 20,
-    rowGap: 1,
     width: "100%",
-    justifyContent: "flex-start",
-    alignItems: "flex-end",
-    flexDirection: "column",
-    margin: 10,
-    marginTop: 0,
+    alignItems: "center",
   },
   heading: {
     fontSize: 24,
@@ -289,22 +317,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 15,
     color: "black",
-    rowGap: 5,
     fontWeight: "bold",
-    // elevation:20,
   },
   linkContainer: {
     paddingHorizontal: 10,
-    display: "flex",
-    // color: "#d3eaf2",
     borderRadius: 10,
-    marginHorizontal: 20,
-    marginLeft: -15,
     height: 60,
     alignItems: "center",
     justifyContent: "space-between",
     width: "100%",
     flexDirection: "row",
+    marginBottom: 10,
   },
   content1: {
     margin: 5,
@@ -312,7 +335,6 @@ const styles = StyleSheet.create({
     marginBottom: -15,
   },
   iconleft: {
-    display: "flex",
     flexDirection: "row",
     alignItems: "center",
   },
@@ -341,8 +363,10 @@ const styles = StyleSheet.create({
   },
   backcover: {
     position: "absolute",
+    resizeMode: "cover",
+    width: "100%",
+    height: "100%",
   },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -366,6 +390,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#F5FCFF",
+  },
+  profileContainer: {
+    paddingLeft: 10,
+    alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginTop: 10,
+    borderWidth: 3,
+    borderColor: "white",
+  },
+  patientName: {
+    fontSize: 23,
+    color: "white",
+    fontWeight: "bold",
+  },
+  therapyPlanCard: {
+    marginTop: 20,
+    width: "100%",
+    elevation: 4,
   },
 });
 

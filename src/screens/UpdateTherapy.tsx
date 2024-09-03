@@ -10,6 +10,8 @@ import {
   RefreshControl,
   ScrollView,
   Dimensions,
+  Modal,
+  TextInput,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -17,6 +19,8 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
 import { openBrowserAsync } from "expo-web-browser";
 import { useSession } from "../context/SessionContext";
+import EditTherapy from "./Update";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface Therapy {
   _id: string;
@@ -51,6 +55,14 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [editingTherapy, setEditingTherapy] = useState<Therapy | null>(null);
+  const [showRemarksPopup, setShowRemarksPopup] = useState(false);
+  // const [selectedTherapyRemarks, setSelectedTherapyRemarks] = useState("");
+  const [selectedTherapyId, setSelectedTherapyId] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [improvements, setImprovements] = useState("");
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [therapyToDelete, setTherapyToDelete] = useState<Therapy | null>(null);
 
   useEffect(() => {
     if (!patientId) {
@@ -109,6 +121,46 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
     }
   };
 
+  const handleDeleteTherapy = (therapy: Therapy) => {
+    setTherapyToDelete(therapy);
+    setShowDeleteConfirmation(true);
+  };
+
+  const confirmDeleteTherapy = async () => {
+    if (!therapyToDelete) return;
+
+    try {
+      await refreshAllTokens();
+      const response = await fetch(
+        `https://healtrackapp-production.up.railway.app/therapy/delete/${therapyToDelete._id}`,
+        {
+          method: "delete",
+          headers: {
+            Authorization: `Bearer ${session.tokens.idToken}`,
+            auth: `Bearer ${session.tokens.accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Remove the deleted therapy from the state
+      setUpcomingTherapies((prevTherapies) =>
+        prevTherapies.filter((therapy) => therapy._id !== therapyToDelete._id)
+      );
+
+      Alert.alert("Success", "Therapy deleted successfully");
+    } catch (error) {
+      console.error("Error deleting therapy:", error);
+      Alert.alert("Error", "Failed to delete therapy");
+    } finally {
+      setShowDeleteConfirmation(false);
+      setTherapyToDelete(null);
+    }
+  };
+
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);
   };
@@ -143,8 +195,102 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
     }
   }, []);
 
+  const handleEditTherapy = (therapy: Therapy) => {
+    setEditingTherapy(therapy);
+  };
+
+  const handleUpdateTherapy = async (updatedTherapy: Therapy) => {
+    try {
+      await refreshAllTokens();
+      const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
+      const response = await fetch(
+        `https://healtrackapp-production.up.railway.app/therepy/update/${updatedTherapy._id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.tokens.idToken}`,
+            auth: `Bearer ${session.tokens.accessToken}`,
+            "X-liveSwitch-token": liveSwitchToken,
+          },
+          body: JSON.stringify(updatedTherapy),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const updatedData = await response.json();
+      setTherapies((prevTherapies) =>
+        prevTherapies?.map((therapy) =>
+          therapy._id === updatedData.therapy._id
+            ? updatedData.therapy
+            : therapy
+        )
+      );
+      setEditingTherapy(null);
+      Alert.alert("Success", "Therapy updated successfully");
+      fetchTherapies(); // Refresh the list after update
+    } catch (error) {
+      console.error("Error updating therapy:", error);
+      Alert.alert("Error", "Failed to update therapy");
+    }
+  };
+
+  const handleTherapyDone = (therapy: Therapy) => {
+    // setSelectedTherapyRemarks(therapy.therepy_remarks);
+    setSelectedTherapyId(therapy._id);
+    setRemarks(therapy.therepy_remarks || "");
+    setImprovements("");
+    setShowRemarksPopup(true);
+  };
+
+  const handleSaveRemarks = async () => {
+    try {
+      await refreshAllTokens();
+      const response = await fetch(
+        ` https://healtrackapp-production.up.railway.app/therepy/update/${selectedTherapyId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.tokens.idToken}`,
+            auth: `Bearer ${session.tokens.accessToken}`,
+          },
+          body: JSON.stringify({
+            therepy_remarks: remarks,
+            improvements: improvements,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Update the local state
+      setTherapies((prevTherapies) =>
+        prevTherapies?.map((therapy) =>
+          therapy._id === selectedTherapyId
+            ? {
+                ...therapy,
+                therepy_remarks: remarks,
+                improvements: improvements,
+              }
+            : therapy
+        )
+      );
+
+      setShowRemarksPopup(false);
+      Alert.alert("Success", "Remarks and improvements saved successfully");
+    } catch (error) {
+      console.error("Error saving remarks and improvements:", error);
+      Alert.alert("Error", "Failed to save remarks and improvements");
+    }
+  };
+
   const renderTherapyItem = ({ item }: { item: Therapy }) => {
-    const isPassedSession = new Date(item.therepy_date) < new Date();
     const now = new Date();
     const therapyStartTime = new Date(
       `${item.therepy_date}T${item.therepy_start_time}`
@@ -165,6 +311,22 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
         }
       >
         <View style={styles.therapyCard}>
+          {isUpcoming && (
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => handleEditTherapy(item)}
+              >
+                <MaterialIcons name="edit" size={24} color="#119FB3" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleDeleteTherapy(item)}
+              >
+                <MaterialIcons name="delete" size={24} color="#FF6B6B" />
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.therapyHeader}>
             <MaterialIcons name="event" size={24} color="#119FB3" />
             <Text style={styles.therapyType}>{item.therepy_type}</Text>
@@ -177,29 +339,26 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
             <Text style={styles.therapyText}>
               End Time: {item.therepy_end_time}
             </Text>
-            <Text style={styles.therapyText}>Cost: {item.therepy_cost}</Text>
             <Text style={styles.therapyText}>
               Remarks: {item.therepy_remarks}
             </Text>
           </View>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                styles.joinButton,
-                (isPast || isUpcoming) && styles.disabledButton,
-              ]}
-              onPress={() => handleJoinSession(item.therepy_link)}
-              disabled={isPast || isUpcoming}
-            >
-              <Text style={styles.buttonText}>
-                {isOngoing
-                  ? "Join Session"
-                  : isPast
-                  ? "Session Ended"
-                  : "Upcoming Session"}
-              </Text>
-            </TouchableOpacity>
+            {!isPast && (
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.joinButton,
+                  isUpcoming && styles.disabledButton,
+                ]}
+                onPress={() => handleJoinSession(item.therepy_link)}
+                disabled={isUpcoming}
+              >
+                <Text style={styles.buttonText}>
+                  {isOngoing ? "Join Session" : "Upcoming"}
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={[styles.actionButton, styles.recordButton]}
               onPress={() => handleRecTherapy(item.therepy_id)}
@@ -211,7 +370,6 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
       </ScrollView>
     );
   };
-
   return (
     <ImageBackground
       source={require("../assets/bac2.jpg")}
@@ -267,6 +425,89 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
           />
         )}
       </View>
+      {editingTherapy && (
+        <EditTherapy
+          therapy={editingTherapy}
+          onUpdate={handleUpdateTherapy}
+          onCancel={() => setEditingTherapy(null)}
+        />
+      )}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showRemarksPopup}
+        onRequestClose={() => setShowRemarksPopup(false)}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>Therapy Ended</Text>
+
+            <Text style={styles.inputLabel}>Remarks:</Text>
+            <TextInput
+              style={styles.input}
+              multiline
+              numberOfLines={5}
+              value={remarks}
+              onChangeText={setRemarks}
+              placeholder="Enter remarks here"
+            />
+
+            <Text style={styles.inputLabel}>Improvements:</Text>
+            <TextInput
+              style={styles.input}
+              multiline
+              numberOfLines={4}
+              value={improvements}
+              onChangeText={setImprovements}
+              placeholder="Enter Improvements"
+            />
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonClose]}
+                onPress={() => setShowRemarksPopup(false)}
+              >
+                <Text style={styles.textStyle}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSave]}
+                onPress={handleSaveRemarks}
+              >
+                <Text style={styles.textStyle}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showDeleteConfirmation}
+        onRequestClose={() => setShowDeleteConfirmation(false)}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>Confirm Deletion</Text>
+            <Text style={styles.modalText}>
+              Are you sure you want to delete this therapy?
+            </Text>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonClose]}
+                onPress={() => setShowDeleteConfirmation(false)}
+              >
+                <Text style={styles.textStyle}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonDelete]}
+                onPress={confirmDeleteTherapy}
+              >
+                <Text style={styles.textStyle}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ImageBackground>
   );
 };
@@ -299,14 +540,37 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: "center",
   },
+  actionButtonsContainer: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    flexDirection: "row",
+    zIndex: 1,
+  },
+  editButton: {
+    marginRight: 10,
+  },
+  deleteButton: {
+    marginLeft: 10,
+  },
   scrollView: {
     flex: 1,
+  },
+  buttonDelete: {
+    backgroundColor: "#FF6B6B",
+  },
+  doneButton: {
+    backgroundColor: "#119FB3",
   },
   loadingText: {
     color: "#FFFFFF",
     textAlign: "center",
     fontSize: 16,
   },
+  buttonSave: {
+    backgroundColor: "#119FB3",
+  },
+
   therapyCard: {
     backgroundColor: "rgba(255, 255, 255, 0.9)",
     borderRadius: 8,
@@ -318,6 +582,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  inputLabel: {
+    alignSelf: "flex-start",
+    marginBottom: 5,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#119FB3",
+    borderRadius: 5,
+    height: 40,
+    marginBottom: 20,
+    width: "100%",
+    padding: 10,
+    textAlignVertical: "top",
+  },
+
   therapyHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -340,14 +621,15 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
+    width: "100%",
   },
   actionButton: {
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 10,
-    width: windowWidth > 360 ? 150 : "40%",
+    width: windowWidth > 360 ? 150 : "50%",
     elevation: 2,
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
   },
   joinButton: {
@@ -396,6 +678,61 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#EEEEEE",
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalView: {
+    // margin: 20,
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 35,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: "85%",
+    maxWidth: 400,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+    color: "#119FB3",
+  },
+  modalText: {
+    marginBottom: 10,
+    textAlign: "center",
+    fontSize: 16,
+  },
+  remarksText: {
+    marginBottom: 15,
+    textAlign: "center",
+    fontSize: 14,
+    color: "#333",
+  },
+  button: {
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2,
+    minWidth: 100,
+  },
+  buttonClose: {
+    backgroundColor: "#119FB3",
+  },
+  textStyle: {
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
 

@@ -62,20 +62,16 @@ const refreshGoogleTokens = async (
 
     const now = Date.now();
     if (storedTokens && expirationTime && parseInt(expirationTime) > now) {
-      console.log("Google tokens are still valid");
       return JSON.parse(storedTokens);
     }
-
-    console.log("Refreshing Google tokens");
     const { data } = await axios.post(API_ENDPOINT, { refreshToken });
     const { accessToken, idToken } = data;
-    console.log(data);
     const newTokens: GoogleTokens = {
       accessToken,
       idToken,
       refreshToken: "",
     };
-    const newExpirationTime = now + 120000;
+    const newExpirationTime = now + 3300000;
 
     await Promise.all([
       AsyncStorage.setItem(
@@ -98,8 +94,6 @@ const refreshGoogleTokens = async (
         JSON.stringify(sessionData)
       );
       setSession(sessionData);
-      console.log("New session created:", sessionData);
-      console.log(session);
     }
 
     return newTokens;
@@ -120,7 +114,6 @@ const checkLiveSwitchTokenExpiration = async (
   if (liveSwitchToken && liveSwitchExpiresAt) {
     const liveSwitchExpiration = parseInt(liveSwitchExpiresAt);
     if (Date.now() >= liveSwitchExpiration) {
-      console.log("LiveSwitch token has expired");
       await logoutFunction();
     }
   }
@@ -139,9 +132,6 @@ export const SessionContextProvider: React.FC<{ children: ReactNode }> = ({
         );
         if (storedSession) {
           setSession(JSON.parse(storedSession));
-          console.log("Session restored from AsyncStorage");
-        } else {
-          console.log("No stored session found in AsyncStorage");
         }
       } catch (error) {
         console.error("Error fetching session from AsyncStorage:", error);
@@ -156,7 +146,6 @@ export const SessionContextProvider: React.FC<{ children: ReactNode }> = ({
       if (session) {
         try {
           await refreshAllTokens();
-          console.log("Session persisted to AsyncStorage");
         } catch (error) {
           console.error("Error persisting session to AsyncStorage:", error);
         }
@@ -173,9 +162,6 @@ export const SessionContextProvider: React.FC<{ children: ReactNode }> = ({
         setSession,
         session
       );
-      if (newGoogleTokens) {
-        console.log("Google tokens refreshed successfully");
-      }
     } catch (error) {
       console.error("Error refreshing tokens:", error);
     }
@@ -193,7 +179,6 @@ export const SessionContextProvider: React.FC<{ children: ReactNode }> = ({
         AsyncStorage.removeItem(STORAGE_KEYS.LIVESWITCH_EXPIRATION),
       ]);
       setSession(null);
-      console.log("Logout successful");
     } catch (error) {
       console.error("Error during logout:", error);
     }
