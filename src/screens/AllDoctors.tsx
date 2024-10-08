@@ -16,6 +16,9 @@ import axios from "axios";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useSession } from "../context/SessionContext";
 import { RootStackNavProps } from "../types/types";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
+import BackTopTab from "./BackTopTab";
+import instance from "../utils/axiosConfig";
 
 interface Doctor {
   _id: string;
@@ -30,7 +33,7 @@ interface Doctor {
 const AllDoctors: React.FC<RootStackNavProps<"AllDoctors">> = ({
   navigation,
 }) => {
-  const { session, refreshAllTokens } = useSession();
+  const { session } = useSession();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,19 +64,15 @@ const AllDoctors: React.FC<RootStackNavProps<"AllDoctors">> = ({
     if (!session) return;
     try {
       setIsLoading(true);
-      await refreshAllTokens();
-      const response = await axios.get(
-        "https://healtrackapp-production.up.railway.app/getalldoctor",
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + session.tokens.idToken,
-          },
-        }
-      );
+      const response = await instance.get("/getalldoctor", {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.idToken,
+        },
+      });
       setDoctors(response.data.doctors);
     } catch (error) {
-      console.log(error);
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +83,7 @@ const AllDoctors: React.FC<RootStackNavProps<"AllDoctors">> = ({
     try {
       await fetchDoctors();
     } catch (error) {
-      console.error("Error refreshing data:", error);
+      handleError(error);
     } finally {
       setRefreshing(false);
     }
@@ -93,7 +92,7 @@ const AllDoctors: React.FC<RootStackNavProps<"AllDoctors">> = ({
     if (doctorId) {
       navigation.navigate("Doctor", { doctorId });
     } else {
-      console.error("Invalid patient ID:", doctorId);
+      handleError(new Error("Invalid patient ID: " + doctorId));
     }
   };
 
@@ -110,15 +109,7 @@ const AllDoctors: React.FC<RootStackNavProps<"AllDoctors">> = ({
       source={require("../assets/bac2.jpg")}
       style={styles.backgroundImage}
     >
-      <View style={[styles.header, { height: screenDimensions.height * 0.1 }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-      </View>
+      <BackTopTab screenName="Doctors" />
       <View
         style={[styles.container, { height: screenDimensions.height * 0.9 }]}
       >
@@ -131,10 +122,6 @@ const AllDoctors: React.FC<RootStackNavProps<"AllDoctors">> = ({
                 <View
                   style={{ flexDirection: "row", justifyContent: "flex-start" }}
                 >
-                  <Image
-                    style={styles.doctorImage}
-                    source={require("../assets/profile3.jpg")}
-                  />
                   <View style={{ flexDirection: "column", marginLeft: 10 }}>
                     <Text style={styles.doctorName}>
                       {item.doctor_first_name} {item.doctor_last_name}

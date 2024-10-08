@@ -11,19 +11,20 @@ import {
   Modal,
   Animated,
   Easing,
+  BackHandler,
 } from "react-native";
-import axios from "axios";
 import { useTheme } from "./ThemeContext";
 import { getTheme } from "./Theme";
 import BackTabTop from "./BackTopTab";
 import { openBrowserAsync } from "expo-web-browser";
 import { useSession } from "../context/SessionContext";
+import axiosInstance from "../utils/axiosConfig";
 
 interface AppointmentDetailsScreenProps {
   appointment: {
     _id: string;
     therepy_type: string;
-    therepy_link: string;
+    therepy_link?: string;
     therepy_start_time: string;
     therepy_date: string;
     patient_name?: string;
@@ -38,7 +39,7 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
 }) => {
   const { theme } = useTheme();
   const styles = getStyles(getTheme(theme));
-  const { session, refreshAllTokens } = useSession();
+  const { idToken } = useSession();
   const [isStarted, setIsStarted] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -47,6 +48,20 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
   const [loading, setLoading] = useState(false);
   const [isModalVisible, setModalVisible] = useState(false);
   const [rotation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handleBackPress
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
+  const handleBackPress = () => {
+    onClose();
+    return true;
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -79,17 +94,16 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
 
   const handleStart = useCallback(async () => {
     setLoading(true); // Start loading animation
-    await refreshAllTokens();
     try {
-      const response = await axios.post(
-        `https://healtrackapp-production.up.railway.app/therapy/start/${appointment._id}`,
+      const response = await axiosInstance.post(
+        `/therapy/start/${appointment._id}`,
         {
           presession_remarks: previousRemarks,
         },
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.tokens.idToken}`,
+            Authorization: `Bearer ${idToken}`,
           },
         }
       );
@@ -115,17 +129,16 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
 
   const handleEnd = useCallback(async () => {
     setLoading(true); // Start loading animation
-    await refreshAllTokens();
     try {
-      const response = await axios.post(
-        `https://healtrackapp-production.up.railway.app/therapy/end/${appointment._id}`,
+      const response = await axiosInstance.post(
+        `/therapy/end/${appointment._id}`,
         {
           postsession_remarks: postRemarks,
         },
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.tokens.idToken}`,
+            Authorization: `Bearer ${idToken}`,
           },
         }
       );
@@ -140,7 +153,6 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
       Alert.alert("Error", "Failed to end therapy session.");
     } finally {
       setLoading(false); // Stop loading animation
-      setIsStarted(false);
     }
   }, [postRemarks]);
 
@@ -155,15 +167,12 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
 
   const closeModal = () => {
     setModalVisible(false);
+    setPostRemarks("");
     onClose(); // Close the appointment details screen
   };
 
   return (
     <ScrollView style={styles.container}>
-      <TouchableOpacity
-        style={styles.closeButton}
-        onPress={onClose}
-      ></TouchableOpacity>
       <Text style={styles.headerText}>Appointment Details</Text>
       <View style={styles.dateContainer}>
         {isStarted ? (
@@ -204,14 +213,16 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
               value={previousRemarks}
               placeholder="Enter previous session remarks"
             />
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={() => handleJoinSession(appointment.therepy_link)}
-              >
-                <Text style={styles.uploadButtonText}>Upload Videos</Text>
-              </TouchableOpacity>
-            </View>
+            {appointment.therepy_link && (
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={() => handleJoinSession(appointment.therepy_link)}
+                >
+                  <Text style={styles.uploadButtonText}>Upload Videos</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <TouchableOpacity style={styles.startButton} onPress={handleStart}>
               {loading ? (
                 <ActivityIndicator size="small" color="#ffffff" />
@@ -235,12 +246,14 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
                 <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
               </View>
             </Animated.View>
-            <TouchableOpacity
-              style={styles.joinButton}
-              onPress={() => handleJoinSession(appointment.therepy_link)}
-            >
-              <Text style={styles.buttonText}>Join Session</Text>
-            </TouchableOpacity>
+            {appointment.therepy_link && (
+              <TouchableOpacity
+                style={styles.joinButton}
+                onPress={() => handleJoinSession(appointment.therepy_link)}
+              >
+                <Text style={styles.buttonText}>Join Session</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.endButton} onPress={handleEnd}>
               {loading ? (
                 <ActivityIndicator size="small" color="#ffffff" />
@@ -267,7 +280,7 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
                 placeholder="Enter post session remarks"
               />
               <TouchableOpacity style={styles.modalButton} onPress={closeModal}>
-                <Text style={styles.buttonText}>Submit</Text>
+                <Text style={styles.buttonText}>Submit and Close</Text>
               </TouchableOpacity>
             </View>
           </View>

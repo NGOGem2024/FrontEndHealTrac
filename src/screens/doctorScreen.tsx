@@ -20,6 +20,9 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Title } from "react-native-paper";
 import { useSession } from "../context/SessionContext";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
+import instance from "../utils/axiosConfig";
+import BackTabTop from "./BackTopTab";
 
 type DoctorScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Doctor">;
@@ -48,37 +51,33 @@ interface Appointment {
 }
 
 const DoctorScreen: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
-  const { session, refreshAllTokens } = useSession();
+  const { session } = useSession();
   const { doctorId } = route.params;
   const [doctorData, setDoctorData] = useState<DoctorData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchDoctorData = async () => {
-      if (!session) return;
+      if (!session.idToken) return;
       try {
         setIsLoading(true);
-        await refreshAllTokens();
-        const response = await fetch(
-          `https://healtrackapp-production.up.railway.app/doctor/${doctorId}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + session.tokens.idToken,
-            },
-          }
-        );
-        const data = await response.json();
+        const response = await instance(`/doctor/${doctorId}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session.idToken,
+          },
+        });
+        const data = await response.data;
         setDoctorData(data);
       } catch (error) {
-        console.error(error);
+        handleError(error);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchDoctorData();
-  }, [doctorId, session]);
+  }, [doctorId, session.idToken]);
 
   if (isLoading) {
     return (
@@ -90,15 +89,7 @@ const DoctorScreen: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-      </View>
+      <BackTabTop screenName="Doctor" />
       <ScrollView
         style={styles.main}
         contentContainerStyle={styles.mainContent}
@@ -106,10 +97,6 @@ const DoctorScreen: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
         <View style={styles.profileContainer}>
           {doctorData ? (
             <>
-              <Image
-                style={styles.profileImage}
-                source={require("../assets/profile3.jpg")}
-              />
               <Title style={styles.doctorName}>
                 Dr. {doctorData.doctor_first_name} {doctorData.doctor_last_name}
               </Title>
@@ -142,7 +129,7 @@ const DoctorScreen: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
                   color="white"
                 />
                 <Text style={styles.mytext}>
-                  {doctorData.patients.length} patients
+                  patients: {doctorData.patients.length}
                 </Text>
               </View>
               <View style={styles.content}>
@@ -166,26 +153,28 @@ const DoctorScreen: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
         <View style={styles.botscrview}>
           <Text style={styles.headlist}>Doctor Actions</Text>
           <View style={styles.container}>
-            <TouchableOpacity
-              style={styles.linkContainer}
-              onPress={() =>
-                navigation.navigate("UpdateDoctor", {
-                  doctorId: doctorId,
-                })
-              }
-              disabled={!doctorData}
-            >
-              <View style={styles.iconleft}>
-                <MaterialCommunityIcons
-                  name="square-edit-outline"
-                  size={30}
-                  color="#65b6e7"
-                  style={styles.iconlist}
-                />
-                <Text style={styles.link}>Update Profile</Text>
-              </View>
-              <Octicons name="chevron-right" size={24} color="black" />
-            </TouchableOpacity>
+            {session.is_admin && (
+              <TouchableOpacity
+                style={styles.linkContainer}
+                onPress={() =>
+                  navigation.navigate("UpdateDoctor", {
+                    doctorId: doctorId,
+                  })
+                }
+                disabled={!doctorData}
+              >
+                <View style={styles.iconleft}>
+                  <MaterialCommunityIcons
+                    name="square-edit-outline"
+                    size={30}
+                    color="#65b6e7"
+                    style={styles.iconlist}
+                  />
+                  <Text style={styles.link}>Update Profile</Text>
+                </View>
+                <Octicons name="chevron-right" size={24} color="black" />
+              </TouchableOpacity>
+            )}
           </View>
           {doctorData && doctorData.todayAppointments && (
             <View style={styles.appointmentsContainer}>

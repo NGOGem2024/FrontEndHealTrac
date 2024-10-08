@@ -16,6 +16,7 @@ import {
 import axios from "axios";
 import { useSession } from "../context/SessionContext";
 import Icon from "react-native-vector-icons/FontAwesome";
+import axiosInstance from "../utils/axiosConfig";
 
 interface Patient {
   _id: string;
@@ -35,7 +36,7 @@ const SearchPatients: React.FC<Props> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [noResultsMessage, setNoResultsMessage] = useState("");
 
-  const { session, refreshAllTokens } = useSession();
+  const { idToken } = useSession();
 
   useEffect(() => {
     if (searchQuery.length > 2) {
@@ -47,17 +48,15 @@ const SearchPatients: React.FC<Props> = ({ navigation }) => {
   }, [searchQuery]);
 
   const handleSearch = async () => {
-    if (!session) return;
     setIsLoading(true);
     setNoResultsMessage(""); // Clear any previous message
     try {
-      await refreshAllTokens();
-      const response = await axios.get(
-        `https://healtrackapp-production.up.railway.app/search/patient?query=${searchQuery}`,
+      const response = await axiosInstance.get(
+        `/search/patient?query=${searchQuery}`,
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: "Bearer " + session.tokens.idToken,
+            Authorization: "Bearer " + idToken,
           },
         }
       );
@@ -69,9 +68,7 @@ const SearchPatients: React.FC<Props> = ({ navigation }) => {
         setNoResultsMessage("No patients found with this name.");
       } else {
         console.error("Error searching patients:", error);
-        setNoResultsMessage(
-          "An error occurred while searching. Please try again."
-        );
+        setNoResultsMessage("Type something Please...");
       }
     } finally {
       setIsLoading(false);

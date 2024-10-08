@@ -21,6 +21,8 @@ import { RootStackParamList } from "../types/types";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { Picker } from "@react-native-picker/picker";
 import { RadioButton } from "react-native-paper";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
+import axiosInstance from "../utils/axiosConfig";
 
 const { width } = Dimensions.get("window");
 
@@ -58,7 +60,7 @@ const initialProfileState: ProfileInfo = {
 const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(getTheme(theme)), [theme]);
-  const { session, refreshAllTokens } = useSession();
+  const { session } = useSession();
   const { doctorId } = route.params;
   const [profileInfo, setProfileInfo] =
     useState<ProfileInfo>(initialProfileState);
@@ -68,35 +70,33 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (session && session.tokens && session.tokens.idToken) {
+    if (session.idToken) {
       fetchDoctorInfo();
     } else {
       setIsLoading(false);
     }
-  }, [session]);
+  }, [session.idToken]);
 
   const fetchDoctorInfo = async () => {
-    await refreshAllTokens();
-    if (!session || !session.tokens || !session.tokens.idToken) {
+    if (!session.idToken) {
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await axios.get<ProfileInfo>(
-        `https://healtrackapp-production.up.railway.app/doctor/${doctorId}`,
+      const response = await axiosInstance.get<ProfileInfo>(
+        `/doctor/${doctorId}`,
         {
           headers: {
-            Authorization: `Bearer ${session.tokens.idToken}`,
+            Authorization: `Bearer ${session.idToken}`,
           },
         }
       );
       setProfileInfo(response.data);
       setOriginalProfileInfo(response.data);
     } catch (error) {
-      console.error("Error fetching doctor info:", error);
-      Alert.alert("Error", "Failed to fetch doctor information");
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
@@ -112,20 +112,20 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
 
   const handleSave = async () => {
     if (!hasChanges()) {
-      Alert.alert("No Changes", "No changes were made to the profile.");
+      showSuccessToast("No changes were made to the profile.");
       return;
     }
 
-    if (!session || !session.tokens || !session.tokens.idToken) {
-      Alert.alert("Error", "You must be logged in to update the profile");
+    if (!session.idToken) {
+      handleError(new Error("You must be logged in to update the profile"));
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const response = await axios.put(
-        `https://healtrackapp-production.up.railway.app/doctor/update/${profileInfo._id}`,
+      const response = await axiosInstance.put(
+        `/doctor/update/${profileInfo._id}`,
         {
           doctor_first_name: profileInfo.doctor_first_name,
           doctor_last_name: profileInfo.doctor_last_name,
@@ -137,19 +137,18 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
         },
         {
           headers: {
-            Authorization: `Bearer ${session.tokens.idToken}`,
+            Authorization: `Bearer ${session.idToken}`,
           },
         }
       );
 
       setOriginalProfileInfo(profileInfo);
-      Alert.alert("Success", "Profile updated successfully");
+      showSuccessToast("Profile updated successfully");
+
+      // Redirect to the doctor's profile
+      navigation.navigate("Doctor", { doctorId: profileInfo._id });
     } catch (error) {
-      console.error("Error updating profile:", error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.msg || "Failed to update profile"
-      );
+      handleError(error);
     } finally {
       setIsSaving(false);
     }
@@ -164,7 +163,7 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
     );
   }
 
-  if (!session || !session.tokens || !session.tokens.idToken) {
+  if (!session.idToken) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>
@@ -191,7 +190,7 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
         <View style={styles.profileImageContainer}>
           <Image source={profilePhoto} style={styles.profilePhoto} />
           <TouchableOpacity style={styles.editImageButton}>
-            <Icon name="camera-outline" size={24} color="#FFFFFF" />
+            {/*<Icon name="camera-outline" size={24} color="#FFFFFF" />*/}
           </TouchableOpacity>
         </View>
 

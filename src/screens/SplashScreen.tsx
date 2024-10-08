@@ -1,11 +1,13 @@
 import React, { useEffect } from "react";
-import { View, Image, StyleSheet } from "react-native";
+import { View, Image, StyleSheet, Dimensions } from "react-native";
+
+const { width, height } = Dimensions.get("window");
 
 const SplashScreen = ({ navigation }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       // Navigate to your main screen after 3 seconds
-      navigation.replace("TabScreen");
+      // navigation.replace("MainScreen"); // Uncomment and replace with your main screen name
     }, 3000);
 
     return () => clearTimeout(timer);
@@ -16,6 +18,7 @@ const SplashScreen = ({ navigation }) => {
       <Image
         source={require("../assets/HealTrackLoGO.png")}
         style={styles.logo}
+        resizeMode="contain"
       />
     </View>
   );
@@ -29,8 +32,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   logo: {
-    width: 400,
-    height: 200,
+    width: width * 0.8, // 80% of screen width
+    height: height * 0.3, // 30% of screen height
+    maxWidth: 400, // Maximum width
+    maxHeight: 200, // Maximum height
   },
 });
 

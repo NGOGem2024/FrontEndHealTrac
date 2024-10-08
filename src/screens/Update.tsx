@@ -17,6 +17,8 @@ import axios from "axios";
 import { useSession } from "../context/SessionContext";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { MaterialIcons } from "@expo/vector-icons";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
+import axiosInstance from "../utils/axiosConfig";
 
 interface Therapy {
   _id: string;
@@ -52,9 +54,9 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
   const [appointmentType, setAppointmentType] = useState(therapy.therepy_type);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [error, setError] = useState("");
-  const { session, refreshAllTokens } = useSession();
+  const { idToken } = useSession();
 
-  const appointmentTypes = ["Virtual", "In Clinic", "In Home"];
+  const appointmentTypes = ["LiveSwitch", "In Clinic", "In Home"];
 
   useEffect(() => {
     fetchAvailableSlots(selectedDate);
@@ -79,24 +81,22 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
     setIsLoadingSlots(true);
     setError("");
     try {
-      await refreshAllTokens();
-      const response = await axios.post(
-        "https://healtrackapp-production.up.railway.app/availability",
+      const response = await axiosInstance.post(
+        "/availability",
         {
           date: moment(date).format("YYYY-MM-DD"),
         },
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.tokens.idToken}`,
-            auth: `Bearer ${session.tokens.accessToken}`,
+            Authorization: `Bearer ${idToken}`,
+            //auth: `Bearer ${accessToken}`,
           },
         }
       );
       setAvailableSlots(response.data);
     } catch (error) {
-      console.error("Error fetching available slots:", error);
-      setError("Failed to fetch available slots. Please try again.");
+      handleError(error);
     } finally {
       setIsLoadingSlots(false);
     }
@@ -123,12 +123,11 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
 
   const handleUpdateTherapy = async () => {
     if (!selectedSlot && !editedTherapy.therepy_start_time) {
-      Alert.alert("Error", "Please select a time slot for the appointment.");
+      handleError(new Error("Please select a time slot for the appointment."));
       return;
     }
 
     try {
-      await refreshAllTokens();
       const updatedTherapyData = {
         ...editedTherapy,
         therepy_type: appointmentType,
@@ -142,10 +141,10 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
       };
 
       await onUpdate(updatedTherapyData);
+      showSuccessToast("Therapy session updated successfully");
       onCancel();
     } catch (error) {
-      console.error("Error updating therapy:", error);
-      Alert.alert("Error", "Failed to update therapy session");
+      handleError(error);
     }
   };
 

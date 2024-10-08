@@ -19,6 +19,7 @@ import CreateTherapyPlan from "./Therapyplan";
 import DoctorScreen from "./doctorScreen";
 import EditDoctor from "./updatedoc";
 import SearchPatients from "./searchpatient";
+import AppointmentDetailsScreen from "./AppointmentDetails";
 
 const Stack = createNativeStackNavigator();
 
@@ -39,6 +40,10 @@ const HomeStackNavigator = () => {
         name="CreateTherapyPlan"
         component={CreateTherapyPlan}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AppointmentDetails"
+        component={AppointmentDetailsScreen}
       />
       <Stack.Screen
         name="Auth"

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
-  Image,
   FlatList,
   TouchableOpacity,
   StyleSheet,
@@ -13,12 +12,13 @@ import {
   ScaledSize,
   TextInput,
 } from "react-native";
-import axios from "axios";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { NavigationProp, ParamListBase } from "@react-navigation/native";
 import { Picker } from "@react-native-picker/picker";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useSession } from "../context/SessionContext";
+import { handleError } from "../utils/errorHandler";
+import axiosInstance from "../utils/axiosConfig";
+import BackTabTop from "./BackTopTab";
 
 interface Props {
   navigation: NavigationProp<ParamListBase>;
@@ -34,7 +34,7 @@ interface Patient {
 }
 
 const AllPatients: React.FC<Props> = ({ navigation }) => {
-  const { session, refreshAllTokens } = useSession();
+  const { session } = useSession();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
   const [filterOption, setFilterOption] = useState("all");
@@ -68,16 +68,15 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
   }, [session]);
 
   const fetchPatients = async (pageNumber = 1) => {
-    if (!session) return;
+    if (!session.idToken) return;
     try {
       if (pageNumber === 1) setIsLoading(true);
-      await refreshAllTokens();
-      const response = await axios.get(
-        `https://healtrackapp-production.up.railway.app/patient/getall?page=${pageNumber}&limit=20`,
+      const response = await axiosInstance.get(
+        `/patient/getall?page=${pageNumber}&limit=20`,
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: "Bearer " + session.tokens.idToken,
+            Authorization: "Bearer " + session.idToken,
           },
         }
       );
@@ -97,7 +96,7 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
       setTotalPages(response.data.totalPages);
       setPage(response.data.currentPage);
     } catch (error) {
-      console.log(error);
+      handleError(error);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -163,7 +162,7 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
     try {
       await fetchPatients(1);
     } catch (error) {
-      console.error("Error refreshing data:", error);
+      handleError(error);
     } finally {
       setRefreshing(false);
     }
@@ -173,16 +172,8 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
     if (patientId) {
       navigation.navigate("Patient", { patientId });
     } else {
-      console.error("Invalid patient ID:", patientId);
+      handleError(new Error("Invalid patient ID"));
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return "Invalid Date";
-    }
-    return date.toLocaleDateString();
   };
 
   const renderFooter = () => {
@@ -216,20 +207,32 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
     );
   }
 
+  const renderPatientItem = ({
+    item,
+    index,
+  }: {
+    item: Patient;
+    index: number;
+  }) => (
+    <TouchableOpacity
+      onPress={() => navigateToPatient(item._id)}
+      style={[
+        styles.patientCard,
+        index % 2 === 0 ? styles.leftCard : styles.rightCard,
+      ]}
+    >
+      <Text style={styles.patientName}>
+        {item.patient_first_name} {item.patient_last_name}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <ImageBackground
       source={require("../assets/bac2.jpg")}
       style={styles.backgroundImage}
     >
-      <View style={[styles.header, { height: screenDimensions.height * 0.1 }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-      </View>
+      <BackTabTop screenName="Patients" />
       <View
         style={[styles.container, { height: screenDimensions.height * 0.9 }]}
       >
@@ -281,47 +284,9 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
         <FlatList
           data={filteredPatients}
           keyExtractor={(item) => item._id}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => navigateToPatient(item._id)}>
-              <View style={styles.patientCard}>
-                <View
-                  style={{ flexDirection: "row", justifyContent: "flex-start" }}
-                >
-                  <Image
-                    style={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: 30,
-                      marginTop: 10,
-                      borderWidth: 3,
-                      borderColor: "white",
-                    }}
-                    source={require("../assets/profile3.jpg")}
-                  />
-                  <View style={{ flexDirection: "column", marginLeft: 10 }}>
-                    <Text style={styles.patientName}>
-                      {item.patient_first_name} {item.patient_last_name}
-                    </Text>
-                    <View style={styles.microicon}>
-                      <MaterialIcons name="call" size={12} color="#119FB3" />
-                      <Text style={styles.patientPhone}>
-                        {item.patient_phone}
-                      </Text>
-                    </View>
-                    <View style={styles.microicon}>
-                      <MaterialIcons name="email" size={12} color="#119FB3" />
-                      <Text style={styles.patientPhone}>
-                        {item.patient_email}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                <Text style={styles.patientDate}>
-                  FV: {formatDate(item.patient_registration_date)}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
+          renderItem={renderPatientItem}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -372,7 +337,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
     color: "#333333",
   },
-
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -381,7 +345,6 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 16,
   },
-
   loadingIndicator: {},
   footerContainer: {
     flexDirection: "column",
@@ -429,6 +392,7 @@ const styles = StyleSheet.create({
     color: "grey",
   },
   patientCard: {
+    flex: 1,
     backgroundColor: "rgba(255, 255, 255, 1)",
     borderRadius: 8,
     padding: 10,
@@ -442,22 +406,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  leftCard: {
+    marginRight: 5,
+  },
+  rightCard: {
+    marginLeft: 5,
+  },
+  row: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
   patientName: {
     fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 4,
     color: "#333333",
-  },
-  patientPhone: {
-    fontSize: 12,
-    marginTop: 0,
-    marginBottom: 0,
-    color: "#333333",
-    textAlign: "left",
-  },
-  patientDate: {
-    fontSize: 10,
-    color: "#666666",
+    textAlign: "center",
   },
   addButton: {
     backgroundColor: "#119FB3",
@@ -497,11 +460,6 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     padding: 10,
-  },
-  microicon: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
   },
 });
 

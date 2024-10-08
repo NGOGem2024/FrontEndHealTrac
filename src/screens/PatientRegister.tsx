@@ -22,6 +22,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../context/SessionContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
+import axiosInstance from "../utils/axiosConfig";
+import BackTabTop from "./BackTopTab";
 
 type PatientRegisterScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "PatientRegister">;
@@ -35,19 +38,23 @@ const initialPatientData = {
   referral_source: "",
   referral_details: "",
 };
+
+const initialFieldStatus = {
+  patient_first_name: false,
+  patient_last_name: false,
+  patient_email: false,
+  patient_phone: false,
+  referral_source: false,
+  referral_details: false,
+};
+
 const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
   navigation,
 }) => {
-  const { session, refreshAllTokens } = useSession();
-  const [patientData, setPatientData] = useState({
-    patient_first_name: "",
-    patient_last_name: "",
-    patient_email: "",
-    patient_phone: "",
-    referral_source: "",
-    referral_details: "",
-  });
+  const { idToken } = useSession();
+  const [patientData, setPatientData] = useState(initialPatientData);
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldStatus, setFieldStatus] = useState(initialFieldStatus);
 
   const handleInputChange = (field: string, value: string) => {
     let newValue = value;
@@ -59,6 +66,7 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
       newValue = value.toLowerCase();
     }
     setPatientData({ ...patientData, [field]: newValue });
+    setFieldStatus({ ...fieldStatus, [field]: newValue.length > 0 });
   };
 
   const isValidEmail = (email: string) => {
@@ -68,17 +76,22 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
 
   const handlePatientRegister = async () => {
     if (!patientData.patient_first_name || !patientData.patient_last_name) {
-      Alert.alert("Error", "First name and last name are required");
+      handleError(new Error("First name and last name are required"));
       return;
     }
 
     if (patientData.patient_phone.length !== 10) {
-      Alert.alert("Error", "Please enter a valid 10-digit phone number");
+      handleError(new Error("Please enter a valid 10-digit phone number"));
+      return;
+    }
+
+    if (patientData.patient_email && !isValidEmail(patientData.patient_email)) {
+      handleError(new Error("Please enter a valid email address"));
       return;
     }
 
     if (!patientData.referral_source) {
-      Alert.alert("Error", "Please select a referral source");
+      handleError(new Error("Please select a referral source"));
       return;
     }
 
@@ -86,55 +99,67 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
       patientData.referral_source !== "Social Media" &&
       !patientData.referral_details
     ) {
-      Alert.alert("Error", "Please enter referral details");
+      handleError(new Error("Please enter referral details"));
       return;
     }
 
     setIsLoading(true);
     try {
-      await refreshAllTokens();
       const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
-      if (!liveSwitchToken) {
-        throw new Error("LiveSwitch token not available");
-      }
       const formattedData = {
         ...patientData,
         patient_phone: "+91" + patientData.patient_phone,
       };
 
-      const response = await axios.post(
-        "https://healtrackapp-production.up.railway.app/patient/registration",
+      const response = await axiosInstance.post(
+        "/patient/registration",
         formattedData,
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: "Bearer " + session.tokens.idToken,
-            "X-LiveSwitch-Token": liveSwitchToken,
+            Authorization: "Bearer " + idToken,
           },
         }
       );
-      Alert.alert("Success", "Patient registered successfully");
+      showSuccessToast("Patient registered successfully");
       setPatientData(initialPatientData);
+      setFieldStatus(initialFieldStatus);
       navigation.navigate("UpdatePatient", {
         patientId: response.data.patient._id,
       });
     } catch (error) {
-      console.error("Error registering patient:", error);
-      Alert.alert("Error", "Failed to register patient");
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getInputStyle = (field: string) => {
+    const isMandatory = [
+      "patient_first_name",
+      "patient_last_name",
+      "patient_phone",
+      "referral_source",
+    ].includes(field);
+    if (fieldStatus[field]) {
+      return [styles.input, styles.filledInput];
+    }
+    return [
+      styles.input,
+      isMandatory ? styles.mandatoryInput : styles.optionalInput,
+    ];
   };
 
   const renderInput = (
     placeholder: string,
     value: string,
     field: string,
-    keyboardType: KeyboardType = "default"
+    keyboardType: KeyboardType = "default",
+    isMandatory: boolean = false
   ) => (
     <Animatable.View animation="fadeInUp" style={styles.inputContainer}>
       <TextInput
-        style={styles.input}
+        style={getInputStyle(field)}
         placeholder={placeholder}
         value={value}
         onChangeText={(text) => handleInputChange(field, text)}
@@ -151,27 +176,23 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
     >
       <ScrollView>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
-          </View>
+          <BackTabTop screenName="Patient" />
           <ScrollView contentContainerStyle={styles.scrollContainer}>
             <Animatable.View animation="fadeInUp" style={styles.container}>
               <Text style={styles.title}>Register Patient</Text>
               {renderInput(
                 "First Name",
                 patientData.patient_first_name,
-                "patient_first_name"
+                "patient_first_name",
+                "default",
+                true
               )}
               {renderInput(
                 "Last Name",
                 patientData.patient_last_name,
-                "patient_last_name"
+                "patient_last_name",
+                "default",
+                true
               )}
               {renderInput(
                 "Email",
@@ -183,7 +204,12 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
                 animation="fadeInUp"
                 style={styles.inputContainer}
               >
-                <View style={styles.phoneInputContainer}>
+                <View
+                  style={[
+                    styles.phoneInputContainer,
+                    getInputStyle("patient_phone"),
+                  ]}
+                >
                   <Text style={styles.phonePrefix}>+91</Text>
                   <TextInput
                     style={styles.phoneInput}
@@ -201,29 +227,31 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
                 animation="fadeInUp"
                 style={styles.inputContainer}
               >
-                <Picker
-                  selectedValue={patientData.referral_source}
-                  style={styles.picker}
-                  onValueChange={(itemValue) =>
-                    handleInputChange("referral_source", itemValue)
-                  }
-                >
-                  <Picker.Item label="Select Referral Source" value="" />
-                  <Picker.Item label="Social Media" value="Social Media" />
-                  <Picker.Item
-                    label="Patient Reference"
-                    value="Patient Reference"
-                  />
-                  <Picker.Item
-                    label="Hospital Reference"
-                    value="Hospital Reference"
-                  />
-                  <Picker.Item
-                    label="Doctor Reference"
-                    value="Doctor Reference"
-                  />
-                  <Picker.Item label="Other" value="Other" />
-                </Picker>
+                <View style={getInputStyle("referral_source")}>
+                  <Picker
+                    selectedValue={patientData.referral_source}
+                    style={styles.picker}
+                    onValueChange={(itemValue) =>
+                      handleInputChange("referral_source", itemValue)
+                    }
+                  >
+                    <Picker.Item label="Select Referral Source" value="" />
+                    <Picker.Item label="Social Media" value="Social Media" />
+                    <Picker.Item
+                      label="Patient Reference"
+                      value="Patient Reference"
+                    />
+                    <Picker.Item
+                      label="Hospital Reference"
+                      value="Hospital Reference"
+                    />
+                    <Picker.Item
+                      label="Doctor Reference"
+                      value="Doctor Reference"
+                    />
+                    <Picker.Item label="Other" value="Other" />
+                  </Picker>
+                </View>
               </Animatable.View>
               {patientData.referral_source &&
                 patientData.referral_source !== "Social Media" && (
@@ -232,7 +260,7 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
                     style={styles.inputContainer}
                   >
                     <TextInput
-                      style={styles.input}
+                      style={getInputStyle("referral_details")}
                       placeholder="Referral Details"
                       value={patientData.referral_details}
                       onChangeText={(text) =>
@@ -246,21 +274,25 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
                   animation="fadeInUp"
                   style={styles.inputContainer}
                 >
-                  <Picker
-                    selectedValue={patientData.referral_details}
-                    style={styles.picker}
-                    onValueChange={(itemValue) =>
-                      handleInputChange("referral_details", itemValue)
-                    }
-                  >
-                    <Picker.Item
-                      label="Select Social Media Platform"
-                      value=""
-                    />
-                    <Picker.Item label="Instagram" value="Instagram" />
-                    <Picker.Item label="Facebook" value="Facebook" />
-                    <Picker.Item label="WhatsApp" value="WhatsApp" />
-                  </Picker>
+                  <View style={getInputStyle("referral_details")}>
+                    <Picker
+                      selectedValue={patientData.referral_details}
+                      style={styles.picker}
+                      onValueChange={(itemValue) =>
+                        handleInputChange("referral_details", itemValue)
+                      }
+                    >
+                      <Picker.Item
+                        label="Select Social Media Platform"
+                        value=""
+                      />
+                      <Picker.Item label="Instagram" value="Instagram" />
+                      <Picker.Item label="Facebook" value="Facebook" />
+                      <Picker.Item label="WhatsApp" value="WhatsApp" />
+                      <Picker.Item label="YouTube" value="YouTube" />
+                      <Picker.Item label="Google" value="Google" />
+                    </Picker>
+                  </View>
                 </Animatable.View>
               )}
               <TouchableOpacity
@@ -289,32 +321,45 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    flex: 1,
-    resizeMode: "cover",
-  },
-  picker: {
+  input: {
     borderWidth: 1,
-    borderColor: "#D9D9D9",
     borderRadius: 5,
+    padding: 10,
+    color: "#333333",
     backgroundColor: "#FFFFFF",
+  },
+  mandatoryInput: {
+    borderColor: "#c30010", // Yellow for mandatory fields
+  },
+  optionalInput: {
+    borderColor: "#90EE90", // Light green for optional fields
+  },
+  filledInput: {
+    borderColor: "#90EE90", // Bright green for filled fields
   },
   phoneInputContainer: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#D9D9D9",
     borderRadius: 5,
     backgroundColor: "#FFFFFF",
+  },
+  phoneInput: {
+    flex: 1,
+    padding: 5,
+    color: "#333333",
+  },
+  picker: {
+    height: 45,
+    width: "100%",
+  },
+  backgroundImage: {
+    flex: 1,
+    resizeMode: "cover",
   },
   phonePrefix: {
     paddingHorizontal: 10,
     fontSize: 16,
-    color: "#333333",
-  },
-  phoneInput: {
-    flex: 1,
-    padding: 10,
     color: "#333333",
   },
   scrollContainer: {
@@ -363,15 +408,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   inputContainer: {
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#D9D9D9",
-    borderRadius: 5,
-    padding: 10,
-    color: "#333333",
-    backgroundColor: "#FFFFFF",
+    marginBottom: 10, // Reduced from 20 to 10
   },
   button: {
     backgroundColor: "#119FB3",
@@ -396,6 +433,11 @@ const styles = StyleSheet.create({
   backButtonText1: {
     color: "#119FB3",
     fontWeight: "bold",
+  },
+  asterisk: {
+    color: "red",
+    fontSize: 14,
+    marginBottom: 2, // Reduced from 5 to 2
   },
 });
 

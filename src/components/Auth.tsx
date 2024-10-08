@@ -1,253 +1,243 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Platform,
+  TextInput,
+  Modal,
+  Image,
 } from "react-native";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
-import { useNavigation } from "@react-navigation/native";
-import { RootStackNavProps } from "../types/types";
 import { useSession } from "../context/SessionContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AntDesign } from "@expo/vector-icons";
-import * as WebBrowser from "expo-web-browser";
-import { makeRedirectUri } from "expo-auth-session";
-import * as Linking from "expo-linking";
-import axios from "axios";
+import axiosInstance from "../utils/axiosConfig";
+import { useNavigation } from "@react-navigation/native";
+import { ActivityIndicator } from "react-native-paper";
 
-const CALLBACK_URL = "physio.gem.auth://callback";
-const GOOGLE_WEB_CLIENT_ID =
-  "1038698506388-eegihlhipbg4d1cubdjk4p44gv74sv5i.apps.googleusercontent.com";
-const LIVESWITCH_CLIENT_ID = "ADRTBpRcrev3ebDN2Jdpd2ednNlFbw7B";
-const API_BASE_URL = "https://healtrackapp-production.up.railway.app";
+interface AuthModalProps {
+  isVisible: boolean;
+  onClose: () => void;
+  onLoginSuccess: () => void;
+}
 
-export default function Auth() {
-  const navigation = useNavigation<RootStackNavProps<"Auth">["navigation"]>();
-  const { setSession, refreshAllTokens } = useSession();
-  const [liveSwitchToken, setLiveSwitchToken] = useState("");
+const AuthModal: React.FC<AuthModalProps> = ({
+  isVisible,
+  onClose,
+  onLoginSuccess,
+}) => {
+  const { setSession } = useSession();
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const navigation = useNavigation();
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const configureGoogleSignIn = async () => {
-      await GoogleSignin.configure({
-        scopes: [
-          "https://www.googleapis.com/auth/calendar",
-          "https://www.googleapis.com/auth/userinfo.email",
-          "https://www.googleapis.com/auth/userinfo.profile",
-          "https://www.googleapis.com/auth/calendar.events",
-        ],
-        webClientId: GOOGLE_WEB_CLIENT_ID,
-        offlineAccess: true,
-        forceCodeForRefreshToken: true, // This ensures that you always get a refresh token.
-        // Added prompt parameter
+  // Email validation function using regex
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const sendOtp = async () => {
+    const lowerCaseEmail = email.toLowerCase(); // Convert to lowercase
+    if (!isValidEmail(lowerCaseEmail)) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await axiosInstance.post("/sendOtp", {
+        email: lowerCaseEmail,
       });
-    };
-
-    configureGoogleSignIn();
-
-    const subscription = Linking.addEventListener("url", handleRedirect);
-    return () => subscription.remove();
-  }, []);
-
-  const handleRedirect = useCallback(async (event: Linking.EventType) => {
-    if (Platform.OS === "ios") {
-      WebBrowser.dismissAuthSession();
+      if (response.data.message === "OTP sent successfully") {
+        setIsOtpSent(true);
+      }
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      Alert.alert("Error", "Failed to send OTP");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    if (event.url) {
-      const url = event.url;
-
-      if (url.includes("access_token=")) {
-        const token = url.split("access_token=")[1].split("&")[0];
-        const expiresIn = url.split("expires_in=")[1].split("&")[0];
-
-        setLiveSwitchToken(token);
-        await AsyncStorage.setItem("liveSwitchToken", token);
-        const expiresAt = Date.now() + parseInt(expiresIn) * 1000;
+  const verifyOtp = async () => {
+    setLoading(true);
+    try {
+      const response = await axiosInstance.post("/otpVerify", {
+        email: email.toLowerCase(), // Ensure the email is in lowercase
+        otp,
+      });
+      if (response.data.token) {
+        await AsyncStorage.setItem("userToken", response.data.token);
         await AsyncStorage.setItem(
-          "liveSwitchTokenExpiresAt",
-          expiresAt.toString()
+          "is_admin",
+          JSON.stringify(response.data.is_admin)
         );
+        await AsyncStorage.setItem("doctor_id", response.data.doctor_id);
 
-        await completeAuthentication();
+        const newSession = {
+          isLoggedIn: true,
+          idToken: response.data.token,
+          is_admin: response.data.is_admin,
+          doctor_id: response.data.doctor_id,
+        };
+        await setSession(newSession);
+
+        navigation.navigate("TabScreen" as never);
       } else {
-        Alert.alert(
-          "Authentication Error",
-          "Failed to obtain LiveSwitch token."
-        );
-      }
-    } else {
-      Alert.alert("Authentication Error", "No redirect URL received.");
-    }
-  }, []);
-
-  const signInWithLiveSwitch = async () => {
-    try {
-      const redirectUri = makeRedirectUri({ native: CALLBACK_URL });
-      const authUrl = `https://public-api.production.liveswitch.com/v1/tokens?responseType=Token&clientId=${LIVESWITCH_CLIENT_ID}&callbackUrl=${encodeURIComponent(
-        CALLBACK_URL
-      )}`;
-
-      const result = await WebBrowser.openAuthSessionAsync(
-        authUrl,
-        redirectUri,
-        {
-          showInRecents: true,
-        }
-      );
-
-      if (result.type === "success" && result.url) {
-        await handleRedirect({ url: result.url } as Linking.EventType);
-      } else {
-        Alert.alert(
-          "Authentication Issue",
-          `Authentication was not completed. Result: ${result.type}`
-        );
+        Alert.alert("Error", "OTP verification failed");
       }
     } catch (error) {
-      console.error("Error during LiveSwitch authentication:", error);
-      Alert.alert(
-        "Authentication Error",
-        "An error occurred during LiveSwitch authentication."
-      );
+      console.error("Error verifying OTP:", error);
+      Alert.alert("Error", "Failed to verify OTP. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      const tokens = await GoogleSignin.getTokens();
-
-      await AsyncStorage.setItem("googleTokens", JSON.stringify(tokens));
-      const expirationTime = Date.now() + 3300000; // 1 hour from now
-      await AsyncStorage.setItem(
-        "tokenExpirationTime",
-        expirationTime.toString()
-      );
-
-      if (userInfo.serverAuthCode) {
-        try {
-          const response = await axios.post(`${API_BASE_URL}/exchange`, {
-            serverAuthCode: userInfo.serverAuthCode,
-          });
-
-          const { refreshToken } = response.data;
-          if (refreshToken) {
-            await AsyncStorage.setItem("googleRefreshToken", refreshToken);
-          } else {
-            console.warn("No refresh token received from server");
-          }
-        } catch (error) {
-          console.error(
-            "Error exchanging auth code:",
-            error.response ? error.response.data : error.message
-          );
-        }
-      } else {
-        console.warn("No serverAuthCode present in userInfo");
-      }
-
-      if (userInfo.idToken) {
-        const sessionData = { user: userInfo, tokens };
-        await AsyncStorage.setItem("userSession", JSON.stringify(sessionData));
-        await signInWithLiveSwitch();
-      } else {
-        throw new Error("No id token present");
-      }
-    } catch (error) {
-      console.error("Error during Google Sign-In:", error);
-      Alert.alert("Error", "Failed to sign in with Google.");
-    }
-  };
-
-  const completeAuthentication = async () => {
-    try {
-      await refreshAllTokens();
-      const storedSession = await AsyncStorage.getItem("userSession");
-      if (storedSession) {
-        const sessionData = JSON.parse(storedSession);
-        await setSession(sessionData);
-        navigation.navigate("DoctorDashboard");
-      } else {
-        throw new Error("No stored session found");
-      }
-    } catch (error) {
-      console.error("Error completing authentication:", error);
-      Alert.alert("Error", "Failed to complete authentication.");
-    }
+  const resetEmailInput = () => {
+    setIsOtpSent(false);
+    setOtp("");
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Sign In</Text>
-      <Text style={styles.title1}>Welcome to HealTrack</Text>
-      <Text style={styles.subtitle}>
-        Please sign in with Google for the best experience
-      </Text>
-      <TouchableOpacity style={styles.googleButton} onPress={signInWithGoogle}>
-        <View style={styles.googleButtonContent}>
-          <AntDesign
-            name="google"
-            size={24}
-            color="white"
-            style={styles.googleIcon}
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={isVisible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Image
+            source={require("../assets/logocolor.png")}
+            style={styles.logo}
+            resizeMode="contain"
           />
-          <Text style={styles.googleButtonText}>Sign in with Google</Text>
+          <Text style={styles.title}>Login</Text>
+          {!isOtpSent ? (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                value={email}
+                onChangeText={(text) => setEmail(text.toLowerCase())} // Convert input to lowercase
+                keyboardType="email-address"
+                autoCapitalize="none" // Disable auto-capitalization for email input
+              />
+              <TouchableOpacity style={styles.button} onPress={sendOtp}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.buttonText}>Send OTP</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter OTP"
+                value={otp}
+                onChangeText={setOtp}
+                keyboardType="numeric"
+              />
+              <TouchableOpacity style={styles.button} onPress={verifyOtp}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.buttonText}>Verify OTP</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={sendOtp}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.secondaryButtonText}>Resend OTP</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={resetEmailInput}
+              >
+                <Text style={styles.secondaryButtonText}>Go Back</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
-      </TouchableOpacity>
-    </View>
+      </View>
+    </Modal>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
+  modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
     backgroundColor: "#f5f5f5",
-    paddingHorizontal: 50,
-    marginTop: "10%",
-    marginVertical: 50,
-  },
-  googleButtonContent: {
-    flexDirection: "row",
+    padding: 20,
+    borderRadius: 10,
+    width: "80%",
+    maxHeight: "80%",
+    overflow: "hidden",
     alignItems: "center",
-    justifyContent: "center",
   },
-  googleIcon: {
-    marginRight: 10,
-  },
-  googleButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  title1: {
-    fontSize: 18,
-    marginBottom: 10,
+  logo: {
+    width: 200,
+    height: 70,
   },
   title: {
-    fontSize: 50,
+    fontSize: 24,
     marginBottom: 20,
     color: "black",
+    fontWeight: "bold",
   },
-  subtitle: {
-    fontSize: 12,
-    marginBottom: 20,
-    textAlign: "center",
-    paddingHorizontal: 20,
-    marginTop: 10,
+  input: {
+    width: "100%",
+    height: 40,
+    borderColor: "gray",
+    borderWidth: 1,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+    borderRadius: 5,
   },
-  googleButton: {
+  button: {
     backgroundColor: "#2a7fba",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 5,
     marginBottom: 15,
-    width: "95%",
+    width: "100%",
     alignItems: "center",
   },
+  buttonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  secondaryButton: {
+    backgroundColor: "transparent",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    marginBottom: 10,
+    width: "100%",
+    alignItems: "center",
+  },
+  secondaryButtonText: {
+    color: "#2a7fba",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
 });
+
+export default AuthModal;

@@ -1,39 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
-import { ThemeProvider } from "./src/screens/ThemeContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import TabScreen from "./src/screens/BottomTab/TabScreen";
 import SplashScreen from "./src/screens/SplashScreen";
 import Auth from "./src/components/Auth";
-import {
-  SessionContextProvider,
-  useSession,
-} from "./src/context/SessionContext";
+import { SessionProvider, useSession } from "./src/context/SessionContext";
+import { ThemeProvider } from "./src/screens/ThemeContext";
+import { NavigationContainer } from "@react-navigation/native";
+import Toast from "react-native-toast-message";
 
 const Stack = createStackNavigator();
 
 function MainNavigator() {
-  const { session, setSession } = useSession();
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Check for existing session
-    const checkSession = async () => {
-      try {
-        const storedSession = await AsyncStorage.getItem("userSession");
-        if (storedSession) {
-          setSession(JSON.parse(storedSession));
-        }
-      } catch (error) {
-        console.error("Error checking session:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkSession();
-  }, [setSession]);
+  const { session, isLoading } = useSession();
 
   if (isLoading) {
     return <SplashScreen />;
@@ -41,7 +20,7 @@ function MainNavigator() {
 
   return (
     <Stack.Navigator>
-      {session ? (
+      {session.isLoggedIn ? (
         <Stack.Screen
           name="TabScreen"
           component={TabScreen}
@@ -60,12 +39,13 @@ function MainNavigator() {
 
 export default function App() {
   return (
-    <SessionContextProvider>
+    <SessionProvider>
       <ThemeProvider>
         <NavigationContainer>
           <MainNavigator />
         </NavigationContainer>
       </ThemeProvider>
-    </SessionContextProvider>
+      <Toast />
+    </SessionProvider>
   );
 }

@@ -24,7 +24,8 @@ export type RootStackParamList = {
     screen?: keyof RootTabParamList;
     params?: object;
   };
-  AppointmentDetailsScreen: { therapyId?: string };
+  AppointmentDetails: { appointment: any };
+  AppointmentDetailsScreen: { appointment: any };
   UpdateDoctor: { doctorId?: string };
   HomeStackNavigator: undefined;
   TodaysAppointments: undefined;

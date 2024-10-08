@@ -17,6 +17,8 @@ import { MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { useSession } from "../context/SessionContext";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
+import axiosInstance from "../utils/axiosConfig";
 
 type CreateTherapyPlanProps = {
   navigation: StackNavigationProp<RootStackParamList, "CreateTherapyPlan">;
@@ -39,13 +41,12 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     balance: "",
   });
   const { patientId } = route.params;
-  const { session, refreshAllTokens } = useSession();
 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(-100));
@@ -106,14 +107,52 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     setShowEndDatePicker(true);
   };
 
+  const validateForm = () => {
+    let newErrors: Record<string, string> = {};
+
+    if (!therapyPlan.therapy_name.trim()) {
+      newErrors.therapy_name = "Therapy name is required";
+    }
+    if (!therapyPlan.patient_symptoms.trim()) {
+      newErrors.patient_symptoms = "Patient symptoms are required";
+    }
+    if (!therapyPlan.patient_diagnosis.trim()) {
+      newErrors.patient_diagnosis = "Patient diagnosis is required";
+    }
+    if (!therapyPlan.therapy_category) {
+      newErrors.therapy_category = "Therapy category is required";
+    }
+    if (!therapyPlan.total_amount.trim()) {
+      newErrors.total_amount = "Total amount is required";
+    } else if (isNaN(parseFloat(therapyPlan.total_amount))) {
+      newErrors.total_amount = "Total amount must be a valid number";
+    }
+    if (!therapyPlan.received_amount.trim()) {
+      newErrors.received_amount = "Received amount is required";
+    } else if (isNaN(parseFloat(therapyPlan.received_amount))) {
+      newErrors.received_amount = "Received amount must be a valid number";
+    }
+    if (startDate >= endDate) {
+      newErrors.date = "End date must be after start date";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCreateTherapyPlan = async () => {
+    if (!validateForm()) {
+      Alert.alert(
+        "Validation Error",
+        "Please fill in all required fields correctly."
+      );
+      return;
+    }
+
     setIsLoading(true);
-    setError("");
 
     try {
-      setIsLoading(true);
-      await refreshAllTokens();
-      const requestBody = {
+      const formData = {
         therapy_name: therapyPlan.therapy_name,
         patient_diagnosis: therapyPlan.patient_diagnosis,
         patient_symptoms: therapyPlan.patient_symptoms,
@@ -126,33 +165,39 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
         balance: therapyPlan.balance,
       };
 
-      const response = await axios.post(
-        `https://healtrackapp-production.up.railway.app/therapy/plan/${patientId}`,
-        requestBody,
-        {
-          headers: { Authorization: `Bearer ${session.tokens.idToken}` },
-        }
+      const response = await axiosInstance.post(
+        `/therapy/plan/${patientId}`,
+        formData
       );
 
       if (response.status === 200 || response.status === 201) {
-        Alert.alert("Success", "Therapy plan created successfully");
+        showSuccessToast("Therapy plan created successfully");
         navigation.goBack();
       } else {
-        setError("Failed to create therapy plan. Please try again.");
+        setErrors({
+          ...errors,
+          submit: "Failed to create therapy plan. Please try again.",
+        });
       }
     } catch (error) {
-      setError("An error occurred while creating therapy plan.");
+      handleError(error);
+      setErrors({
+        ...errors,
+        submit: "An error occurred while creating therapy plan.",
+      });
       console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
+
   useEffect(() => {
     const total = parseFloat(therapyPlan.total_amount) || 0;
     const received = parseFloat(therapyPlan.received_amount) || 0;
     const balance = total - received;
     setTherapyPlan({ ...therapyPlan, balance: balance.toString() });
   }, [therapyPlan.total_amount, therapyPlan.received_amount]);
+
   return (
     <ScrollView style={styles.scrollView}>
       <Animated.View
@@ -172,6 +217,9 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
           }
           items={categories}
         />
+        {errors.therapy_category && (
+          <Text style={styles.errorText}>{errors.therapy_category}</Text>
+        )}
         <InputField
           icon={<MaterialIcons name="edit" size={24} color="#119FB3" />}
           placeholder="Therapy Name"
@@ -180,6 +228,9 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             setTherapyPlan({ ...therapyPlan, therapy_name: text })
           }
         />
+        {errors.therapy_name && (
+          <Text style={styles.errorText}>{errors.therapy_name}</Text>
+        )}
         <InputField
           icon={<MaterialIcons name="healing" size={24} color="#119FB3" />}
           placeholder="Patient Symptoms"
@@ -188,6 +239,9 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             setTherapyPlan({ ...therapyPlan, patient_symptoms: text })
           }
         />
+        {errors.patient_symptoms && (
+          <Text style={styles.errorText}>{errors.patient_symptoms}</Text>
+        )}
         <InputField
           icon={
             <MaterialIcons name="local-hospital" size={24} color="#119FB3" />
@@ -198,6 +252,9 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             setTherapyPlan({ ...therapyPlan, patient_diagnosis: text })
           }
         />
+        {errors.patient_diagnosis && (
+          <Text style={styles.errorText}>{errors.patient_diagnosis}</Text>
+        )}
 
         <View style={styles.dateTimeRow}>
           <DatePickerField
@@ -216,6 +273,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             onChange={onChangeEndDate}
           />
         </View>
+        {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
 
         <View style={styles.durationContainer}>
           <MaterialIcons name="timer" size={24} color="#119FB3" />
@@ -239,6 +297,9 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             />
           </View>
         </View>
+        {errors.total_amount && (
+          <Text style={styles.errorText}>{errors.total_amount}</Text>
+        )}
 
         <View style={styles.labeledInputContainer}>
           <Text style={styles.inputLabel}>Received Amount</Text>
@@ -256,6 +317,9 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             />
           </View>
         </View>
+        {errors.received_amount && (
+          <Text style={styles.errorText}>{errors.received_amount}</Text>
+        )}
         <View style={styles.balanceContainer}>
           <MaterialIcons name="account-balance" size={24} color="#119FB3" />
           <Text style={styles.balanceValue}>
@@ -263,7 +327,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
           </Text>
         </View>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {errors.submit && <Text style={styles.errorText}>{errors.submit}</Text>}
 
         <TouchableOpacity
           style={styles.saveButton}

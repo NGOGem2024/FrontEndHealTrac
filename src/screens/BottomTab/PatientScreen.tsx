@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -19,10 +18,11 @@ import {
 } from "@expo/vector-icons";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import { LinearGradient } from "expo-linear-gradient";
 import { Title, Card, Paragraph } from "react-native-paper";
-import TherapyTable from "../UpdateTherapy"; // Update with the correct path
 import { useSession } from "../../context/SessionContext";
+import { handleError } from "../../utils/errorHandler";
+import BackTopTab from "../BackTopTab";
+import axiosInstance from "../../utils/axiosConfig";
 
 type PatientScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Patient">;
@@ -53,39 +53,63 @@ interface PatientData {
 }
 
 const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
-  const { session, refreshAllTokens } = useSession();
+  const { session } = useSession();
   const { patientId } = route.params;
   const [patientData, setPatientData] = useState<PatientData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [therapyHistoryVisible, setTherapyHistoryVisible] =
-    useState<boolean>(false);
 
   useEffect(() => {
     const fetchPatientData = async () => {
-      if (!session || patientData) return;
+      if (!session.idToken || patientData) return;
       try {
         setIsLoading(true);
-        await refreshAllTokens();
-        const response = await fetch(
-          `https://healtrackapp-production.up.railway.app/patient/${patientId}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + session.tokens.idToken,
-            },
-          }
-        );
-        const data = await response.json();
-        setPatientData(data.patientData);
+        const response = await axiosInstance.get(`/patient/${patientId}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session.idToken,
+          },
+        });
+        setPatientData(response.data.patientData);
       } catch (error) {
-        console.error(error);
+        handleError(error);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchPatientData();
-  }, [patientId, session, patientData]);
+  }, [patientId, session.idToken, patientData]);
+
+  const renderPatientInfo = () => {
+    if (!patientData) return null;
+
+    return (
+      <>
+        <Title style={styles.patientName}>
+          {patientData.patient_first_name} {patientData.patient_last_name}
+        </Title>
+
+        {patientData.patient_email && (
+          <View style={styles.content}>
+            <MaterialIcons name="email" size={20} color="white" />
+            <Text style={styles.mytext}> {patientData.patient_email}</Text>
+          </View>
+        )}
+
+        <View style={styles.content}>
+          <MaterialIcons name="call" size={20} color="white" />
+          <Text style={styles.mytext}> {patientData.patient_phone}</Text>
+        </View>
+
+        {patientData.patient_address1 && (
+          <View style={styles.content}>
+            <MaterialIcons name="location-on" size={20} color="white" />
+            <Text style={styles.mytext}> {patientData.patient_address1}</Text>
+          </View>
+        )}
+      </>
+    );
+  };
 
   const renderTherapyPlanCards = () => {
     if (!patientData?.therapy_plans || patientData.therapy_plans.length === 0) {
@@ -121,69 +145,23 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
         </Card>
       ));
   };
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#119FB3" />
+        <Text style={styles.loadingText}>Loading patient information...</Text>
       </View>
     );
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-      </View>
+      <BackTopTab screenName="Patient" />
       <ScrollView
         style={styles.main}
         contentContainerStyle={styles.mainContent}
       >
-        <View style={styles.profileContainer}>
-          {patientData ? (
-            <>
-              <Image
-                style={styles.profileImage}
-                source={require("../../assets/profile3.jpg")}
-              />
-
-              <Title style={styles.patientName}>
-                {patientData.patient_first_name} {patientData.patient_last_name}
-              </Title>
-
-              <View style={styles.content}>
-                <MaterialIcons name="email" size={20} color="white" />
-                <Text style={styles.mytext}> {patientData.patient_email}</Text>
-              </View>
-
-              <View style={styles.content}>
-                <MaterialIcons name="call" size={20} color="white" />
-                <Text style={styles.mytext}> {patientData.patient_phone}</Text>
-              </View>
-
-              <View style={styles.content}>
-                <AntDesign name="idcard" size={20} color="white" />
-                <Text style={styles.mytext}> {patientData.patient_id}</Text>
-              </View>
-
-              <View style={styles.content}>
-                <MaterialIcons name="location-on" size={20} color="white" />
-                <Text style={styles.mytext}>
-                  {" "}
-                  {patientData.patient_address1}
-                </Text>
-              </View>
-            </>
-          ) : (
-            <Text>Loading...</Text>
-          )}
-        </View>
+        <View style={styles.profileContainer}>{renderPatientInfo()}</View>
 
         <View style={styles.botscrview}>
           <Text style={styles.headlist}>Account Overview</Text>
@@ -211,28 +189,8 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
             <TouchableOpacity
               style={styles.linkContainer}
               onPress={() =>
-                navigation.navigate("UpdateTherapy", {
-                  patientId: patientData?.patient_id,
-                })
-              }
-              disabled={!patientData}
-            >
-              <View style={styles.iconleft}>
-                <Ionicons
-                  name="medical"
-                  size={30}
-                  color="#55b55b"
-                  style={[styles.iconlist, styles.therapyicon]}
-                />
-                <Text style={styles.link}>Therapy Session</Text>
-              </View>
-              <Octicons name="chevron-right" size={24} color="black" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.linkContainer}
-              onPress={() =>
                 navigation.navigate("CreateTherapyPlan", {
-                  patientId: patientData?.patient_id,
+                  patientId: patientId,
                 })
               }
               disabled={!patientData}
@@ -253,7 +211,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
               style={styles.linkContainer}
               onPress={() =>
                 navigation.navigate("CreateTherapy", {
-                  patientId: patientData?.patient_id,
+                  patientId: patientId,
                 })
               }
               disabled={!patientData}
@@ -266,6 +224,26 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
                   style={[styles.iconlist, styles.reportsicon]}
                 />
                 <Text style={styles.link}>Book Appointment</Text>
+              </View>
+              <Octicons name="chevron-right" size={24} color="black" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.linkContainer}
+              onPress={() =>
+                navigation.navigate("UpdateTherapy", {
+                  patientId: patientId,
+                })
+              }
+              disabled={!patientData}
+            >
+              <View style={styles.iconleft}>
+                <Ionicons
+                  name="medical"
+                  size={30}
+                  color="#55b55b"
+                  style={[styles.iconlist, styles.therapyicon]}
+                />
+                <Text style={styles.link}>Therapy Session</Text>
               </View>
               <Octicons name="chevron-right" size={24} color="black" />
             </TouchableOpacity>
@@ -308,6 +286,11 @@ const styles = StyleSheet.create({
     padding: 20,
     width: "100%",
     alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#119FB3",
   },
   heading: {
     fontSize: 24,
@@ -395,6 +378,7 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     alignItems: "flex-start",
     marginBottom: 20,
+    marginTop: 10,
   },
   profileImage: {
     width: 120,

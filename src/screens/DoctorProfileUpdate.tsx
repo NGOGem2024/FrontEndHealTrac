@@ -17,6 +17,8 @@ import { useTheme } from "./ThemeContext";
 import { getTheme } from "./Theme";
 import axios from "axios";
 import { useSession } from "../context/SessionContext";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
+import instance from "../utils/axiosConfig";
 
 const { width } = Dimensions.get("window");
 
@@ -45,7 +47,7 @@ const initialProfileState: ProfileInfo = {
 const DoctorProfileEdit: React.FC = () => {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(getTheme(theme)), [theme]);
-  const { session, refreshAllTokens } = useSession();
+  const { session } = useSession();
 
   const [profileInfo, setProfileInfo] =
     useState<ProfileInfo>(initialProfileState);
@@ -55,35 +57,30 @@ const DoctorProfileEdit: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (session && session.tokens && session.tokens.idToken) {
+    if (session.idToken) {
       fetchDoctorInfo();
     } else {
       setIsLoading(false);
     }
-  }, [session]);
+  }, [session.idToken]);
 
   const fetchDoctorInfo = async () => {
-    await refreshAllTokens();
-    if (!session || !session.tokens || !session.tokens.idToken) {
+    if (!session.idToken) {
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await axios.get<ProfileInfo>(
-        "https://healtrackapp-production.up.railway.app/doctor",
-        {
-          headers: {
-            Authorization: `Bearer ${session.tokens.idToken}`,
-          },
-        }
-      );
+      const response = await instance.get<ProfileInfo>("/doctor", {
+        headers: {
+          Authorization: `Bearer ${session.idToken}`,
+        },
+      });
       setProfileInfo(response.data);
       setOriginalProfileInfo(response.data);
     } catch (error) {
-      console.error("Error fetching doctor info:", error);
-      Alert.alert("Error", "Failed to fetch doctor information");
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
@@ -105,20 +102,20 @@ const DoctorProfileEdit: React.FC = () => {
 
   const handleSave = async () => {
     if (!hasChanges()) {
-      Alert.alert("No Changes", "No changes were made to your profile.");
+      showSuccessToast("No changes were made to your profile.");
       return;
     }
 
-    if (!session || !session.tokens || !session.tokens.idToken) {
-      Alert.alert("Error", "You must be logged in to update your profile");
+    if (!session.idToken) {
+      handleError(new Error("You must be logged in to update your profile"));
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const response = await axios.put(
-        `https://healtrackapp-production.up.railway.app/doctor/update/${profileInfo._id}`,
+      await instance.put(
+        `/doctor/update/${profileInfo._id}`,
         {
           doctor_first_name: profileInfo.doctor_first_name,
           doctor_last_name: profileInfo.doctor_last_name,
@@ -128,16 +125,15 @@ const DoctorProfileEdit: React.FC = () => {
         },
         {
           headers: {
-            Authorization: `Bearer ${session.tokens.idToken}`,
+            Authorization: `Bearer ${session.idToken}`,
           },
         }
       );
 
       setOriginalProfileInfo(profileInfo);
-      Alert.alert("Success", "Profile updated successfully");
+      showSuccessToast("Profile updated successfully");
     } catch (error) {
-      console.error("Error updating profile:", error);
-      Alert.alert("Error", "Failed to update profile");
+      handleError(error);
     } finally {
       setIsSaving(false);
     }
@@ -152,7 +148,7 @@ const DoctorProfileEdit: React.FC = () => {
     );
   }
 
-  if (!session || !session.tokens || !session.tokens.idToken) {
+  if (!session.idToken) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>
@@ -179,7 +175,7 @@ const DoctorProfileEdit: React.FC = () => {
         <View style={styles.profileImageContainer}>
           <Image source={profilePhoto} style={styles.profilePhoto} />
           <TouchableOpacity style={styles.editImageButton}>
-            <Icon name="camera-outline" size={24} color="#FFFFFF" />
+            {/*<Icon name="camera-outline" size={24} color="#FFFFFF" />*/}
           </TouchableOpacity>
         </View>
 

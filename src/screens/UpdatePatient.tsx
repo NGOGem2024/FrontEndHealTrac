@@ -25,6 +25,8 @@ import BackTabTop from "./BackTopTab";
 import { Picker } from "@react-native-picker/picker";
 import { useSession } from "../context/SessionContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
+import axiosInstance from "../utils/axiosConfig";
 
 type UpdatePatientProps = {
   navigation: StackNavigationProp<RootStackParamList, "UpdatePatient">;
@@ -33,8 +35,6 @@ type UpdatePatientProps = {
 
 const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
   const { patientId } = route.params;
-  const { session, refreshAllTokens } = useSession();
-
   const [isLoading, setIsLoading] = useState(false);
   const [patientData, setPatientData] = useState({
     patient_first_name: "",
@@ -106,16 +106,8 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
 
   const fetchPatientData = async () => {
     setIsLoading(true);
-    await refreshAllTokens();
     try {
-      const response = await axios.get(
-        `https://healtrackapp-production.up.railway.app/patient/${patientId}`,
-        {
-          headers: {
-            Authorization: "Bearer " + session.tokens.idToken,
-          },
-        }
-      );
+      const response = await axiosInstance.get(`/patient/${patientId}`);
       const patientInfo = response.data.patientData;
       setPatientData({
         ...patientData,
@@ -133,7 +125,6 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
       setSelectedCategory(patientInfo.patient_therepy_category || "");
       setDuration(patientInfo.therepy_duration || "");
 
-      // Handle potentially empty date values
       if (patientInfo.therepy_start) {
         setStartDate(parseDateString(patientInfo.therepy_start));
       }
@@ -141,8 +132,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
         setEndDate(parseDateString(patientInfo.therepy_end));
       }
     } catch (error) {
-      console.error("Error fetching patient data:", error);
-      Alert.alert("Error", "Failed to fetch patient data");
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
@@ -185,9 +175,8 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
       const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
       const formattedStartDate = startDate ? formatDate(startDate) : "";
       const formattedEndDate = endDate ? formatDate(endDate) : "";
-      await refreshAllTokens();
-      const response = await axios.post(
-        `https://healtrackapp-production.up.railway.app/patient/update/${patientData.patient_id}`,
+      const response = await axiosInstance.post(
+        `/patient/update/${patientId}`,
         {
           ...patientData,
           therepy_start: formattedStartDate,
@@ -197,16 +186,13 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: "Bearer " + session.tokens.idToken,
-            "x-liveswitch-token": liveSwitchToken,
           },
         }
       );
-      Alert.alert("Success", "Patient updated successfully");
+      showSuccessToast("Patient updated successfully");
       navigation.navigate("AllPatients");
     } catch (error) {
-      console.error("Error updating patient:", error);
-      Alert.alert("Error", "Failed to update patient");
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
@@ -225,7 +211,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
 
   return (
     <>
-      <BackTabTop />
+      <BackTabTop screenName="Patient" />
       <ScrollView style={styles.scrollView}>
         <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
           <Text style={styles.title}>Update Patient</Text>

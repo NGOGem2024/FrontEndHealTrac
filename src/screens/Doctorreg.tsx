@@ -22,6 +22,9 @@ import * as Animatable from "react-native-animatable";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../context/SessionContext";
 import { Picker } from "@react-native-picker/picker";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
+import BackTabTop from "./BackTopTab";
+import instance from "../utils/axiosConfig";
 
 type DoctorRegisterScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "DoctorRegister">;
@@ -30,7 +33,7 @@ type DoctorRegisterScreenProps = {
 const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
   navigation,
 }) => {
-  const { session, refreshAllTokens } = useSession();
+  const { idToken } = useSession();
   const [doctorData, setDoctorData] = useState({
     doctor_first_name: "",
     doctor_last_name: "",
@@ -42,27 +45,34 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [phoneError, setPhoneError] = useState(""); // New state for phone error
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleDoctorRegister = async () => {
     setIsLoading(true);
 
     try {
+      if (!doctorData.doctor_first_name || !doctorData.doctor_last_name) {
+        throw new Error("First name and last name are required");
+      }
+      if (doctorData.doctor_phone.length !== 10) {
+        throw new Error("Please enter a valid 10-digit phone number");
+      }
+
       const formattedData = {
         ...doctorData,
         doctor_phone: "+91" + doctorData.doctor_phone,
       };
-      await refreshAllTokens();
 
-      const response = await axios.post(
-        "https://healtrackapp-production.up.railway.app/doctor/create",
-        formattedData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.tokens.idToken}`, // Assuming tenant_id is stored in the session
-          },
-        }
-      );
-      Alert.alert("Success", "Doctor registered successfully");
+      const response = await instance.post("/doctor/create", formattedData, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+      showSuccessToast("Doctor registered successfully");
       setDoctorData({
         doctor_first_name: "",
         doctor_last_name: "",
@@ -71,10 +81,9 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
         qualification: "",
         is_admin: false,
       });
-      navigation.navigate("DoctorDashboard"); // Assuming you have an AllDoctors screen
+      navigation.navigate("DoctorDashboard");
     } catch (error) {
-      console.error("Error registering doctor:", error);
-      Alert.alert("Error", "Failed to register doctor");
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
@@ -103,15 +112,7 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
         style={{ flex: 1 }}
       >
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
-          </View>
+          <BackTabTop screenName="Doctor" />
 
           <ScrollView
             contentContainerStyle={styles.scrollContainer}

@@ -18,11 +18,15 @@ import moment from "moment-timezone";
 import { useSession } from "../../context/SessionContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
+import { handleError, showSuccessToast } from "../../utils/errorHandler";
+import GoogleSignInButton from "../../components/googlebutton";
+import axiosinstance from "../../utils/axiosConfig";
+import LiveSwitchLoginButton from "../../components/liveswitchb";
 
 const CreateTherapy = ({ navigation, route }) => {
   const { colors } = useTheme();
   const { patientId } = route.params;
-  const { session, refreshAllTokens } = useSession();
+  const { session, updateAccessToken } = useSession();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [appointmentType, setAppointmentType] = useState("In Clinic");
@@ -36,57 +40,90 @@ const CreateTherapy = ({ navigation, route }) => {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [therapyPlans, setTherapyPlans] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [hasGoogleAccess, setHasGoogleAccess] = useState(false);
+  const [hasLiveSwitchAccess, setHasLiveSwitchAccess] = useState(false);
+  const [showLiveSwitchLogin, setShowLiveSwitchLogin] = useState(false);
+  const [isGoogleSignInVisible, setIsGoogleSignInVisible] = useState(true);
 
   const styles = createStyles(colors);
 
-  const appointmentTypes = ["Online", "In Clinic", "In Home"];
+  const appointmentTypes = ["Liveswitch", "In Clinic", "In Home"];
 
   useEffect(() => {
-    fetchDoctors();
-    fetchTherapyPlans();
-  }, []);
+    setShowLiveSwitchLogin(
+      appointmentType === "Liveswitch" && !hasLiveSwitchAccess
+    );
+  }, [appointmentType, hasLiveSwitchAccess]);
 
+  useEffect(() => {
+    if (hasGoogleAccess) {
+      fetchDoctors();
+      fetchTherapyPlans();
+    }
+  }, [hasGoogleAccess]);
+  useEffect(() => {
+    checkGoogleAccess();
+    checkLiveSwitchAccess();
+  }, [session.accessToken]);
+  const checkLiveSwitchAccess = async () => {
+    const liveTokens = await AsyncStorage.getItem("LiveTokens");
+    setHasLiveSwitchAccess(!!liveTokens);
+    setShowLiveSwitchLogin(appointmentType === "Liveswitch" && !liveTokens);
+  };
+  const handleLiveSwitchLoginSuccess = async () => {
+    await checkLiveSwitchAccess();
+    showSuccessToast("Signed in with LiveSwitch successfully");
+  };
   useEffect(() => {
     if (selectedDoctor && selectedDate) {
       fetchAvailableSlots(selectedDate);
     }
   }, [selectedDoctor, selectedDate]);
 
+  const checkGoogleAccess = async () => {
+    const hasAccess = !!session.accessToken;
+    setHasGoogleAccess(hasAccess);
+    setIsGoogleSignInVisible(!hasAccess);
+  };
+  const handleAppointmentTypeChange = (type) => {
+    setAppointmentType(type);
+    setShowLiveSwitchLogin(type === "Liveswitch" && !hasLiveSwitchAccess);
+  };
+
   const fetchDoctors = async () => {
     try {
-      await refreshAllTokens();
-      const response = await axios.get(
-        "https://healtrackapp-production.up.railway.app/getalldoctor",
-        {
-          headers: {
-            Authorization: `Bearer ${session.tokens.idToken}`,
-            auth: `Bearer ${session.tokens.accessToken}`,
-          },
-        }
-      );
+      const response = await axiosinstance.get("/getalldoctor", {
+        headers: {
+          Authorization: `Bearer ${session.idToken}`,
+        },
+      });
       setDoctors(response.data.doctors);
     } catch (error) {
-      console.error("Error fetching doctors:", error);
-      setError("Failed to fetch doctors. Please try again.");
+      handleError(error);
     }
   };
 
+  useEffect(() => {
+    if (doctors.length > 0 && session.doctor_id) {
+      const defaultDoctor = doctors.find(
+        (doctor) => doctor._id === session.doctor_id
+      );
+      if (defaultDoctor) {
+        setSelectedDoctor(defaultDoctor);
+      }
+    }
+  }, [doctors, session.doctor_id]);
+
   const fetchTherapyPlans = async () => {
     try {
-      await refreshAllTokens();
-      const response = await axios.get(
-        `https://healtrackapp-production.up.railway.app/get/plans/${patientId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.tokens.idToken}`,
-            auth: `Bearer ${session.tokens.accessToken}`,
-          },
-        }
-      );
+      const response = await axiosinstance.get(`/get/plans/${patientId}`, {
+        headers: {
+          Authorization: `Bearer ${session.idToken}`,
+        },
+      });
       setTherapyPlans(response.data.therapy_plans);
     } catch (error) {
-      console.error("Error fetching therapy plans:", error);
-      setError("Failed to fetch therapy plans. Please try again.");
+      handleError(error);
     }
   };
 
@@ -114,16 +151,15 @@ const CreateTherapy = ({ navigation, route }) => {
 
   const fetchAvailableSlots = async (date) => {
     if (!selectedDoctor) {
-      setError("Please select a doctor first.");
+      handleError(new Error("Please select a doctor first."));
       return;
     }
 
     setIsLoadingSlots(true);
     setError("");
     try {
-      await refreshAllTokens();
-      const response = await axios.post(
-        "https://healtrackapp-production.up.railway.app/availability",
+      const response = await axiosinstance.post(
+        "/availability",
         {
           date: moment(date).format("YYYY-MM-DD"),
           doctor_id: selectedDoctor._id,
@@ -131,15 +167,13 @@ const CreateTherapy = ({ navigation, route }) => {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.tokens.idToken}`,
-            auth: `Bearer ${session.tokens.accessToken}`,
+            Authorization: `Bearer ${session.idToken}`,
           },
         }
       );
       setAvailableSlots(response.data);
     } catch (error) {
-      console.error("Error fetching available slots:", error);
-      setError("Failed to fetch available slots. Please try again.");
+      handleError(error);
     } finally {
       setIsLoadingSlots(false);
     }
@@ -154,28 +188,48 @@ const CreateTherapy = ({ navigation, route }) => {
     return slotDate < now || slot.status === "occupied";
   };
 
-  const handleBookAppointment = async () => {
-    if (!session || !session.tokens || !session.tokens.idToken) {
-      Alert.alert("Error", "Please log in to book an appointment.");
-      return;
-    }
-    if (!selectedSlot) {
-      Alert.alert("Error", "Please select a time slot for the appointment.");
-      return;
-    }
-    if (!selectedDoctor) {
-      Alert.alert("Error", "Please select a doctor for the appointment.");
-      return;
-    }
-    if (!selectedPlan) {
-      Alert.alert("Error", "Please select a therapy plan for the appointment.");
-      return;
-    }
-    setIsBooking(true);
-    setError("");
+  const handleGoogleSignIn = async () => {
     try {
-      await refreshAllTokens();
-      const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
+      const handleSignInSuccess = async () => {
+        const googleTokens = await AsyncStorage.getItem("googleTokens");
+        if (googleTokens) {
+          const { accessToken } = JSON.parse(googleTokens);
+          if (accessToken) {
+            await updateAccessToken(accessToken);
+            setHasGoogleAccess(true);
+            setIsGoogleSignInVisible(false);
+            showSuccessToast("Signed in with Google successfully");
+          } else {
+            throw new Error("No access token received");
+          }
+        } else {
+          throw new Error("No Google tokens found");
+        }
+      };
+
+      await handleSignInSuccess();
+    } catch (error) {
+      console.error("Error during Google Sign-In:", error);
+      handleError(error);
+    }
+  };
+  const handleBookAppointment = async () => {
+    try {
+      if (!session.idToken) {
+        throw new Error("Please log in to book an appointment.");
+      }
+
+      if (!selectedSlot) {
+        throw new Error("Please select a time slot for the appointment.");
+      }
+      if (!selectedDoctor) {
+        throw new Error("Please select a doctor for the appointment.");
+      }
+      if (!selectedPlan) {
+        throw new Error("Please select a therapy plan for the appointment.");
+      }
+      setIsBooking(true);
+      setError("");
       const requestBody = {
         contactId: patientId,
         message: "Please click the following LiveSwitch conversation link.",
@@ -191,28 +245,25 @@ const CreateTherapy = ({ navigation, route }) => {
         plan_id: selectedPlan._id,
         doctor_email: selectedDoctor.doctor_email,
       };
-      const response = await axios.post(
-        "https://healtrackapp-production.up.railway.app/therepy/create",
+      const response = await axiosinstance.post(
+        "/therepy/create",
         requestBody,
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.tokens.idToken}`,
-            auth: `Bearer ${session.tokens.accessToken}`,
-            "X-liveSwitch-token": liveSwitchToken,
+            Authorization: `Bearer ${session.idToken}`,
           },
         }
       );
 
       if (response.status === 200 || response.status === 201) {
-        Alert.alert("Success", "Appointment booked successfully");
+        showSuccessToast("Appointment booked successfully");
         navigation.goBack();
       } else {
-        setError("Failed to book appointment. Please try again.");
+        throw new Error("Failed to book appointment. Please try again.");
       }
     } catch (error) {
-      setError("An error occurred while booking the appointment.");
-      console.error(error);
+      handleError(error);
     } finally {
       setIsBooking(false);
     }
@@ -243,6 +294,19 @@ const CreateTherapy = ({ navigation, route }) => {
       </TouchableOpacity>
     );
   };
+
+  if (!hasGoogleAccess) {
+    return (
+      <View style={styles.bcontainer}>
+        <View style={styles.googleButtonContainer}>
+          <Text style={styles.googleButtonText}>
+            Sign in with Google to access your calendar
+          </Text>
+          <GoogleSignInButton onSignInSuccess={handleGoogleSignIn} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -301,7 +365,7 @@ const CreateTherapy = ({ navigation, route }) => {
                   styles.typeButton,
                   appointmentType === type && styles.selectedTypeButton,
                 ]}
-                onPress={() => setAppointmentType(type)}
+                onPress={() => handleAppointmentTypeChange(type)}
               >
                 <Text
                   style={[
@@ -315,6 +379,17 @@ const CreateTherapy = ({ navigation, route }) => {
             ))}
           </View>
         </View>
+
+        {showLiveSwitchLogin && (
+          <View style={styles.liveSwitchButtonContainer}>
+            <Text style={styles.liveSwitchButtonText}>
+              Sign in with LiveSwitch for video appointments
+            </Text>
+            <LiveSwitchLoginButton
+              onLoginSuccess={handleLiveSwitchLoginSuccess}
+            />
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Select Date</Text>
@@ -385,11 +460,25 @@ const CreateTherapy = ({ navigation, route }) => {
         </View>
       )}
 
+      {isGoogleSignInVisible && (
+        <View style={styles.googleButtonContainer}>
+          <Text style={styles.googleButtonText}>
+            Sign in with Google to access your calendar
+          </Text>
+          <GoogleSignInButton onSignInSuccess={handleGoogleSignIn} />
+        </View>
+      )}
+
       <TouchableOpacity
         style={[styles.bookButton, isBooking && { opacity: 0.5 }]}
         onPress={handleBookAppointment}
         disabled={
-          !selectedDoctor || !selectedSlot || !selectedPlan || isBooking
+          !selectedDoctor ||
+          !selectedSlot ||
+          !selectedPlan ||
+          isBooking ||
+          !hasGoogleAccess ||
+          (appointmentType === "Liveswitch" && !hasLiveSwitchAccess)
         }
       >
         <Text style={styles.bookButtonText}>
@@ -423,6 +512,35 @@ const createStyles = (colors) =>
       color: "#666",
       textAlign: "center",
       marginTop: 10,
+    },
+    bcontainer: {
+      flex: 1,
+      backgroundColor: "#F0F8FF",
+      justifyContent: "center", // Vertically center
+      alignItems: "center", // Horizontally center
+    },
+    googleButtonContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 20,
+    },
+    liveSwitchButtonContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 10,
+      padding: 16,
+      backgroundColor: "#FFFFFF",
+      borderRadius: 10,
+      elevation: 2,
+    },
+    liveSwitchButtonText: {
+      marginBottom: 10,
+      textAlign: "center",
+      color: "#333333",
+    },
+    googleButtonText: {
+      marginBottom: 10,
+      textAlign: "center",
     },
     title: {
       fontSize: 28,

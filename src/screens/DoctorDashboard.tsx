@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Linking,
   ActivityIndicator,
   useWindowDimensions,
+  TouchableWithoutFeedback,
 } from "react-native";
 import axios from "axios";
 import Icon from "react-native-vector-icons/Ionicons";
@@ -22,6 +23,11 @@ import { useSession } from "../context/SessionContext";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RefreshControl } from "react-native";
 import AppointmentDetailsScreen from "./AppointmentDetails";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
+import { Ionicons } from "@expo/vector-icons";
+import Modal from "react-native-modal";
+import axiosInstance from "../utils/axiosConfig";
+import NoAppointmentsPopup from "./Noappointmentspopup";
 
 interface DoctorInfo {
   _id: string;
@@ -61,77 +67,72 @@ type Item = {
   screen?: keyof RootStackParamList | undefined;
 };
 
-const API_BASE_URL = "https://healtrackapp-production.up.railway.app";
-
 const DoctorDashboard: React.FC = () => {
   const { theme } = useTheme();
-  const styles = useMemo(() => getStyles(getTheme(theme)), [theme]);
+  const styles = getStyles(getTheme(theme));
   const navigation = useNavigation<DashboardScreenNavigationProp>();
-  const { session, refreshAllTokens } = useSession();
+  const { session } = useSession();
+  const { width } = useWindowDimensions();
 
   const [refreshing, setRefreshing] = useState(false);
   const [doctorLoading, setDoctorLoading] = useState(true);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
-
   const [doctorInfo, setDoctorInfo] = useState<DoctorInfo | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [showAllAppointments, setShowAllAppointments] = useState(false);
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
+  const [isAppointmentModalVisible, setIsAppointmentModalVisible] =
+    useState(false);
+  const [noAppointmentsPopupVisible, setNoAppointmentsPopupVisible] =
+    useState(false);
 
-  const { width } = useWindowDimensions();
-
-  const fetchDoctorInfo = useCallback(async () => {
-    if (!session?.tokens?.idToken) return;
-
+  const fetchDoctorInfo = async () => {
+    if (!session.idToken) return;
     setDoctorLoading(true);
     try {
-      await refreshAllTokens();
-      const doctorResponse = await axios.get(`${API_BASE_URL}/doctor`, {
-        headers: { Authorization: `Bearer ${session.tokens.idToken}` },
+      const doctorResponse = await axiosInstance.get(`/doctor`, {
+        headers: { Authorization: `Bearer ${session.idToken}` },
       });
-
       setDoctorInfo(doctorResponse.data);
     } catch (error) {
-      console.error("Error fetching doctor info:", error);
+      handleError(error);
     } finally {
       setDoctorLoading(false);
     }
-  }, [session, refreshAllTokens]);
+  };
 
-  const fetchAppointments = useCallback(async () => {
-    if (!session?.tokens?.idToken) return;
-
+  const fetchAppointments = async () => {
+    if (!session.idToken) return;
     setAppointmentsLoading(true);
     try {
-      const appointmentsResponse = await axios.get(
-        `${API_BASE_URL}/appointments/getevents`,
+      const appointmentsResponse = await axiosInstance.get(
+        `/appointments/getevents`,
         {
-          headers: { Authorization: `Bearer ${session.tokens.idToken}` },
+          headers: { Authorization: `Bearer ${session.idToken}` },
         }
       );
       setAppointments(appointmentsResponse.data.appointments);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         setAppointments([]);
-        console.log("No therapies available for today");
+        setNoAppointmentsPopupVisible(true);
       } else {
-        console.error("Error fetching appointments:", error);
+        handleError(error);
       }
     } finally {
       setAppointmentsLoading(false);
     }
-  }, [session]);
+  };
 
-  const fetchAllAppointments = useCallback(async () => {
-    if (!session?.tokens?.idToken) return;
-
+  const fetchAllAppointments = async () => {
+    if (!session.idToken) return;
     try {
-      const allAppointmentsResponse = await axios.get(
-        `${API_BASE_URL}/All/appointments`,
+      const allAppointmentsResponse = await axiosInstance.get(
+        `/All/appointments`,
         {
-          headers: { Authorization: `Bearer ${session.tokens.idToken}` },
+          headers: { Authorization: `Bearer ${session.idToken}` },
         }
       );
       setAllAppointments(allAppointmentsResponse.data);
@@ -139,13 +140,12 @@ const DoctorDashboard: React.FC = () => {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         setAllAppointments([]);
       } else {
-        console.error("Error fetching all appointments:", error);
+        handleError(error);
       }
     }
-  }, [session]);
-
+  };
   useEffect(() => {
-    if (session?.tokens?.accessToken) {
+    if (session.idToken) {
       fetchDoctorInfo();
       fetchAppointments();
       fetchAllAppointments();
@@ -153,34 +153,19 @@ const DoctorDashboard: React.FC = () => {
       setDoctorLoading(false);
       setAppointmentsLoading(false);
     }
-  }, [session, fetchDoctorInfo, fetchAppointments, fetchAllAppointments]);
+  }, [session.idToken]);
 
-  const onRefresh = useCallback(async () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    await fetchDoctorInfo();
-    await fetchAppointments();
-    await fetchAllAppointments();
+    await Promise.all([
+      fetchDoctorInfo(),
+      fetchAppointments(),
+      fetchAllAppointments(),
+    ]);
     setRefreshing(false);
-  }, [fetchDoctorInfo, fetchAppointments]);
+  };
 
-  const items: Item[] = useMemo(
-    () => [
-      {
-        icon: "medical-outline",
-        label: "All Doctors",
-        screen: "AllDoctors",
-      },
-      { icon: "list-outline", label: "View Patients", screen: "AllPatients" },
-      {
-        icon: "add-circle-outline",
-        label: "Add Doctor",
-        screen: doctorInfo?.is_admin ? "DoctorRegister" : undefined,
-      },
-    ],
-    [doctorInfo]
-  );
-
-  const formatDate = useCallback((date: string) => {
+  const formatDate = (date: string) => {
     const options: Intl.DateTimeFormatOptions = {
       weekday: "long",
       year: "numeric",
@@ -188,88 +173,147 @@ const DoctorDashboard: React.FC = () => {
       day: "numeric",
     };
     return new Date(date).toLocaleDateString("en-US", options);
-  }, []);
+  };
 
-  const sortAppointmentsByTime = useCallback((appointments: Appointment[]) => {
-    return appointments.sort((a, b) => {
+  const sortAppointmentsByTime = (appointments: Appointment[]) => {
+    return [...appointments].sort((a, b) => {
       const dateTimeA = new Date(`${a.therepy_date} ${a.therepy_start_time}`);
       const dateTimeB = new Date(`${b.therepy_date} ${b.therepy_start_time}`);
       return dateTimeA.getTime() - dateTimeB.getTime();
     });
-  }, []);
+  };
 
-  const todayAppointments = useMemo(() => {
+  const todayAppointments = (() => {
     const today = new Date().toISOString().split("T")[0];
     const filteredAppointments = appointments.filter(
       (appointment) => appointment.therepy_date === today
     );
     return sortAppointmentsByTime(filteredAppointments);
-  }, [appointments, sortAppointmentsByTime]);
+  })();
 
-  const renderAppointment = useCallback(
-    ({ item }: { item: Appointment }) => (
-      <TouchableOpacity
-        style={styles.appointmentItem}
-        onPress={() => setSelectedAppointment(item)}
-      >
-        <Icon
-          name={
-            item.therepy_type.toLowerCase().includes("video")
-              ? "videocam-outline"
-              : "person-outline"
-          }
-          size={24}
-          color={styles.iconColor.color}
-        />
-        <View style={styles.appointmentInfo}>
-          <View style={styles.appointmentMainInfo}>
-            <View>
-              <Text style={styles.appointmentTime}>
-                {item.therepy_start_time}
-              </Text>
-              <Text style={styles.appointmentType}>{item.therepy_type}</Text>
-            </View>
-            {item.patient_name && (
-              <Text
-                style={styles.patientName}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {item.patient_name}
-              </Text>
-            )}
-            {showAllAppointments && item.doctor_name && (
-              <Text
-                style={styles.doctorName}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                Dr. {item.doctor_name}
-              </Text>
-            )}
+  const handleAppointmentPress = (item: Appointment) => {
+    setSelectedAppointment(item);
+    setIsAppointmentModalVisible(true);
+  };
+
+  const closeAppointmentModal = () => {
+    setIsAppointmentModalVisible(false);
+    setSelectedAppointment(null);
+  };
+
+  const renderAppointment = ({ item }: { item: Appointment }) => (
+    <TouchableOpacity
+      style={styles.appointmentItem}
+      onPress={() => handleAppointmentPress(item)}
+    >
+      <Icon
+        name={
+          item.therepy_type.toLowerCase().includes("video")
+            ? "videocam-outline"
+            : "person-outline"
+        }
+        size={24}
+        color={styles.iconColor.color}
+      />
+      <View style={styles.appointmentInfo}>
+        <View style={styles.appointmentMainInfo}>
+          <View>
+            <Text style={styles.appointmentTime}>
+              {item.therepy_start_time}
+            </Text>
+            <Text style={styles.appointmentType}>{item.therepy_type}</Text>
           </View>
+          {item.patient_name && (
+            <Text
+              style={styles.patientName}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {item.patient_name}
+            </Text>
+          )}
+          {showAllAppointments && item.doctor_name && (
+            <Text
+              style={styles.doctorName}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              Dr. {item.doctor_name}
+            </Text>
+          )}
         </View>
-      </TouchableOpacity>
-    ),
-    [styles, showAllAppointments]
+      </View>
+    </TouchableOpacity>
   );
 
-  const handleNavigation = useCallback(
-    (screen?: keyof RootStackParamList) => {
-      if (screen) {
-        navigation.navigate(screen);
-      }
-    },
-    [navigation]
-  );
+  const handleNavigation = (screen?: keyof RootStackParamList) => {
+    if (screen) {
+      navigation.navigate(screen);
+    }
+  };
 
-  const handleLogout = useCallback(() => {
-    navigation.navigate("Logout");
-  }, [navigation]);
-
-  const toggleAllAppointments = useCallback(() => {
+  const toggleAllAppointments = () => {
     setShowAllAppointments((prev) => !prev);
-  }, []);
+  };
+
+  const items: Item[] = [
+    { icon: "medical-outline", label: "All Doctors", screen: "AllDoctors" },
+    { icon: "list-outline", label: "View Patients", screen: "AllPatients" },
+    {
+      icon: "add-circle-outline",
+      label: "Add Doctor",
+      screen: doctorInfo?.is_admin ? "DoctorRegister" : undefined,
+    },
+  ];
+
+  const DashboardHeader = () => {
+    const [isDropdownVisible, setDropdownVisible] = useState(false);
+
+    const toggleDropdown = () => setDropdownVisible(!isDropdownVisible);
+
+    const navigateToScreen = (screenName: string) => {
+      navigation.navigate(screenName as never);
+      setDropdownVisible(false);
+    };
+
+    return (
+      <View style={styles.dashboardHeader}>
+        <Image
+          source={require("../assets/logo3.png")}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
+        <TouchableOpacity style={styles.profileButton} onPress={toggleDropdown}>
+          <Ionicons name="person-circle-outline" size={30} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <Modal
+          isVisible={isDropdownVisible}
+          onBackdropPress={toggleDropdown}
+          animationIn="fadeIn"
+          animationOut="fadeOut"
+          style={styles.modal}
+        >
+          <View style={styles.dropdown}>
+            <TouchableOpacity onPress={() => navigateToScreen("AllPatients")}>
+              <Text style={styles.dropdownItem}>All Patients</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigateToScreen("DoctorDashboard")}
+            >
+              <Text style={styles.dropdownItem}>Dashboard</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigateToScreen("Logout")}>
+              <Text style={[styles.dropdownItem, styles.logoutText]}>
+                Logout
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+      </View>
+    );
+  };
+
   if (doctorLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -279,7 +323,7 @@ const DoctorDashboard: React.FC = () => {
     );
   }
 
-  if (!session?.tokens?.accessToken) {
+  if (!session.idToken) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>
@@ -291,158 +335,146 @@ const DoctorDashboard: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {selectedAppointment ? (
-        <AppointmentDetailsScreen
-          appointment={selectedAppointment}
-          onClose={() => setSelectedAppointment(null)}
-        />
-      ) : (
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
-          <View style={styles.header}>
-            <Text style={styles.headerText}>
-              {doctorInfo?.is_admin ? "Admin Dashboard" : "Doctor Dashboard"}
-            </Text>
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={handleLogout}
-              >
-                <Icon name="log-out-outline" size={30} color="white" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {doctorInfo && (
-            <View style={styles.profileSection}>
-              <Image
-                source={require("../assets/profile.png")}
-                style={styles.profilePhoto}
-              />
-              <View style={styles.profileInfo}>
-                <Text style={styles.profileName}>
-                  Dr. {doctorInfo.doctor_first_name}{" "}
-                  {doctorInfo.doctor_last_name}
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <DashboardHeader />
+        {doctorInfo && (
+          <View style={styles.profileSection}>
+            <Image
+              source={require("../assets/profile.png")}
+              style={styles.profilePhoto}
+            />
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>
+                Dr. {doctorInfo.doctor_first_name} {doctorInfo.doctor_last_name}
+              </Text>
+              <Text style={styles.profileDetailText}>
+                {doctorInfo.qualification}
+              </Text>
+              {doctorInfo.organization_name && (
+                <Text style={styles.profileOrg}>
+                  {doctorInfo.organization_name}
                 </Text>
+              )}
+              <View style={styles.profileDetail}>
+                <Icon
+                  name="mail-outline"
+                  size={16}
+                  color={styles.profileDetailIcon.color}
+                />
                 <Text style={styles.profileDetailText}>
-                  {doctorInfo.qualification}
+                  {doctorInfo.doctor_email}
                 </Text>
-                {doctorInfo.organization_name && (
-                  <Text style={styles.profileOrg}>
-                    {doctorInfo.organization_name}
-                  </Text>
-                )}
-                <View style={styles.profileDetail}>
-                  <Icon
-                    name="mail-outline"
-                    size={16}
-                    color={styles.profileDetailIcon.color}
-                  />
-                  <Text style={styles.profileDetailText}>
-                    {doctorInfo.doctor_email}
-                  </Text>
-                </View>
-                <View style={styles.profileDetail}>
-                  <Icon
-                    name="call-outline"
-                    size={16}
-                    color={styles.profileDetailIcon.color}
-                  />
-                  <Text style={styles.profileDetailText}>
-                    {doctorInfo.doctor_phone}
-                  </Text>
-                </View>
+              </View>
+              <View style={styles.profileDetail}>
+                <Icon
+                  name="call-outline"
+                  size={16}
+                  color={styles.profileDetailIcon.color}
+                />
+                <Text style={styles.profileDetailText}>
+                  {doctorInfo.doctor_phone}
+                </Text>
               </View>
             </View>
-          )}
-
-          <View style={styles.statsSection}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {doctorInfo?.patients?.length || 0}
-              </Text>
-              <Text style={styles.statLabel}>Patient Joined</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{todayAppointments.length}</Text>
-              <Text style={styles.statLabel}>Appointments</Text>
-            </View>
           </View>
+        )}
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Management</Text>
-            <View style={styles.cardContainer}>
-              {items.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.card,
-                    !item.screen && { opacity: 0.5 },
-                    { width: (width - 64) / 3 },
-                  ]}
-                  onPress={() => item.screen && handleNavigation(item.screen)}
-                  disabled={!item.screen}
-                >
-                  <Icon
-                    name={item.icon}
-                    size={32}
-                    color={styles.cardIcon.color}
-                  />
-                  <Text style={styles.cardText}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-          <View style={styles.section}>
-            <View style={styles.appointmentHeader}>
-              <Text style={styles.sectionTitle}>
-                {showAllAppointments
-                  ? "All Appointments"
-                  : "Today's Appointments"}
-              </Text>
-              <TouchableOpacity
-                style={styles.toggleButton}
-                onPress={toggleAllAppointments}
-              >
-                <Text style={styles.toggleButtonText}>
-                  {showAllAppointments ? "Show My" : "Show All"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.dateText}>
-              {formatDate(new Date().toISOString())}
+        <View style={styles.statsSection}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>
+              {doctorInfo?.patients?.length || 0}
             </Text>
-            {showAllAppointments ? (
-              <FlatList
-                data={sortAppointmentsByTime(allAppointments)}
-                renderItem={renderAppointment}
-                keyExtractor={(item) => item._id}
-                scrollEnabled={false}
-              />
-            ) : todayAppointments.length > 0 ? (
-              <FlatList
-                data={todayAppointments}
-                renderItem={renderAppointment}
-                keyExtractor={(item) => item._id}
-                scrollEnabled={false}
-              />
-            ) : (
-              <Text style={styles.noAppointmentsText}>
-                No appointments scheduled for today.
-              </Text>
-            )}
+            <Text style={styles.statLabel}>Patient Joined</Text>
           </View>
-        </ScrollView>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{todayAppointments.length}</Text>
+            <Text style={styles.statLabel}>Appointments</Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Management</Text>
+          <View style={styles.cardContainer}>
+            {items.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.card,
+                  !item.screen && { opacity: 0.5 },
+                  { width: (width - 64) / 3 },
+                ]}
+                onPress={() => item.screen && handleNavigation(item.screen)}
+                disabled={!item.screen}
+              >
+                <Icon
+                  name={item.icon}
+                  size={32}
+                  color={styles.cardIcon.color}
+                />
+                <Text style={styles.cardText}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.appointmentHeader}>
+            <Text style={styles.sectionTitle}>
+              {showAllAppointments
+                ? "All Appointments"
+                : "Today's Appointments"}
+            </Text>
+            <TouchableOpacity
+              style={styles.toggleButton}
+              onPress={toggleAllAppointments}
+            >
+              <Text style={styles.toggleButtonText}>
+                {showAllAppointments ? "Show My" : "Show All"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.dateText}>
+            {formatDate(new Date().toISOString())}
+          </Text>
+          {showAllAppointments ? (
+            <FlatList
+              data={sortAppointmentsByTime(allAppointments)}
+              renderItem={renderAppointment}
+              keyExtractor={(item) => item._id}
+              scrollEnabled={false}
+              ListEmptyComponent={<NoAppointmentsPopup visible={true} />}
+            />
+          ) : todayAppointments.length > 0 ? (
+            <FlatList
+              data={todayAppointments}
+              renderItem={renderAppointment}
+              keyExtractor={(item) => item._id}
+              scrollEnabled={false}
+            />
+          ) : (
+            <NoAppointmentsPopup visible={true} />
+          )}
+        </View>
+      </ScrollView>
+      {isAppointmentModalVisible && selectedAppointment && (
+        <View style={styles.fullScreenModal}>
+          <AppointmentDetailsScreen
+            appointment={selectedAppointment}
+            onClose={closeAppointmentModal}
+          />
+        </View>
       )}
     </SafeAreaView>
   );
 };
+
 const getStyles = (theme: ReturnType<typeof getTheme>) =>
   StyleSheet.create({
     loadingContainer: {
@@ -465,6 +497,60 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       borderRadius: 5,
       // height:25,
       paddingVertical: 5,
+    },
+    dashboardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 10,
+      paddingHorizontal: 15,
+      paddingTop: 10,
+      backgroundColor: "#119FB3",
+    },
+    logoImage: {
+      width: 120,
+      height: 40,
+    },
+    profileButton: {
+      alignItems: "flex-end",
+    },
+    modal: {
+      margin: 0,
+      justifyContent: "flex-start",
+      alignItems: "flex-end",
+    },
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContainer: {
+      backgroundColor: "white",
+      borderRadius: 20,
+      width: "98%",
+      maxHeight: "95%",
+    },
+    dropdown: {
+      backgroundColor: "white",
+      borderRadius: 5,
+      padding: 10,
+      marginTop: 44,
+      marginRight: 20,
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+    },
+    dropdownItem: {
+      padding: 10,
+      fontSize: 16,
+    },
+    logoutText: {
+      color: "red",
     },
     safeArea: {
       flex: 1,
@@ -656,6 +742,15 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 2,
+    },
+    fullScreenModal: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: "white",
+      zIndex: 1000,
     },
     appointmentInfo: {
       flex: 1,

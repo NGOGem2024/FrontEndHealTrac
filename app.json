@@ -32,7 +32,7 @@
       }
     },
     "splash": {
-      "image": "./src/assets/HealTrackLoGO.png",
+      "image": "./src/assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
