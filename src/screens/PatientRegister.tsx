@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   ImageBackground,
   KeyboardType,
+  Platform,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
@@ -25,6 +26,7 @@ import { Picker } from "@react-native-picker/picker";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import axiosInstance from "../utils/axiosConfig";
 import BackTabTop from "./BackTopTab";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 type PatientRegisterScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "PatientRegister">;
@@ -174,153 +176,178 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
       source={require("../assets/bac2.jpg")}
       style={styles.backgroundImage}
     >
-      <ScrollView>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <BackTabTop screenName="Patient" />
-          <ScrollView contentContainerStyle={styles.scrollContainer}>
-            <Animatable.View animation="fadeInUp" style={styles.container}>
-              <Text style={styles.title}>Register Patient</Text>
-              {renderInput(
-                "First Name",
-                patientData.patient_first_name,
-                "patient_first_name",
-                "default",
-                true
-              )}
-              {renderInput(
-                "Last Name",
-                patientData.patient_last_name,
-                "patient_last_name",
-                "default",
-                true
-              )}
-              {renderInput(
-                "Email",
-                patientData.patient_email,
-                "patient_email",
-                "email-address"
-              )}
-              <Animatable.View
-                animation="fadeInUp"
-                style={styles.inputContainer}
+      <BackTabTop screenName="Patient" />
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scrollContainer}
+        enableOnAndroid={true}
+        enableAutomaticScroll={Platform.OS === "ios"}
+        extraScrollHeight={100}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.centerContainer}>
+          <Animatable.View animation="fadeInUp" style={styles.container}>
+            <Text style={styles.title}>Register Patient</Text>
+            {renderInput(
+              "First Name",
+              patientData.patient_first_name,
+              "patient_first_name",
+              "default",
+              true
+            )}
+            {renderInput(
+              "Last Name",
+              patientData.patient_last_name,
+              "patient_last_name",
+              "default",
+              true
+            )}
+            {renderInput(
+              "Email",
+              patientData.patient_email,
+              "patient_email",
+              "email-address"
+            )}
+            {/* Phone input */}
+            <Animatable.View animation="fadeInUp" style={styles.inputContainer}>
+              <View
+                style={[
+                  styles.phoneInputContainer,
+                  getInputStyle("patient_phone"),
+                ]}
               >
-                <View
-                  style={[
-                    styles.phoneInputContainer,
-                    getInputStyle("patient_phone"),
-                  ]}
+                <Text style={styles.phonePrefix}>+91</Text>
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="Contact No."
+                  value={patientData.patient_phone}
+                  onChangeText={(text) =>
+                    handleInputChange("patient_phone", text)
+                  }
+                  keyboardType="numeric"
+                  maxLength={10}
+                />
+              </View>
+            </Animatable.View>
+            {/* Referral source picker */}
+            <Animatable.View animation="fadeInUp" style={styles.inputContainer}>
+              <View style={getInputStyle("referral_source")}>
+                <Picker
+                  selectedValue={patientData.referral_source}
+                  style={styles.picker}
+                  onValueChange={(itemValue) =>
+                    handleInputChange("referral_source", itemValue)
+                  }
                 >
-                  <Text style={styles.phonePrefix}>+91</Text>
-                  <TextInput
-                    style={styles.phoneInput}
-                    placeholder="Contact No."
-                    value={patientData.patient_phone}
-                    onChangeText={(text) =>
-                      handleInputChange("patient_phone", text)
-                    }
-                    keyboardType="numeric"
-                    maxLength={10}
+                  <Picker.Item label="Select Referral Source" value="" />
+                  <Picker.Item label="Social Media" value="Social Media" />
+                  <Picker.Item
+                    label="Patient Reference"
+                    value="Patient Reference"
                   />
-                </View>
-              </Animatable.View>
-              <Animatable.View
-                animation="fadeInUp"
-                style={styles.inputContainer}
-              >
-                <View style={getInputStyle("referral_source")}>
-                  <Picker
-                    selectedValue={patientData.referral_source}
-                    style={styles.picker}
-                    onValueChange={(itemValue) =>
-                      handleInputChange("referral_source", itemValue)
-                    }
-                  >
-                    <Picker.Item label="Select Referral Source" value="" />
-                    <Picker.Item label="Social Media" value="Social Media" />
-                    <Picker.Item
-                      label="Patient Reference"
-                      value="Patient Reference"
-                    />
-                    <Picker.Item
-                      label="Hospital Reference"
-                      value="Hospital Reference"
-                    />
-                    <Picker.Item
-                      label="Doctor Reference"
-                      value="Doctor Reference"
-                    />
-                    <Picker.Item label="Other" value="Other" />
-                  </Picker>
-                </View>
-              </Animatable.View>
-              {patientData.referral_source &&
-                patientData.referral_source !== "Social Media" && (
-                  <Animatable.View
-                    animation="fadeInUp"
-                    style={styles.inputContainer}
-                  >
-                    <TextInput
-                      style={getInputStyle("referral_details")}
-                      placeholder="Referral Details"
-                      value={patientData.referral_details}
-                      onChangeText={(text) =>
-                        handleInputChange("referral_details", text)
-                      }
-                    />
-                  </Animatable.View>
-                )}
-              {patientData.referral_source === "Social Media" && (
+                  <Picker.Item
+                    label="Hospital Reference"
+                    value="Hospital Reference"
+                  />
+                  <Picker.Item
+                    label="Doctor Reference"
+                    value="Doctor Reference"
+                  />
+                  <Picker.Item label="Other" value="Other" />
+                </Picker>
+              </View>
+            </Animatable.View>
+            {/* Conditional referral details input */}
+            {patientData.referral_source &&
+              patientData.referral_source !== "Social Media" && (
                 <Animatable.View
                   animation="fadeInUp"
                   style={styles.inputContainer}
                 >
-                  <View style={getInputStyle("referral_details")}>
-                    <Picker
-                      selectedValue={patientData.referral_details}
-                      style={styles.picker}
-                      onValueChange={(itemValue) =>
-                        handleInputChange("referral_details", itemValue)
-                      }
-                    >
-                      <Picker.Item
-                        label="Select Social Media Platform"
-                        value=""
-                      />
-                      <Picker.Item label="Instagram" value="Instagram" />
-                      <Picker.Item label="Facebook" value="Facebook" />
-                      <Picker.Item label="WhatsApp" value="WhatsApp" />
-                      <Picker.Item label="YouTube" value="YouTube" />
-                      <Picker.Item label="Google" value="Google" />
-                    </Picker>
-                  </View>
+                  <TextInput
+                    style={getInputStyle("referral_details")}
+                    placeholder="Referral Details"
+                    value={patientData.referral_details}
+                    onChangeText={(text) =>
+                      handleInputChange("referral_details", text)
+                    }
+                  />
                 </Animatable.View>
               )}
-              <TouchableOpacity
-                style={styles.button}
-                onPress={handlePatientRegister}
-                disabled={isLoading}
+            {patientData.referral_source === "Social Media" && (
+              <Animatable.View
+                animation="fadeInUp"
+                style={styles.inputContainer}
               >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.buttonText}>Register</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.backButton1}
-                onPress={() => navigation.navigate("DoctorDashboard")}
-              >
-                <Text style={styles.backButtonText1}>Back to Home</Text>
-              </TouchableOpacity>
-            </Animatable.View>
-          </ScrollView>
-        </GestureHandlerRootView>
-      </ScrollView>
+                <View style={getInputStyle("referral_details")}>
+                  <Picker
+                    selectedValue={patientData.referral_details}
+                    style={styles.picker}
+                    onValueChange={(itemValue) =>
+                      handleInputChange("referral_details", itemValue)
+                    }
+                  >
+                    <Picker.Item
+                      label="Select Social Media Platform"
+                      value=""
+                    />
+                    <Picker.Item label="Instagram" value="Instagram" />
+                    <Picker.Item label="Facebook" value="Facebook" />
+                    <Picker.Item label="WhatsApp" value="WhatsApp" />
+                    <Picker.Item label="YouTube" value="YouTube" />
+                    <Picker.Item label="Google" value="Google" />
+                  </Picker>
+                </View>
+              </Animatable.View>
+            )}
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handlePatientRegister}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.buttonText}>Register</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.backButton1}
+              onPress={() => navigation.navigate("DoctorDashboard")}
+            >
+              <Text style={styles.backButtonText1}>Back to Home</Text>
+            </TouchableOpacity>
+          </Animatable.View>
+        </View>
+      </KeyboardAwareScrollView>
     </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  centerContainer: {
+    width: "100%",
+    alignItems: "center",
+  },
+  container: {
+    width: "90%",
+    padding: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    marginTop: 10,
+  },
   input: {
     borderWidth: 1,
     borderRadius: 5,
@@ -361,26 +388,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     fontSize: 16,
     color: "#333333",
-  },
-  scrollContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  container: {
-    width: "90%",
-    padding: 20,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    marginTop: 10,
   },
   header: {
     flexDirection: "row",

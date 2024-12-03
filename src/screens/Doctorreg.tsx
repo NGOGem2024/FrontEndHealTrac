@@ -17,9 +17,7 @@ import {
   GestureHandlerRootView,
   ScrollView,
 } from "react-native-gesture-handler";
-import axios from "axios";
 import * as Animatable from "react-native-animatable";
-import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../context/SessionContext";
 import { Picker } from "@react-native-picker/picker";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
@@ -30,20 +28,43 @@ type DoctorRegisterScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "DoctorRegister">;
 };
 
+const initialDoctorData = {
+  doctor_first_name: "",
+  doctor_last_name: "",
+  doctor_email: "",
+  doctor_phone: "",
+  qualification: "",
+  is_admin: false,
+};
+
+const initialFieldStatus = {
+  doctor_first_name: false,
+  doctor_last_name: false,
+  doctor_email: false,
+  doctor_phone: false,
+  qualification: false,
+};
+
 const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
   navigation,
 }) => {
   const { idToken } = useSession();
-  const [doctorData, setDoctorData] = useState({
-    doctor_first_name: "",
-    doctor_last_name: "",
-    doctor_email: "",
-    doctor_phone: "",
-    qualification: "",
-    is_admin: false,
-  });
+  const [doctorData, setDoctorData] = useState(initialDoctorData);
   const [isLoading, setIsLoading] = useState(false);
-  const [phoneError, setPhoneError] = useState(""); // New state for phone error
+  const [fieldStatus, setFieldStatus] = useState(initialFieldStatus);
+
+  const handleInputChange = (field: string, value: string) => {
+    let newValue = value;
+    if (field === "doctor_first_name" || field === "doctor_last_name") {
+      newValue = value.replace(/[^a-zA-Z\s]/g, "");
+    } else if (field === "doctor_phone") {
+      newValue = value.replace(/[^0-9]/g, "");
+    } else if (field === "doctor_email") {
+      newValue = value.toLowerCase();
+    }
+    setDoctorData({ ...doctorData, [field]: newValue });
+    setFieldStatus({ ...fieldStatus, [field]: newValue.length > 0 });
+  };
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -51,16 +72,32 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
   };
 
   const handleDoctorRegister = async () => {
+    if (!doctorData.doctor_first_name || !doctorData.doctor_last_name) {
+      handleError(new Error("First name and last name are required"));
+      return;
+    }
+
+    if (doctorData.doctor_phone.length !== 10) {
+      handleError(new Error("Please enter a valid 10-digit phone number"));
+      return;
+    }
+    if (!doctorData.doctor_email) {
+      handleError(new Error("Email is required"));
+      return;
+    }
+
+    if (!validateEmail(doctorData.doctor_email)) {
+      handleError(new Error("Please enter a valid email address"));
+      return;
+    }
+
+    if (!doctorData.qualification) {
+      handleError(new Error("Qualification is required"));
+      return;
+    }
+
     setIsLoading(true);
-
     try {
-      if (!doctorData.doctor_first_name || !doctorData.doctor_last_name) {
-        throw new Error("First name and last name are required");
-      }
-      if (doctorData.doctor_phone.length !== 10) {
-        throw new Error("Please enter a valid 10-digit phone number");
-      }
-
       const formattedData = {
         ...doctorData,
         doctor_phone: "+91" + doctorData.doctor_phone,
@@ -73,14 +110,8 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
         },
       });
       showSuccessToast("Doctor registered successfully");
-      setDoctorData({
-        doctor_first_name: "",
-        doctor_last_name: "",
-        doctor_email: "",
-        doctor_phone: "",
-        qualification: "",
-        is_admin: false,
-      });
+      setDoctorData(initialDoctorData);
+      setFieldStatus(initialFieldStatus);
       navigation.navigate("DoctorDashboard");
     } catch (error) {
       handleError(error);
@@ -89,17 +120,21 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
     }
   };
 
-  const handlePhoneChange = (text) => {
-    const numericText = text.replace(/^\+91/, ""); // Remove "+91" if it's present
-    if (/^\d{0,10}$/.test(numericText)) {
-      setDoctorData({
-        ...doctorData,
-        doctor_phone: numericText,
-      });
-      setPhoneError(
-        numericText.length < 10 ? "Phone number must be 10 digits." : ""
-      );
+  const getInputStyle = (field: string) => {
+    const isMandatory = [
+      "doctor_first_name",
+      "doctor_last_name",
+      "doctor_phone",
+      "doctor_email",
+      "qualification",
+    ].includes(field);
+    if (fieldStatus[field]) {
+      return [styles.input, styles.filledInput];
     }
+    return [
+      styles.input,
+      isMandatory ? styles.mandatoryInput : styles.optionalInput,
+    ];
   };
 
   return (
@@ -125,11 +160,11 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
                 style={styles.inputContainer}
               >
                 <TextInput
-                  style={styles.input}
+                  style={getInputStyle("doctor_first_name")}
                   placeholder="First Name"
                   value={doctorData.doctor_first_name}
                   onChangeText={(text) =>
-                    setDoctorData({ ...doctorData, doctor_first_name: text })
+                    handleInputChange("doctor_first_name", text)
                   }
                 />
               </Animatable.View>
@@ -139,11 +174,11 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
                 style={styles.inputContainer}
               >
                 <TextInput
-                  style={styles.input}
+                  style={getInputStyle("doctor_last_name")}
                   placeholder="Last Name"
                   value={doctorData.doctor_last_name}
                   onChangeText={(text) =>
-                    setDoctorData({ ...doctorData, doctor_last_name: text })
+                    handleInputChange("doctor_last_name", text)
                   }
                 />
               </Animatable.View>
@@ -153,12 +188,14 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
                 style={styles.inputContainer}
               >
                 <TextInput
-                  style={styles.input}
+                  style={getInputStyle("doctor_email")}
                   placeholder="Email"
                   value={doctorData.doctor_email}
                   onChangeText={(text) =>
-                    setDoctorData({ ...doctorData, doctor_email: text })
+                    handleInputChange("doctor_email", text)
                   }
+                  keyboardType="email-address"
+                  autoCapitalize="none"
                 />
               </Animatable.View>
               <Animatable.View
@@ -166,17 +203,24 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
                 delay={600}
                 style={styles.inputContainer}
               >
-                <TextInput
-                  style={styles.input}
-                  placeholder="+91 Contact No."
-                  value={"+91" + doctorData.doctor_phone}
-                  onChangeText={handlePhoneChange}
-                  keyboardType="numeric"
-                  maxLength={13} // Including the +91 prefix in the maxLength
-                />
-                {phoneError ? (
-                  <Text style={styles.errorText}>{phoneError}</Text>
-                ) : null}
+                <View
+                  style={[
+                    styles.phoneInputContainer,
+                    getInputStyle("doctor_phone"),
+                  ]}
+                >
+                  <Text style={styles.phonePrefix}>+91</Text>
+                  <TextInput
+                    style={styles.phoneInput}
+                    placeholder="Contact No."
+                    value={doctorData.doctor_phone}
+                    onChangeText={(text) =>
+                      handleInputChange("doctor_phone", text)
+                    }
+                    keyboardType="numeric"
+                    maxLength={10}
+                  />
+                </View>
               </Animatable.View>
               <Animatable.View
                 animation="fadeInUp"
@@ -184,11 +228,11 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
                 style={styles.inputContainer}
               >
                 <TextInput
-                  style={styles.input}
+                  style={getInputStyle("qualification")}
                   placeholder="Qualification"
                   value={doctorData.qualification}
                   onChangeText={(text) =>
-                    setDoctorData({ ...doctorData, qualification: text })
+                    handleInputChange("qualification", text)
                   }
                 />
               </Animatable.View>
@@ -198,16 +242,18 @@ const DoctorRegister: React.FC<DoctorRegisterScreenProps> = ({
                 style={styles.inputContainer}
               >
                 <Text style={styles.labelText}>Role:</Text>
-                <Picker
-                  selectedValue={doctorData.is_admin}
-                  style={styles.picker}
-                  onValueChange={(itemValue) =>
-                    setDoctorData({ ...doctorData, is_admin: itemValue })
-                  }
-                >
-                  <Picker.Item label="Doctor" value={false} />
-                  <Picker.Item label="Admin" value={true} />
-                </Picker>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={doctorData.is_admin}
+                    style={styles.picker}
+                    onValueChange={(itemValue) =>
+                      setDoctorData({ ...doctorData, is_admin: itemValue })
+                    }
+                  >
+                    <Picker.Item label="Doctor" value={false} />
+                    <Picker.Item label="Admin" value={true} />
+                  </Picker>
+                </View>
               </Animatable.View>
               <TouchableOpacity
                 style={styles.button}
@@ -264,29 +310,32 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     color: "#333333",
   },
-  picker: {
+  pickerContainer: {
     borderWidth: 1,
     borderColor: "#D9D9D9",
     borderRadius: 5,
     backgroundColor: "#FFFFFF",
   },
-  header: {
+  picker: {
+    height: 45,
+    width: "100%",
+  },
+  phoneInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    backgroundColor: "#119FB3",
+    borderWidth: 1,
+    borderRadius: 5,
+    backgroundColor: "#FFFFFF",
   },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
+  phoneInput: {
+    flex: 1,
+    padding: 10,
+    color: "#333333",
   },
-  backButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    marginLeft: 5,
-    fontSize: 18,
+  phonePrefix: {
+    paddingHorizontal: 10,
+    fontSize: 16,
+    color: "#333333",
   },
   title: {
     fontSize: 24,
@@ -296,15 +345,23 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 10,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#D9D9D9",
     borderRadius: 5,
     padding: 10,
     color: "#333333",
     backgroundColor: "#FFFFFF",
+  },
+  mandatoryInput: {
+    borderColor: "#c30010", // Red for mandatory fields
+  },
+  optionalInput: {
+    borderColor: "#90EE90", // Light green for optional fields
+  },
+  filledInput: {
+    borderColor: "#90EE90", // Bright green for filled fields
   },
   button: {
     backgroundColor: "#119FB3",
@@ -329,11 +386,6 @@ const styles = StyleSheet.create({
   backButtonText1: {
     color: "#119FB3",
     fontWeight: "bold",
-  },
-  errorText: {
-    color: "red",
-    marginTop: 5,
-    fontSize: 14,
   },
 });
 

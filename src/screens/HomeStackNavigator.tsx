@@ -20,6 +20,10 @@ import DoctorScreen from "./doctorScreen";
 import EditDoctor from "./updatedoc";
 import SearchPatients from "./searchpatient";
 import AppointmentDetailsScreen from "./AppointmentDetails";
+import SettingsScreen from "./settings";
+import EditTherapyPlan from "./editPlan";
+import TherapyPlanDetails from "./planDetails";
+import PaymentDetailsScreen from "./paymentpage";
 
 const Stack = createNativeStackNavigator();
 
@@ -46,10 +50,31 @@ const HomeStackNavigator = () => {
         component={AppointmentDetailsScreen}
       />
       <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="EditTherapyPlan"
+        component={EditTherapyPlan}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="Auth"
         component={Auth}
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="planDetails"
+        component={TherapyPlanDetails}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="payment"
+        component={PaymentDetailsScreen}
+        options={{ headerShown: false }}
+      />
+
       <Stack.Screen
         name="PatientRegister"
         component={PatientRegister}

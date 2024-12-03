@@ -207,18 +207,28 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
   const handleUpdateTherapy = async (updatedTherapy: Therapy) => {
     try {
       const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
+
+      // Wait for the response
       const response = await axiosInstance.patch(
         `/therepy/update/${updatedTherapy._id}`,
+        updatedTherapy, // Send the data directly, no need for JSON.stringify
         {
-          body: JSON.stringify(updatedTherapy),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.idToken}`,
+          },
         }
       );
 
+      // Check if the response is successful
       if (response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const updatedData = await response.data();
+      // Get the updated data from response
+      const updatedData = response.data;
+
+      // Update the local state with the response data
       setTherapies((prevTherapies) =>
         prevTherapies?.map((therapy) =>
           therapy._id === updatedData.therapy._id
@@ -226,11 +236,18 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
             : therapy
         )
       );
+
+      // Close the edit modal
       setEditingTherapy(null);
+
+      // Show success message only after successful update
       showSuccessToast("Therapy updated successfully");
-      fetchTherapies(); // Refresh the list after update
+
+      // Refresh the therapies list
+      await fetchTherapies();
     } catch (error) {
       handleError(error);
+      showErrorToast("Failed to update therapy");
     }
   };
   const [selectedAppointment, setSelectedAppointment] =
@@ -320,22 +337,20 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
 
     return (
       <View style={styles.therapyCard}>
-        {isUpcoming && (
-          <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => handleEditTherapy(item)}
-            >
-              <MaterialIcons name="edit" size={24} color="#119FB3" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDeleteTherapy(item)}
-            >
-              <MaterialIcons name="delete" size={24} color="#FF6B6B" />
-            </TouchableOpacity>
-          </View>
-        )}
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => handleEditTherapy(item)}
+          >
+            <MaterialIcons name="edit" size={24} color="#119FB3" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteTherapy(item)}
+          >
+            <MaterialIcons name="delete" size={24} color="#FF6B6B" />
+          </TouchableOpacity>
+        </View>
         <View style={styles.therapyHeader}>
           <MaterialIcons name="event" size={24} color="#119FB3" />
           <Text style={styles.therapyType}>{item.therepy_type}</Text>
@@ -382,6 +397,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
       </View>
     );
   };
+
   return (
     <ImageBackground
       source={require("../assets/bac2.jpg")}
@@ -835,3 +851,6 @@ const styles = StyleSheet.create({
 });
 
 export default TherapyHistory;
+function showErrorToast(arg0: string) {
+  throw new Error("Function not implemented.");
+}

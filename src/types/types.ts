@@ -24,6 +24,9 @@ export type RootStackParamList = {
     screen?: keyof RootTabParamList;
     params?: object;
   };
+  planDetails: { planId?: string };
+  Settings: undefined;
+  EditTherapyPlan: { planId?: string };
   AppointmentDetails: { appointment: any };
   AppointmentDetailsScreen: { appointment: any };
   UpdateDoctor: { doctorId?: string };
@@ -31,6 +34,7 @@ export type RootStackParamList = {
   TodaysAppointments: undefined;
   AllDoctors: undefined;
   SearchPatients: undefined;
+  payment: { planId?: string; patientId?: string };
 };
 
 export type RootTabParamList = {

@@ -19,10 +19,15 @@ import BackTabTop from "./BackTopTab";
 import { openBrowserAsync } from "expo-web-browser";
 import { useSession } from "../context/SessionContext";
 import axiosInstance from "../utils/axiosConfig";
+import { RootStackParamList } from "../types/types";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { useNavigation } from "@react-navigation/native";
 
 interface AppointmentDetailsScreenProps {
   appointment: {
+    plan_id: string;
     _id: string;
+    patient_id: string;
     therepy_type: string;
     therepy_link?: string;
     therepy_start_time: string;
@@ -39,6 +44,7 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
 }) => {
   const { theme } = useTheme();
   const styles = getStyles(getTheme(theme));
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { idToken } = useSession();
   const [isStarted, setIsStarted] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
@@ -93,7 +99,7 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
   };
 
   const handleStart = useCallback(async () => {
-    setLoading(true); // Start loading animation
+    setLoading(true);
     try {
       const response = await axiosInstance.post(
         `/therapy/start/${appointment._id}`,
@@ -118,17 +124,21 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
       console.error("Failed to start therapy session:", error);
       Alert.alert("Error", "Failed to start therapy session.");
     } finally {
-      setLoading(false); // Stop loading animation
+      setLoading(false);
     }
   }, [appointment._id, previousRemarks]);
 
   const handleCancel = () => {
-    setPreviousRemarks(""); // Clear previous remarks
-    onClose(); // Close the appointment details screen
+    setPreviousRemarks("");
+    onClose();
+  };
+
+  const handleShowEndModal = () => {
+    setModalVisible(true);
   };
 
   const handleEnd = useCallback(async () => {
-    setLoading(true); // Start loading animation
+    setLoading(true);
     try {
       const response = await axiosInstance.post(
         `/therapy/end/${appointment._id}`,
@@ -144,7 +154,12 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
       );
 
       if (response.status === 200) {
-        setModalVisible(true); // Show post-session remarks modal
+        setModalVisible(false);
+        onClose();
+        navigation.navigate("payment", {
+          planId: appointment.plan_id,
+          patientId: appointment.patient_id,
+        });
       } else {
         Alert.alert("Error", "Failed to end therapy session.");
       }
@@ -152,9 +167,9 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
       console.error("Failed to end therapy session:", error);
       Alert.alert("Error", "Failed to end therapy session.");
     } finally {
-      setLoading(false); // Stop loading animation
+      setLoading(false);
     }
-  }, [postRemarks]);
+  }, [appointment._id, postRemarks]);
 
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -163,12 +178,6 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
     return `${hours.toString().padStart(2, "0")}:${minutes
       .toString()
       .padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
-  };
-
-  const closeModal = () => {
-    setModalVisible(false);
-    setPostRemarks("");
-    onClose(); // Close the appointment details screen
   };
 
   return (
@@ -254,12 +263,11 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
                 <Text style={styles.buttonText}>Join Session</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.endButton} onPress={handleEnd}>
-              {loading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text style={styles.buttonText}>End Therapy</Text>
-              )}
+            <TouchableOpacity
+              style={styles.endButton}
+              onPress={handleShowEndModal}
+            >
+              <Text style={styles.buttonText}>End Therapy</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -279,8 +287,12 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
                 value={postRemarks}
                 placeholder="Enter post session remarks"
               />
-              <TouchableOpacity style={styles.modalButton} onPress={closeModal}>
-                <Text style={styles.buttonText}>Submit and Close</Text>
+              <TouchableOpacity style={styles.modalButton} onPress={handleEnd}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.buttonText}>Submit and End Session</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

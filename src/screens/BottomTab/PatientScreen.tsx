@@ -40,6 +40,7 @@ interface TherapyPlan {
   total_amount: string;
   received_amount: string;
   balance: string;
+  _id: string;
 }
 
 interface PatientData {
@@ -120,29 +121,56 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
       .slice()
       .reverse()
       .map((plan, index) => (
-        <Card key={index} style={styles.therapyPlanCard}>
-          <Card.Content>
-            <Title>
-              {index === 0
-                ? "Current Therapy Plan"
-                : `Past Therapy Plan ${index + 1}`}
-            </Title>
-            <Paragraph>Name: {plan.therapy_name}</Paragraph>
-            <Paragraph>Diagnosis: {plan.patient_diagnosis}</Paragraph>
-            <Paragraph>Symptoms: {plan.patient_symptoms}</Paragraph>
-            <Paragraph>Duration: {plan.therapy_duration}</Paragraph>
-            <Paragraph>
-              Start Date: {new Date(plan.therapy_start).toLocaleDateString()}
-            </Paragraph>
-            <Paragraph>
-              End Date: {new Date(plan.therapy_end).toLocaleDateString()}
-            </Paragraph>
-            <Paragraph>Category: {plan.patient_therapy_category}</Paragraph>
-            <Paragraph>Cost: {plan.total_amount}</Paragraph>
-            <Paragraph>Received: {plan.received_amount}</Paragraph>
-            <Paragraph>Balance: {plan.balance}</Paragraph>
-          </Card.Content>
-        </Card>
+        <TouchableOpacity
+          key={plan._id}
+          onPress={() =>
+            navigation.navigate("planDetails", { planId: plan._id })
+          }
+          style={{ width: "100%" }} // Ensure full width
+        >
+          <Card style={[styles.therapyPlanCard, { width: "100%" }]}>
+            <View style={styles.cardHeader}>
+              <Title
+                style={[
+                  styles.cardTitle,
+                  index === 0 && { fontWeight: "bold", fontSize: 18 },
+                ]}
+              >
+                {index === 0
+                  ? "Current Therapy Plan"
+                  : `Past Therapy Plan ${index + 1}`}
+              </Title>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  navigation.navigate("EditTherapyPlan", {
+                    planId: plan._id,
+                  });
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="square-edit-outline"
+                  size={24}
+                  color="#119FB3"
+                />
+              </TouchableOpacity>
+            </View>
+            <Card.Content>
+              <Paragraph>Name: {plan.therapy_name}</Paragraph>
+              <Paragraph>Diagnosis: {plan.patient_diagnosis}</Paragraph>
+              <Paragraph>Symptoms: {plan.patient_symptoms}</Paragraph>
+              <Paragraph>Duration: {plan.therapy_duration}</Paragraph>
+              <Paragraph>
+                Start Date: {new Date(plan.therapy_start).toLocaleDateString()}
+              </Paragraph>
+              <Paragraph>
+                End Date: {new Date(plan.therapy_end).toLocaleDateString()}
+              </Paragraph>
+              <Paragraph>Category: {plan.patient_therapy_category}</Paragraph>
+            </Card.Content>
+          </Card>
+        </TouchableOpacity>
       ));
   };
   if (isLoading) {
@@ -257,6 +285,21 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  cardTitle: {
+    flex: 1,
+  },
+  editButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
   main: {
     flex: 1,
     backgroundColor: "#119FB3",
@@ -397,6 +440,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     width: "100%",
     elevation: 4,
+    backgroundColor: "white",
   },
 });
 

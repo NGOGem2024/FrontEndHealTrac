@@ -3,10 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import Modal from "react-native-modal";
+import { useSession } from "../context/SessionContext";
 
 const BackTabTop: React.FC<{ screenName: string }> = ({ screenName }) => {
   const navigation = useNavigation();
-  const route = useRoute();
+  const { session } = useSession();
   const [isDropdownVisible, setDropdownVisible] = useState(false);
 
   const toggleDropdown = () => setDropdownVisible(!isDropdownVisible);
@@ -54,6 +55,11 @@ const BackTabTop: React.FC<{ screenName: string }> = ({ screenName }) => {
           <TouchableOpacity onPress={() => navigateToScreen("DoctorDashboard")}>
             <Text style={styles.dropdownItem}>Dashboard</Text>
           </TouchableOpacity>
+          {session.is_admin && ( // Only show Settings if the user is an admin
+            <TouchableOpacity onPress={() => navigateToScreen("Settings")}>
+              <Text style={styles.dropdownItem}>Settings</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={() => navigateToScreen("Logout")}>
             <Text style={[styles.dropdownItem, styles.logoutText]}>Logout</Text>
           </TouchableOpacity>

@@ -12,24 +12,24 @@ import {
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
-import axios from "axios";
 import { MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
-import { useSession } from "../context/SessionContext";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import axiosInstance from "../utils/axiosConfig";
 
-type CreateTherapyPlanProps = {
-  navigation: StackNavigationProp<RootStackParamList, "CreateTherapyPlan">;
-  route: { params: { patientId: string } };
+type EditTherapyPlanProps = {
+  navigation: StackNavigationProp<RootStackParamList, "EditTherapyPlan">;
+  route: { params: { planId: string } };
 };
 
-const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
+const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
   navigation,
   route,
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [patientName, setPatientName] = useState("");
   const [therapyPlan, setTherapyPlan] = useState({
     patient_diagnosis: "",
     patient_symptoms: "",
@@ -39,11 +39,8 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     received_amount: "",
     therapy_name: "",
     balance: "",
-    payment_type: "recurring",
-    per_session_amount: "", // Added per session amount
-    estimated_sessions: "", // Added estimated number of sessions
   });
-  const { patientId } = route.params;
+  const { planId } = route.params;
 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date());
@@ -65,6 +62,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
   ];
 
   useEffect(() => {
+    fetchTherapyPlan();
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -79,17 +77,40 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
       }),
     ]).start();
   }, []);
+
+  const fetchTherapyPlan = async () => {
+    try {
+      const response = await axiosInstance.get(`/get/plan/${planId}`);
+      const { therapy_plan, patient_name } = response.data;
+
+      setTherapyPlan({
+        therapy_name: therapy_plan.therapy_name,
+        patient_diagnosis: therapy_plan.patient_diagnosis,
+        patient_symptoms: therapy_plan.patient_symptoms,
+        therapy_duration: therapy_plan.therapy_duration,
+        therapy_category: therapy_plan.patient_therapy_category,
+        total_amount: therapy_plan.total_amount.toString(),
+        received_amount: therapy_plan.received_amount.toString(),
+        balance: therapy_plan.balance.toString(),
+      });
+
+      setStartDate(new Date(therapy_plan.therapy_start));
+      setEndDate(new Date(therapy_plan.therapy_end));
+      setPatientName(patient_name);
+    } catch (error) {
+      handleError(error);
+      Alert.alert("Error", "Failed to fetch therapy plan details");
+      navigation.goBack();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (startDate && endDate) {
       const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      // Estimate 2 sessions per week
-      const estimatedSessions = Math.ceil((diffDays / 7) * 2);
-      setTherapyPlan((prev) => ({
-        ...prev,
-        therapy_duration: `${diffDays} days`,
-        estimated_sessions: estimatedSessions.toString(),
-      }));
+      setTherapyPlan({ ...therapyPlan, therapy_duration: `${diffDays} days` });
     }
   }, [startDate, endDate]);
 
@@ -99,26 +120,6 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
       setStartDate(selectedDate);
     }
   };
-  useEffect(() => {
-    if (
-      therapyPlan.payment_type === "recurring" &&
-      therapyPlan.estimated_sessions &&
-      therapyPlan.total_amount
-    ) {
-      const perSession = (
-        parseFloat(therapyPlan.total_amount) /
-        parseFloat(therapyPlan.estimated_sessions)
-      ).toFixed(2);
-      setTherapyPlan((prev) => ({
-        ...prev,
-        per_session_amount: perSession,
-      }));
-    }
-  }, [
-    therapyPlan.total_amount,
-    therapyPlan.estimated_sessions,
-    therapyPlan.payment_type,
-  ]);
 
   const onChangeEndDate = (event: any, selectedDate?: Date) => {
     setShowEndDatePicker(false);
@@ -163,38 +164,12 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     if (startDate >= endDate) {
       newErrors.date = "End date must be after start date";
     }
-    if (therapyPlan.payment_type === "recurring") {
-      if (
-        !therapyPlan.per_session_amount ||
-        parseFloat(therapyPlan.per_session_amount) <= 0
-      ) {
-        newErrors.per_session_amount = "Per session amount is required";
-      }
-      if (
-        !therapyPlan.estimated_sessions ||
-        parseInt(therapyPlan.estimated_sessions) <= 0
-      ) {
-        newErrors.estimated_sessions = "Estimated sessions is required";
-      }
-    }
-
-    if (
-      therapyPlan.payment_type === "one-time" &&
-      parseFloat(therapyPlan.received_amount) !==
-        parseFloat(therapyPlan.total_amount)
-    ) {
-      newErrors.received_amount = "One-time payment requires full amount";
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  const paymentTypes = [
-    { label: "Recurring Payment", value: "recurring" },
-    { label: "One-time Payment", value: "one-time" },
-  ];
 
-  const handleCreateTherapyPlan = async () => {
+  const handleUpdateTherapyPlan = async () => {
     if (!validateForm()) {
       Alert.alert(
         "Validation Error",
@@ -203,7 +178,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
       return;
     }
 
-    setIsLoading(true);
+    setIsSaving(true);
 
     try {
       const formData = {
@@ -217,34 +192,31 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
         total_amount: therapyPlan.total_amount,
         received_amount: therapyPlan.received_amount,
         balance: therapyPlan.balance,
-        payment_type: therapyPlan.payment_type,
-        estimated_sessions: parseInt(therapyPlan.estimated_sessions),
-        per_session_amount: parseFloat(therapyPlan.per_session_amount),
       };
 
-      const response = await axiosInstance.post(
-        `/therapy/plan/${patientId}`,
+      const response = await axiosInstance.put(
+        `/update/plan/${planId}`,
         formData
       );
 
-      if (response.status === 200 || response.status === 201) {
-        showSuccessToast("Therapy plan created successfully");
+      if (response.status === 200) {
+        showSuccessToast("Therapy plan updated successfully");
         navigation.goBack();
       } else {
         setErrors({
           ...errors,
-          submit: "Failed to create therapy plan. Please try again.",
+          submit: "Failed to update therapy plan. Please try again.",
         });
       }
     } catch (error) {
       handleError(error);
       setErrors({
         ...errors,
-        submit: "An error occurred while creating therapy plan.",
+        submit: "An error occurred while updating therapy plan.",
       });
       console.error(error);
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -255,6 +227,14 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     setTherapyPlan({ ...therapyPlan, balance: balance.toString() });
   }, [therapyPlan.total_amount, therapyPlan.received_amount]);
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#119FB3" />
+        <Text style={styles.loadingText}>Loading therapy plan...</Text>
+      </View>
+    );
+  }
   return (
     <ScrollView style={styles.scrollView}>
       <Animated.View
@@ -266,7 +246,9 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
           },
         ]}
       >
-        <Text style={styles.title}>Create Therapy Plan</Text>
+        <Text style={styles.title}>Edit Therapy Plan</Text>
+        <Text style={styles.patientName}>Patient: {patientName}</Text>
+
         <Dropdown
           value={therapyPlan.therapy_category}
           onValueChange={(itemValue) =>
@@ -277,6 +259,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
         {errors.therapy_category && (
           <Text style={styles.errorText}>{errors.therapy_category}</Text>
         )}
+
         <InputField
           icon={<MaterialIcons name="edit" size={24} color="#119FB3" />}
           placeholder="Therapy Name"
@@ -338,95 +321,6 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             Duration: {therapyPlan.therapy_duration}
           </Text>
         </View>
-        <View style={styles.paymentTypeContainer}>
-          <Text style={styles.inputLabel}>Payment Type</Text>
-          <View style={styles.radioGroup}>
-            {paymentTypes.map((type) => (
-              <TouchableOpacity
-                key={type.value}
-                style={[
-                  styles.radioButton,
-                  therapyPlan.payment_type === type.value &&
-                    styles.radioButtonSelected,
-                ]}
-                onPress={() =>
-                  setTherapyPlan({ ...therapyPlan, payment_type: type.value })
-                }
-              >
-                <View style={styles.radio}>
-                  {therapyPlan.payment_type === type.value && (
-                    <View style={styles.radioSelected} />
-                  )}
-                </View>
-                <Text style={styles.radioLabel}>{type.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {therapyPlan.payment_type === "recurring" && (
-          <>
-            <View style={styles.labeledInputContainer}>
-              <Text style={styles.inputLabel}>Estimated Sessions</Text>
-              <View style={styles.inputContainer}>
-                <MaterialIcons name="event-repeat" size={24} color="#119FB3" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter estimated sessions"
-                  value={therapyPlan.estimated_sessions}
-                  onChangeText={(text) => {
-                    setTherapyPlan((prev) => ({
-                      ...prev,
-                      estimated_sessions: text,
-                      total_amount:
-                        text && prev.per_session_amount
-                          ? (
-                              parseFloat(text) *
-                              parseFloat(prev.per_session_amount)
-                            ).toFixed(2)
-                          : prev.total_amount,
-                    }));
-                  }}
-                  keyboardType="numeric"
-                  placeholderTextColor="#A0A0A0"
-                />
-              </View>
-            </View>
-
-            <View style={styles.labeledInputContainer}>
-              <Text style={styles.inputLabel}>Amount Per Session</Text>
-              <View style={styles.inputContainer}>
-                <FontAwesome name="rupee" size={24} color="#119FB3" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter amount per session"
-                  value={therapyPlan.per_session_amount}
-                  onChangeText={(text) => {
-                    setTherapyPlan((prev) => ({
-                      ...prev,
-                      per_session_amount: text,
-                      total_amount:
-                        text && prev.estimated_sessions
-                          ? (
-                              parseFloat(text) *
-                              parseFloat(prev.estimated_sessions)
-                            ).toFixed(2)
-                          : prev.total_amount,
-                    }));
-                  }}
-                  keyboardType="numeric"
-                  placeholderTextColor="#A0A0A0"
-                />
-              </View>
-              {errors.per_session_amount && (
-                <Text style={styles.errorText}>
-                  {errors.per_session_amount}
-                </Text>
-              )}
-            </View>
-          </>
-        )}
-
         <View style={styles.labeledInputContainer}>
           <Text style={styles.inputLabel}>Total Amount</Text>
           <View style={styles.inputContainer}>
@@ -477,7 +371,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
 
         <TouchableOpacity
           style={styles.saveButton}
-          onPress={handleCreateTherapyPlan}
+          onPress={handleUpdateTherapyPlan}
           disabled={isLoading}
         >
           {isLoading ? (
@@ -490,7 +384,6 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     </ScrollView>
   );
 };
-
 const InputField = ({ icon, placeholder, value, onChangeText }) => (
   <View style={styles.inputContainer}>
     {icon}
@@ -631,6 +524,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333333",
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F0F8FF",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#119FB3",
+  },
+  patientName: {
+    fontSize: 18,
+    color: "#333333",
+    textAlign: "center",
+    marginBottom: 20,
+    fontWeight: "500",
+  },
   durationContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -670,62 +581,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 10,
   },
-  paymentTypeContainer: {
-    marginBottom: 20,
-  },
-  radioGroup: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  radioButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    padding: 15,
-    flex: 0.48,
-    elevation: 2,
-  },
-  radioButtonSelected: {
-    backgroundColor: "#E6F7F9",
-    borderColor: "#119FB3",
-    borderWidth: 1,
-  },
-  radio: {
-    height: 20,
-    width: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#119FB3",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  radioSelected: {
-    height: 10,
-    width: 10,
-    borderRadius: 5,
-    backgroundColor: "#119FB3",
-  },
-  radioLabel: {
-    fontSize: 14,
-    color: "#333333",
-  },
-  sessionInfoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#E6F7F9",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 20,
-  },
-  sessionInfoText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: "#333333",
-    lineHeight: 24,
-  },
 });
 
-export default CreateTherapyPlan;
+export default EditTherapyPlan;

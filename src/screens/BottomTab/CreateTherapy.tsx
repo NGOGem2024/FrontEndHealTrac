@@ -3,17 +3,16 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
   Platform,
   ActivityIndicator,
-  Alert,
+  StyleSheet,
+  Modal,
 } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import ConfirmationPopup from "./confirmationpopup";
-import axios from "axios";
 import moment from "moment-timezone";
 import { useSession } from "../../context/SessionContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -22,28 +21,53 @@ import { handleError, showSuccessToast } from "../../utils/errorHandler";
 import GoogleSignInButton from "../../components/googlebutton";
 import axiosinstance from "../../utils/axiosConfig";
 import LiveSwitchLoginButton from "../../components/liveswitchb";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../../types/types";
+import BackTabTop from "../BackTopTab";
+import NoPlanPopup from "./noplan";
 
-const CreateTherapy = ({ navigation, route }) => {
+type Props = NativeStackScreenProps<RootStackParamList, "CreateTherapy">;
+interface PickerItem {
+  _id: string;
+  label: string;
+}
+const SLOT_DURATION_OPTIONS = [
+  { value: 30, label: "30 minutes" },
+  { value: 60, label: "1 Hour" },
+  { value: 90, label: "1:30 Hour" },
+  { value: 120, label: "2 Hour" },
+];
+
+const CreateTherapy = ({ route, navigation }: Props) => {
   const { colors } = useTheme();
   const { patientId } = route.params;
   const { session, updateAccessToken } = useSession();
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const [appointmentType, setAppointmentType] = useState("In Clinic");
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [availableSlots, setAvailableSlots] = useState([]);
-  const [isBooking, setIsBooking] = useState(false);
-  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-  const [error, setError] = useState("");
-  const [doctors, setDoctors] = useState([]);
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [therapyPlans, setTherapyPlans] = useState([]);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [hasGoogleAccess, setHasGoogleAccess] = useState(false);
-  const [hasLiveSwitchAccess, setHasLiveSwitchAccess] = useState(false);
-  const [showLiveSwitchLogin, setShowLiveSwitchLogin] = useState(false);
-  const [isGoogleSignInVisible, setIsGoogleSignInVisible] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [appointmentType, setAppointmentType] = useState<string>("In Clinic");
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
+  const [availableSlots, setAvailableSlots] = useState<any[]>([]);
+  const [isBooking, setIsBooking] = useState<boolean>(false);
+  const [isLoadingSlots, setIsLoadingSlots] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<any | null>(null);
+  const [therapyPlans, setTherapyPlans] = useState<any[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
+  const [hasLiveSwitchAccess, setHasLiveSwitchAccess] =
+    useState<boolean>(false);
+  const [slotDuration, setSlotDuration] = useState<number>(30);
+  const [showSlotDurationPicker, setShowSlotDurationPicker] = useState(false);
+
+  const [showNoPlanPopup, setShowNoPlanPopup] = useState<boolean>(false);
+  const [showLiveSwitchLogin, setShowLiveSwitchLogin] =
+    useState<boolean>(false);
+  const [isGoogleSignInVisible, setIsGoogleSignInVisible] =
+    useState<boolean>(true);
+  const [showDoctorPicker, setShowDoctorPicker] = useState(false);
+  const [showTherapyPicker, setShowTherapyPicker] = useState(false);
 
   const styles = createStyles(colors);
 
@@ -56,42 +80,87 @@ const CreateTherapy = ({ navigation, route }) => {
   }, [appointmentType, hasLiveSwitchAccess]);
 
   useEffect(() => {
-    if (hasGoogleAccess) {
-      fetchDoctors();
-      fetchTherapyPlans();
-    }
-  }, [hasGoogleAccess]);
+    fetchDoctors();
+    fetchTherapyPlans();
+  }, []);
   useEffect(() => {
-    checkGoogleAccess();
+    if (therapyPlans.length > 0) {
+      const latestPlan = therapyPlans[therapyPlans.length - 1];
+      setSelectedPlan(latestPlan);
+    }
+  }, [therapyPlans]);
+  useEffect(() => {
     checkLiveSwitchAccess();
   }, [session.accessToken]);
+
   const checkLiveSwitchAccess = async () => {
     const liveTokens = await AsyncStorage.getItem("LiveTokens");
     setHasLiveSwitchAccess(!!liveTokens);
     setShowLiveSwitchLogin(appointmentType === "Liveswitch" && !liveTokens);
   };
+  const renderSlotDurationPicker = () => {
+    if (Platform.OS === "ios") {
+      return (
+        <>
+          {renderPickerField(
+            `${slotDuration} minutes`,
+            () => setShowSlotDurationPicker(true),
+            "Select slot duration"
+          )}
+          {renderIOSPicker(
+            showSlotDurationPicker,
+            () => setShowSlotDurationPicker(false),
+            (itemValue: string) => {
+              setSlotDuration(Number(itemValue));
+            },
+            slotDuration.toString(),
+            SLOT_DURATION_OPTIONS.map((option) => ({
+              _id: option.value.toString(),
+              label: option.label,
+            })),
+            "Slot Duration"
+          )}
+        </>
+      );
+    }
+
+    return (
+      <Picker
+        selectedValue={slotDuration.toString()}
+        onValueChange={(itemValue: string) => {
+          setSlotDuration(Number(itemValue));
+        }}
+        style={styles.picker}
+      >
+        {SLOT_DURATION_OPTIONS.map((option) => (
+          <Picker.Item
+            key={option.value}
+            label={option.label}
+            value={option.value.toString()}
+          />
+        ))}
+      </Picker>
+    );
+  };
   const handleLiveSwitchLoginSuccess = async () => {
     await checkLiveSwitchAccess();
     showSuccessToast("Signed in with LiveSwitch successfully");
   };
+
   useEffect(() => {
     if (selectedDoctor && selectedDate) {
       fetchAvailableSlots(selectedDate);
     }
-  }, [selectedDoctor, selectedDate]);
+  }, [selectedDoctor, selectedDate, slotDuration]);
 
-  const checkGoogleAccess = async () => {
-    const hasAccess = !!session.accessToken;
-    setHasGoogleAccess(hasAccess);
-    setIsGoogleSignInVisible(!hasAccess);
-  };
-  const handleAppointmentTypeChange = (type) => {
+  const handleAppointmentTypeChange = (type: string) => {
     setAppointmentType(type);
     setShowLiveSwitchLogin(type === "Liveswitch" && !hasLiveSwitchAccess);
   };
 
   const fetchDoctors = async () => {
     try {
+      setIsLoading(true);
       const response = await axiosinstance.get("/getalldoctor", {
         headers: {
           Authorization: `Bearer ${session.idToken}`,
@@ -100,6 +169,8 @@ const CreateTherapy = ({ navigation, route }) => {
       setDoctors(response.data.doctors);
     } catch (error) {
       handleError(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -122,13 +193,26 @@ const CreateTherapy = ({ navigation, route }) => {
         },
       });
       setTherapyPlans(response.data.therapy_plans);
+      if (
+        !response.data.therapy_plans ||
+        response.data.therapy_plans.length === 0
+      ) {
+        setShowNoPlanPopup(true);
+      }
     } catch (error) {
       handleError(error);
     }
   };
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#119FB3" />
+      </View>
+    );
+  }
 
-  const formatDate = (date) => {
-    const options = {
+  const formatDate = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = {
       weekday: "short",
       day: "numeric",
       month: "short",
@@ -137,19 +221,23 @@ const CreateTherapy = ({ navigation, route }) => {
     return date.toLocaleDateString("en-US", options);
   };
 
-  const changeDate = (days) => {
+  const changeDate = (days: number) => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + days);
     setSelectedDate(newDate);
   };
 
-  const onDateChange = (event, selectedDate) => {
+  const onDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || new Date();
     setShowDatePicker(Platform.OS === "ios");
     setSelectedDate(currentDate);
   };
+  const handleCreatePlan = () => {
+    setShowNoPlanPopup(false);
+    navigation.navigate("CreateTherapyPlan", { patientId });
+  };
 
-  const fetchAvailableSlots = async (date) => {
+  const fetchAvailableSlots = async (date: Date) => {
     if (!selectedDoctor) {
       handleError(new Error("Please select a doctor first."));
       return;
@@ -163,6 +251,7 @@ const CreateTherapy = ({ navigation, route }) => {
         {
           date: moment(date).format("YYYY-MM-DD"),
           doctor_id: selectedDoctor._id,
+          slot_duration: slotDuration, // Add slot duration to the request
         },
         {
           headers: {
@@ -178,8 +267,7 @@ const CreateTherapy = ({ navigation, route }) => {
       setIsLoadingSlots(false);
     }
   };
-
-  const isSlotDisabled = (slot) => {
+  const isSlotDisabled = (slot: any) => {
     const now = new Date();
     const slotDate = new Date(selectedDate);
     const [hours, minutes] = slot.start.split(":").map(Number);
@@ -188,31 +276,174 @@ const CreateTherapy = ({ navigation, route }) => {
     return slotDate < now || slot.status === "occupied";
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const handleSignInSuccess = async () => {
-        const googleTokens = await AsyncStorage.getItem("googleTokens");
-        if (googleTokens) {
-          const { accessToken } = JSON.parse(googleTokens);
-          if (accessToken) {
-            await updateAccessToken(accessToken);
-            setHasGoogleAccess(true);
-            setIsGoogleSignInVisible(false);
-            showSuccessToast("Signed in with Google successfully");
-          } else {
-            throw new Error("No access token received");
-          }
-        } else {
-          throw new Error("No Google tokens found");
-        }
-      };
-
-      await handleSignInSuccess();
-    } catch (error) {
-      console.error("Error during Google Sign-In:", error);
-      handleError(error);
-    }
+  const renderIOSPicker = (
+    isVisible: boolean,
+    onClose: () => void,
+    onSelect: (value: string) => void,
+    selectedValue: string | undefined,
+    items: PickerItem[],
+    title: string
+  ) => {
+    return (
+      <Modal visible={isVisible} transparent={true} animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.pickerContainer}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>{title}</Text>
+              <TouchableOpacity onPress={onClose} style={styles.doneButton}>
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <Picker
+              selectedValue={selectedValue ?? ""}
+              onValueChange={(itemValue: string) => {
+                if (itemValue !== "") {
+                  onSelect(itemValue);
+                  onClose();
+                }
+              }}
+              style={styles.iosPicker}
+            >
+              <Picker.Item label={`Select a ${title.toLowerCase()}`} value="" />
+              {items.map((item) => (
+                <Picker.Item
+                  key={item._id}
+                  label={item.label}
+                  value={item._id}
+                />
+              ))}
+            </Picker>
+          </View>
+        </View>
+      </Modal>
+    );
   };
+
+  const renderPickerField = (
+    value: string | undefined,
+    onPress: () => void,
+    placeholder: string
+  ) => {
+    return (
+      <TouchableOpacity style={styles.pickerField} onPress={onPress}>
+        <Text
+          style={[styles.pickerFieldText, !value && styles.pickerPlaceholder]}
+        >
+          {value || placeholder}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderDoctorPicker = () => {
+    if (Platform.OS === "ios") {
+      const doctorName = selectedDoctor
+        ? `${selectedDoctor.doctor_first_name} ${selectedDoctor.doctor_last_name}`
+        : undefined;
+
+      return (
+        <>
+          {renderPickerField(
+            doctorName,
+            () => setShowDoctorPicker(true),
+            "Select a doctor"
+          )}
+          {renderIOSPicker(
+            showDoctorPicker,
+            () => setShowDoctorPicker(false),
+            (itemValue: string) => {
+              const doctor = doctors.find((d) => d._id === itemValue);
+              setSelectedDoctor(doctor || null);
+              setAvailableSlots([]);
+              setSelectedSlot(null);
+            },
+            selectedDoctor?._id,
+            doctors.map((doctor) => ({
+              _id: doctor._id,
+              label: `${doctor.doctor_first_name} ${doctor.doctor_last_name}`,
+            })),
+            "Doctor"
+          )}
+        </>
+      );
+    }
+
+    return (
+      <Picker
+        selectedValue={selectedDoctor?._id ?? ""}
+        onValueChange={(itemValue: string) => {
+          if (itemValue !== "") {
+            setSelectedDoctor(doctors.find((d) => d._id === itemValue) || null);
+            setAvailableSlots([]);
+            setSelectedSlot(null);
+          }
+        }}
+        style={styles.picker}
+      >
+        <Picker.Item label="Select a doctor" value="" />
+        {doctors.map((doctor) => (
+          <Picker.Item
+            key={doctor._id}
+            label={`${doctor.doctor_first_name} ${doctor.doctor_last_name}`}
+            value={doctor._id}
+          />
+        ))}
+      </Picker>
+    );
+  };
+
+  const renderTherapyPicker = () => {
+    if (Platform.OS === "ios") {
+      return (
+        <>
+          {renderPickerField(
+            selectedPlan?.therapy_name,
+            () => setShowTherapyPicker(true),
+            "Select a therapy plan"
+          )}
+          {renderIOSPicker(
+            showTherapyPicker,
+            () => setShowTherapyPicker(false),
+            (itemValue: string) => {
+              setSelectedPlan(
+                therapyPlans.find((p) => p._id === itemValue) || null
+              );
+            },
+            selectedPlan?._id,
+            therapyPlans.map((plan) => ({
+              _id: plan._id,
+              label: plan.therapy_name,
+            })),
+            "Therapy Plan"
+          )}
+        </>
+      );
+    }
+
+    return (
+      <Picker
+        selectedValue={selectedPlan?._id ?? ""}
+        onValueChange={(itemValue: string) => {
+          if (itemValue !== "") {
+            setSelectedPlan(
+              therapyPlans.find((p) => p._id === itemValue) || null
+            );
+          }
+        }}
+        style={styles.picker}
+      >
+        <Picker.Item label="Select a plan" value="" />
+        {therapyPlans.map((plan) => (
+          <Picker.Item
+            key={plan._id}
+            label={plan.therapy_name}
+            value={plan._id}
+          />
+        ))}
+      </Picker>
+    );
+  };
+
   const handleBookAppointment = async () => {
     try {
       if (!session.idToken) {
@@ -269,92 +500,21 @@ const CreateTherapy = ({ navigation, route }) => {
     }
   };
 
-  const renderSlot = ({ item, index }) => {
-    const isDisabled = isSlotDisabled(item);
-    const isSelected = selectedSlot === index;
-    return (
-      <TouchableOpacity
-        style={[
-          styles.slotButton,
-          isDisabled && styles.slotButtonDisabled,
-          isSelected && styles.slotButtonSelected,
-        ]}
-        onPress={() => setSelectedSlot(index)}
-        disabled={isDisabled}
-      >
-        <Text
-          style={[
-            styles.slotButtonText,
-            isDisabled && styles.slotButtonTextDisabled,
-            isSelected && styles.slotButtonTextSelected,
-          ]}
-        >
-          {item.start} - {item.end}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  if (!hasGoogleAccess) {
-    return (
-      <View style={styles.bcontainer}>
-        <View style={styles.googleButtonContainer}>
-          <Text style={styles.googleButtonText}>
-            Sign in with Google to access your calendar
-          </Text>
-          <GoogleSignInButton onSignInSuccess={handleGoogleSignIn} />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
+      <BackTabTop screenName="Therapy" />
       <ScrollView>
         <Text style={styles.title}>Book Appointment</Text>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Select Doctor</Text>
-          <Picker
-            selectedValue={selectedDoctor?._id}
-            onValueChange={(itemValue) => {
-              setSelectedDoctor(doctors.find((d) => d._id === itemValue));
-              setAvailableSlots([]);
-              setSelectedSlot(null);
-            }}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select a doctor" value={null} />
-            {doctors.map((doctor) => (
-              <Picker.Item
-                key={doctor._id}
-                label={`${doctor.doctor_first_name} ${doctor.doctor_last_name}`}
-                value={doctor._id}
-              />
-            ))}
-          </Picker>
+          {renderDoctorPicker()}
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Select Therapy Plan</Text>
-          <Picker
-            selectedValue={selectedPlan?._id}
-            onValueChange={(itemValue) =>
-              setSelectedPlan(therapyPlans.find((p) => p._id === itemValue))
-            }
-            style={styles.picker}
-          >
-            <Picker.Item label="Select a plan" value={null} />
-            {therapyPlans.map((plan) => (
-              <Picker.Item
-                key={plan._id}
-                label={plan.therapy_name}
-                value={plan._id}
-              />
-            ))}
-          </Picker>
+          {renderTherapyPicker()}
         </View>
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appointment Type</Text>
           <View style={styles.appointmentTypes}>
@@ -415,7 +575,10 @@ const CreateTherapy = ({ navigation, route }) => {
             minimumDate={new Date()}
           />
         )}
-
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Slot Duration</Text>
+          {renderSlotDurationPicker()}
+        </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Available Slots</Text>
           {!selectedDoctor ? (
@@ -460,24 +623,11 @@ const CreateTherapy = ({ navigation, route }) => {
         </View>
       )}
 
-      {isGoogleSignInVisible && (
-        <View style={styles.googleButtonContainer}>
-          <Text style={styles.googleButtonText}>
-            Sign in with Google to access your calendar
-          </Text>
-          <GoogleSignInButton onSignInSuccess={handleGoogleSignIn} />
-        </View>
-      )}
-
       <TouchableOpacity
         style={[styles.bookButton, isBooking && { opacity: 0.5 }]}
         onPress={handleBookAppointment}
         disabled={
-          !selectedDoctor ||
-          !selectedSlot ||
-          !selectedPlan ||
           isBooking ||
-          !hasGoogleAccess ||
           (appointmentType === "Liveswitch" && !hasLiveSwitchAccess)
         }
       >
@@ -496,14 +646,70 @@ const CreateTherapy = ({ navigation, route }) => {
           doctor: selectedDoctor
             ? `${selectedDoctor.doctor_first_name} ${selectedDoctor.doctor_last_name}`
             : "",
-          plan: selectedPlan ? selectedPlan.name : "",
+          plan: selectedPlan ? selectedPlan.therapy_name : "",
         }}
+      />
+      <NoPlanPopup
+        visible={showNoPlanPopup}
+        onClose={() => setShowNoPlanPopup(false)}
+        onCreatePlan={handleCreatePlan}
       />
     </View>
   );
 };
-const createStyles = (colors) =>
+const createStyles = (colors: any) =>
   StyleSheet.create({
+    modalContainer: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    pickerContainer: {
+      backgroundColor: "#FFFFFF",
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingBottom: 20,
+    },
+    pickerHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: "#E0E0E0",
+    },
+    pickerTitle: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: "#333333",
+    },
+    doneButton: {
+      padding: 8,
+    },
+    doneButtonText: {
+      color: "#119FB3",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    iosPicker: {
+      backgroundColor: "#FFFFFF",
+      height: 215,
+    },
+    pickerField: {
+      backgroundColor: "#F0F8FF",
+      borderRadius: 10,
+      padding: 12,
+      marginTop: 8,
+      borderWidth: 1,
+      borderColor: "#E0E0E0",
+    },
+    pickerFieldText: {
+      fontSize: 16,
+      color: "#333333",
+    },
+    pickerPlaceholder: {
+      color: "#999999",
+    },
     container: {
       flex: 1,
       backgroundColor: "#F0F8FF",

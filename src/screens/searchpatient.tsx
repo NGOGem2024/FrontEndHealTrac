@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -7,16 +7,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import {
   NavigationProp,
   ParamListBase,
   useNavigation,
+  useIsFocused,
 } from "@react-navigation/native";
 import axios from "axios";
 import { useSession } from "../context/SessionContext";
 import Icon from "react-native-vector-icons/FontAwesome";
 import axiosInstance from "../utils/axiosConfig";
+import BackTabTop from "./BackTopTab";
 
 interface Patient {
   _id: string;
@@ -35,8 +39,22 @@ const SearchPatients: React.FC<Props> = ({ navigation }) => {
   const [searchResults, setSearchResults] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [noResultsMessage, setNoResultsMessage] = useState("");
+  const searchInputRef = useRef<TextInput>(null);
+  const isFocused = useIsFocused();
 
-  const { idToken } = useSession();
+  const { session } = useSession();
+
+  // Auto-focus the search input when the screen is focused
+  useEffect(() => {
+    if (isFocused && searchInputRef.current) {
+      // Small delay to ensure the keyboard shows up properly after navigation
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isFocused]);
 
   useEffect(() => {
     if (searchQuery.length > 2) {
@@ -49,21 +67,20 @@ const SearchPatients: React.FC<Props> = ({ navigation }) => {
 
   const handleSearch = async () => {
     setIsLoading(true);
-    setNoResultsMessage(""); // Clear any previous message
+    setNoResultsMessage("");
     try {
       const response = await axiosInstance.get(
         `/search/patient?query=${searchQuery}`,
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: "Bearer " + idToken,
+            Authorization: "Bearer " + session.idToken,
           },
         }
       );
       setSearchResults(response.data.patients);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
-        // Handle 404 Not Found
         setSearchResults([]);
         setNoResultsMessage("No patients found with this name.");
       } else {
@@ -93,14 +110,22 @@ const SearchPatients: React.FC<Props> = ({ navigation }) => {
   );
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+    >
       <View style={styles.searchContainer}>
         <TextInput
+          ref={searchInputRef}
           style={styles.searchBar}
           placeholder="Search by name"
           placeholderTextColor="rgba(255, 255, 255, 0.8)"
           value={searchQuery}
           onChangeText={setSearchQuery}
+          autoFocus={true} // Enable auto-focus
+          returnKeyType="search"
+          onSubmitEditing={handleSearch}
         />
         <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
           <Icon
@@ -118,6 +143,7 @@ const SearchPatients: React.FC<Props> = ({ navigation }) => {
           data={searchResults}
           renderItem={renderPatientItem}
           keyExtractor={(item) => item._id}
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             noResultsMessage ? (
               <Text style={styles.emptyText}>{noResultsMessage}</Text>
@@ -125,10 +151,11 @@ const SearchPatients: React.FC<Props> = ({ navigation }) => {
           }
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
+// Updated styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -141,6 +168,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.5)",
     borderRadius: 20,
     padding: 10,
+    marginTop: 10,
     marginBottom: 16,
   },
   searchBar: {

@@ -13,7 +13,9 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   TouchableWithoutFeedback,
+  StatusBar,
 } from "react-native";
+import ActiveTherapyPlans from "./Activeplans";
 import axios from "axios";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useTheme } from "./ThemeContext";
@@ -42,6 +44,8 @@ interface DoctorInfo {
 }
 
 interface Appointment {
+  plan_id: string;
+  patient_id: string;
   _id: string;
   therepy_type: string;
   therepy_link: string;
@@ -303,6 +307,11 @@ const DoctorDashboard: React.FC = () => {
             >
               <Text style={styles.dropdownItem}>Dashboard</Text>
             </TouchableOpacity>
+            {session.is_admin && ( // Only show Settings if the user is an admin
+              <TouchableOpacity onPress={() => navigateToScreen("Settings")}>
+                <Text style={styles.dropdownItem}>Settings</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity onPress={() => navigateToScreen("Logout")}>
               <Text style={[styles.dropdownItem, styles.logoutText]}>
                 Logout
@@ -317,6 +326,12 @@ const DoctorDashboard: React.FC = () => {
   if (doctorLoading) {
     return (
       <View style={styles.loadingContainer}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="black"
+          translucent={false}
+        />
+
         <ActivityIndicator size="large" color="#119FB3" />
         <Text style={styles.loadingText}>Loading Doctor Dashboard...</Text>
       </View>
@@ -335,6 +350,12 @@ const DoctorDashboard: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="black"
+        translucent={false}
+      />
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -462,7 +483,11 @@ const DoctorDashboard: React.FC = () => {
             <NoAppointmentsPopup visible={true} />
           )}
         </View>
+        <View style={styles.section}>
+          <ActiveTherapyPlans />
+        </View>
       </ScrollView>
+
       {isAppointmentModalVisible && selectedAppointment && (
         <View style={styles.fullScreenModal}>
           <AppointmentDetailsScreen
