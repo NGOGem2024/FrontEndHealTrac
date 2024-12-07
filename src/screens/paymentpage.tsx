@@ -16,6 +16,7 @@ import { useSession } from "../context/SessionContext";
 import axiosInstance from "../utils/axiosConfig";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
+import BackTabTop from "./BackTopTab";
 
 type PaymentPageProps = {
   navigation: StackNavigationProp<RootStackParamList, "payment">;
@@ -44,9 +45,11 @@ interface PaymentInfo {
   payment_structure: {
     payment_type: string;
     next_payment_due: string;
+    next_payment_number?: number;
   };
   addons: Array<any>;
   payment_history: Array<{
+    payment_number: any;
     amount: number;
     date: string;
     type: string;
@@ -152,10 +155,14 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Record Payment</Text>
-            <Text style={styles.modalSubtitle}>
-              Session {currentSession + 1}
-            </Text>
-
+            {paymentInfo.payment_structure.next_payment_number && (
+              <View style={styles.paymentNumberContainer}>
+                <Text style={styles.paymentNumberLabel}>
+                  Payment Number:
+                  {paymentInfo.payment_structure.next_payment_number}
+                </Text>
+              </View>
+            )}
             <TextInput
               style={styles.input}
               placeholder="Enter amount"
@@ -428,7 +435,7 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
           <View key={index} style={styles.paymentHistoryItem}>
             <View style={styles.paymentHistoryLeft}>
               <Text style={styles.paymentHistorySession}>
-                Session {payment.session_number}
+                {payment.payment_number && `Payment #${payment.payment_number}`}
               </Text>
               <Text style={styles.paymentHistoryDate}>
                 {formatDate(payment.date)}
@@ -800,6 +807,19 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       paddingHorizontal: 12,
       paddingVertical: 4,
       borderRadius: 16,
+    },
+    paymentNumberContainer: {
+      marginTop: 8,
+    },
+    paymentNumberLabel: {
+      fontSize: 16,
+      color: "#6c757d",
+      marginBottom: 4,
+    },
+    paymentNumberText: {
+      fontSize: 16,
+      fontWeight: "500",
+      color: "#2c3e50",
     },
     paymentTypeText: {
       color: "white",

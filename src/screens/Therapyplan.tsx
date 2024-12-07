@@ -19,6 +19,7 @@ import { Picker } from "@react-native-picker/picker";
 import { useSession } from "../context/SessionContext";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import axiosInstance from "../utils/axiosConfig";
+import BackTabTop from "./BackTopTab";
 
 type CreateTherapyPlanProps = {
   navigation: StackNavigationProp<RootStackParamList, "CreateTherapyPlan">;
@@ -257,6 +258,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
 
   return (
     <ScrollView style={styles.scrollView}>
+      <BackTabTop screenName="Plan" />
       <Animated.View
         style={[
           styles.container,
@@ -363,36 +365,34 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             ))}
           </View>
         </View>
+        <View style={styles.labeledInputContainer}>
+          <Text style={styles.inputLabel}>Estimated Sessions</Text>
+          <View style={styles.inputContainer}>
+            <MaterialIcons name="event-repeat" size={24} color="#119FB3" />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter estimated sessions"
+              value={therapyPlan.estimated_sessions}
+              onChangeText={(text) => {
+                setTherapyPlan((prev) => ({
+                  ...prev,
+                  estimated_sessions: text,
+                  total_amount:
+                    text && prev.per_session_amount
+                      ? (
+                          parseFloat(text) * parseFloat(prev.per_session_amount)
+                        ).toFixed(2)
+                      : prev.total_amount,
+                }));
+              }}
+              keyboardType="numeric"
+              placeholderTextColor="#A0A0A0"
+            />
+          </View>
+        </View>
 
         {therapyPlan.payment_type === "recurring" && (
           <>
-            <View style={styles.labeledInputContainer}>
-              <Text style={styles.inputLabel}>Estimated Sessions</Text>
-              <View style={styles.inputContainer}>
-                <MaterialIcons name="event-repeat" size={24} color="#119FB3" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter estimated sessions"
-                  value={therapyPlan.estimated_sessions}
-                  onChangeText={(text) => {
-                    setTherapyPlan((prev) => ({
-                      ...prev,
-                      estimated_sessions: text,
-                      total_amount:
-                        text && prev.per_session_amount
-                          ? (
-                              parseFloat(text) *
-                              parseFloat(prev.per_session_amount)
-                            ).toFixed(2)
-                          : prev.total_amount,
-                    }));
-                  }}
-                  keyboardType="numeric"
-                  placeholderTextColor="#A0A0A0"
-                />
-              </View>
-            </View>
-
             <View style={styles.labeledInputContainer}>
               <Text style={styles.inputLabel}>Amount Per Session</Text>
               <View style={styles.inputContainer}>
@@ -559,7 +559,6 @@ const styles = StyleSheet.create({
     color: "#119FB3",
     textAlign: "center",
     marginBottom: 20,
-    marginTop: 25,
   },
   labeledInputContainer: {
     marginBottom: 0,

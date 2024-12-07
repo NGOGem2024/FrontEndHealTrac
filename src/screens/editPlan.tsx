@@ -17,6 +17,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import axiosInstance from "../utils/axiosConfig";
+import BackTabTop from "./BackTopTab";
 
 type EditTherapyPlanProps = {
   navigation: StackNavigationProp<RootStackParamList, "EditTherapyPlan">;
@@ -39,6 +40,9 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
     received_amount: "",
     therapy_name: "",
     balance: "",
+    payment_type: "recurring",
+    per_session_amount: "",
+    estimated_sessions: "",
   });
   const { planId } = route.params;
 
@@ -92,6 +96,13 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
         total_amount: therapy_plan.total_amount.toString(),
         received_amount: therapy_plan.received_amount.toString(),
         balance: therapy_plan.balance.toString(),
+        payment_type: therapy_plan.payment_type || "recurring",
+        per_session_amount: therapy_plan.per_session_amount
+          ? therapy_plan.per_session_amount.toString()
+          : "",
+        estimated_sessions: therapy_plan.estimated_sessions
+          ? therapy_plan.estimated_sessions.toString()
+          : "",
       });
 
       setStartDate(new Date(therapy_plan.therapy_start));
@@ -113,7 +124,31 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
       setTherapyPlan({ ...therapyPlan, therapy_duration: `${diffDays} days` });
     }
   }, [startDate, endDate]);
+  const paymentTypes = [
+    { label: "Recurring Payment", value: "recurring" },
+    { label: "One-time Payment", value: "one-time" },
+  ];
 
+  useEffect(() => {
+    if (
+      therapyPlan.payment_type === "recurring" &&
+      therapyPlan.estimated_sessions &&
+      therapyPlan.total_amount
+    ) {
+      const perSession = (
+        parseFloat(therapyPlan.total_amount) /
+        parseFloat(therapyPlan.estimated_sessions)
+      ).toFixed(2);
+      setTherapyPlan((prev) => ({
+        ...prev,
+        per_session_amount: perSession,
+      }));
+    }
+  }, [
+    therapyPlan.total_amount,
+    therapyPlan.estimated_sessions,
+    therapyPlan.payment_type,
+  ]);
   const onChangeStartDate = (event: any, selectedDate?: Date) => {
     setShowStartDatePicker(false);
     if (selectedDate) {
@@ -164,12 +199,35 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
     if (startDate >= endDate) {
       newErrors.date = "End date must be after start date";
     }
+    if (therapyPlan.payment_type === "recurring") {
+      if (
+        !therapyPlan.per_session_amount ||
+        parseFloat(therapyPlan.per_session_amount) <= 0
+      ) {
+        newErrors.per_session_amount = "Per session amount is required";
+      }
+      if (
+        !therapyPlan.estimated_sessions ||
+        parseInt(therapyPlan.estimated_sessions) <= 0
+      ) {
+        newErrors.estimated_sessions = "Estimated sessions is required";
+      }
+    }
+
+    if (
+      therapyPlan.payment_type === "one-time" &&
+      parseFloat(therapyPlan.received_amount) !==
+        parseFloat(therapyPlan.total_amount)
+    ) {
+      newErrors.received_amount = "One-time payment requires full amount";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleUpdateTherapyPlan = async () => {
+    setIsSaving(true);
     if (!validateForm()) {
       Alert.alert(
         "Validation Error",
@@ -177,8 +235,6 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
       );
       return;
     }
-
-    setIsSaving(true);
 
     try {
       const formData = {
@@ -192,6 +248,9 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
         total_amount: therapyPlan.total_amount,
         received_amount: therapyPlan.received_amount,
         balance: therapyPlan.balance,
+        payment_type: therapyPlan.payment_type,
+        estimated_sessions: parseInt(therapyPlan.estimated_sessions),
+        per_session_amount: parseFloat(therapyPlan.per_session_amount),
       };
 
       const response = await axiosInstance.put(
@@ -237,6 +296,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
   }
   return (
     <ScrollView style={styles.scrollView}>
+      <BackTabTop screenName="Edit Plan" />
       <Animated.View
         style={[
           styles.container,
@@ -246,7 +306,6 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
           },
         ]}
       >
-        <Text style={styles.title}>Edit Therapy Plan</Text>
         <Text style={styles.patientName}>Patient: {patientName}</Text>
 
         <Dropdown
@@ -303,6 +362,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
             showDatePicker={showStartDatePicker}
             onPress={showStartDatepicker}
             onChange={onChangeStartDate}
+            disabled={true} // Disable the start date picker
           />
 
           <DatePickerField
@@ -321,6 +381,93 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
             Duration: {therapyPlan.therapy_duration}
           </Text>
         </View>
+        <View style={styles.paymentTypeContainer}>
+          <Text style={styles.inputLabel}>Payment Type</Text>
+          <View style={styles.radioGroup}>
+            {paymentTypes.map((type) => (
+              <TouchableOpacity
+                key={type.value}
+                style={[
+                  styles.radioButton,
+                  therapyPlan.payment_type === type.value &&
+                    styles.radioButtonSelected,
+                ]}
+                onPress={() =>
+                  setTherapyPlan({ ...therapyPlan, payment_type: type.value })
+                }
+              >
+                <View style={styles.radio}>
+                  {therapyPlan.payment_type === type.value && (
+                    <View style={styles.radioSelected} />
+                  )}
+                </View>
+                <Text style={styles.radioLabel}>{type.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.labeledInputContainer}>
+          <Text style={styles.inputLabel}>Estimated Sessions</Text>
+          <View style={styles.inputContainer}>
+            <MaterialIcons name="event-repeat" size={24} color="#119FB3" />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter estimated sessions"
+              value={therapyPlan.estimated_sessions}
+              onChangeText={(text) => {
+                setTherapyPlan((prev) => ({
+                  ...prev,
+                  estimated_sessions: text,
+                  total_amount:
+                    text && prev.per_session_amount
+                      ? (
+                          parseFloat(text) * parseFloat(prev.per_session_amount)
+                        ).toFixed(2)
+                      : prev.total_amount,
+                }));
+              }}
+              keyboardType="numeric"
+              placeholderTextColor="#A0A0A0"
+            />
+          </View>
+        </View>
+
+        {therapyPlan.payment_type === "recurring" && (
+          <>
+            <View style={styles.labeledInputContainer}>
+              <Text style={styles.inputLabel}>Amount Per Session</Text>
+              <View style={styles.inputContainer}>
+                <FontAwesome name="rupee" size={24} color="#119FB3" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter amount per session"
+                  value={therapyPlan.per_session_amount}
+                  onChangeText={(text) => {
+                    setTherapyPlan((prev) => ({
+                      ...prev,
+                      per_session_amount: text,
+                      total_amount:
+                        text && prev.estimated_sessions
+                          ? (
+                              parseFloat(text) *
+                              parseFloat(prev.estimated_sessions)
+                            ).toFixed(2)
+                          : prev.total_amount,
+                    }));
+                  }}
+                  keyboardType="numeric"
+                  placeholderTextColor="#A0A0A0"
+                />
+              </View>
+              {errors.per_session_amount && (
+                <Text style={styles.errorText}>
+                  {errors.per_session_amount}
+                </Text>
+              )}
+            </View>
+          </>
+        )}
         <View style={styles.labeledInputContainer}>
           <Text style={styles.inputLabel}>Total Amount</Text>
           <View style={styles.inputContainer}>
@@ -341,21 +488,11 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
           <Text style={styles.errorText}>{errors.total_amount}</Text>
         )}
 
-        <View style={styles.labeledInputContainer}>
-          <Text style={styles.inputLabel}>Received Amount</Text>
-          <View style={styles.inputContainer}>
-            <FontAwesome name="rupee" size={24} color="#119FB3" />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter received amount"
-              value={therapyPlan.received_amount}
-              onChangeText={(text) =>
-                setTherapyPlan({ ...therapyPlan, received_amount: text })
-              }
-              keyboardType="numeric"
-              placeholderTextColor="#A0A0A0"
-            />
-          </View>
+        <View style={styles.balanceContainer}>
+          <FontAwesome name="rupee" size={24} color="#119FB3" />
+          <Text style={styles.balanceValue}>
+            Received: {therapyPlan.received_amount} Rs
+          </Text>
         </View>
         {errors.received_amount && (
           <Text style={styles.errorText}>{errors.received_amount}</Text>
@@ -374,10 +511,10 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
           onPress={handleUpdateTherapyPlan}
           disabled={isLoading}
         >
-          {isLoading ? (
+          {isSaving ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.saveButtonText}>Create Plan</Text>
+            <Text style={styles.saveButtonText}>Edit Plan</Text>
           )}
         </TouchableOpacity>
       </Animated.View>
@@ -403,21 +540,40 @@ const DatePickerField = ({
   showDatePicker,
   onPress,
   onChange,
+  disabled = false, // Add a disabled prop
 }) => (
   <View style={styles.dateTimeBlock}>
     <Text style={styles.dateTimeLabel}>{label}</Text>
-    <TouchableOpacity style={styles.dateTimeContainer} onPress={onPress}>
-      <Text style={styles.dateTimeText}>{date.toLocaleDateString()}</Text>
-      <FontAwesome name="calendar" size={24} color="#119FB3" />
-    </TouchableOpacity>
-    {showDatePicker && (
-      <DateTimePicker
-        value={date}
-        mode="date"
-        display="default"
-        onChange={onChange}
+    <TouchableOpacity
+      style={[
+        styles.dateTimeContainer,
+        disabled && styles.disabledDateContainer, // Add a disabled style
+      ]}
+      onPress={disabled ? undefined : onPress} // Prevent onPress if disabled
+    >
+      <Text
+        style={[
+          styles.dateTimeText,
+          disabled && styles.disabledDateText, // Add a disabled text style
+        ]}
+      >
+        {date.toLocaleDateString()}
+      </Text>
+      <FontAwesome
+        name="calendar"
+        size={24}
+        color={disabled ? "#A0A0A0" : "#119FB3"} // Change color when disabled
       />
-    )}
+    </TouchableOpacity>
+    {showDatePicker &&
+      !disabled && ( // Only show picker if not disabled
+        <DateTimePicker
+          value={date}
+          mode="date"
+          display="default"
+          onChange={onChange}
+        />
+      )}
   </View>
 );
 
@@ -438,6 +594,54 @@ const Dropdown = ({ value, onValueChange, items }) => (
 );
 
 const styles = StyleSheet.create({
+  paymentTypeContainer: {
+    marginBottom: 20,
+  },
+  radioGroup: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  radioButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 15,
+    flex: 0.48,
+    elevation: 2,
+  },
+  radioButtonSelected: {
+    backgroundColor: "#E6F7F9",
+    borderColor: "#119FB3",
+    borderWidth: 1,
+  },
+  disabledDateContainer: {
+    backgroundColor: "#f0f0f0", // Light background to indicate disabled state
+  },
+  disabledDateText: {
+    color: "#666666", // Grayed out text
+  },
+  radio: {
+    height: 20,
+    width: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#119FB3",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  radioSelected: {
+    height: 10,
+    width: 10,
+    borderRadius: 5,
+    backgroundColor: "#119FB3",
+  },
+  radioLabel: {
+    fontSize: 14,
+    color: "#333333",
+  },
   scrollView: {
     backgroundColor: "#F0F8FF",
   },
@@ -580,6 +784,10 @@ const styles = StyleSheet.create({
     color: "red",
     textAlign: "center",
     marginBottom: 10,
+  },
+  disabledInput: {
+    color: "#666666", // Slightly grayed out to indicate it's not editable
+    backgroundColor: "#f0f0f0", // Light background to further indicate disabled state
   },
 });
 

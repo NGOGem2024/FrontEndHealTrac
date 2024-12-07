@@ -33,6 +33,7 @@ import AppointmentDetails from "./AppointmentDetails";
 
 interface Therapy {
   _id: string;
+  plan_id: string;
   patient_id: string;
   therepy_id: string;
   therepy_type: string;

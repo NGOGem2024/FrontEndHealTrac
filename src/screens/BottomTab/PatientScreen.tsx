@@ -6,9 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
-import { RootStackParamList } from "../../types/types"; // Update with the correct path
+import { RootStackParamList } from "../../types/types";
 import {
   MaterialIcons,
   AntDesign,
@@ -17,12 +19,13 @@ import {
   Ionicons,
 } from "@expo/vector-icons";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-
-import { Title, Card, Paragraph } from "react-native-paper";
+import { Title, Card } from "react-native-paper";
 import { useSession } from "../../context/SessionContext";
 import { handleError } from "../../utils/errorHandler";
 import BackTopTab from "../BackTopTab";
 import axiosInstance from "../../utils/axiosConfig";
+import { useTheme } from "../ThemeContext";
+import { getTheme } from "../Theme";
 
 type PatientScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Patient">;
@@ -52,8 +55,31 @@ interface PatientData {
   patient_address1: string;
   therapy_plans: TherapyPlan[];
 }
+const calculateTherapyProgress = (
+  startDate: string,
+  endDate: string
+): number => {
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  const now = new Date().getTime();
+
+  // If the therapy hasn't started yet
+  if (now < start) return 0;
+
+  // If the therapy has already ended
+  if (now > end) return 100;
+
+  // Calculate the progress percentage
+  const totalDuration = end - start;
+  const elapsedDuration = now - start;
+  const progressPercentage = (elapsedDuration / totalDuration) * 100;
+
+  return Math.min(Math.max(progressPercentage, 0), 100);
+};
 
 const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
+  const { theme } = useTheme();
+  const styles = getStyles(getTheme(theme));
   const { session } = useSession();
   const { patientId } = route.params;
   const [patientData, setPatientData] = useState<PatientData | null>(null);
@@ -81,367 +107,354 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
     fetchPatientData();
   }, [patientId, session.idToken, patientData]);
 
-  const renderPatientInfo = () => {
-    if (!patientData) return null;
-
-    return (
-      <>
-        <Title style={styles.patientName}>
-          {patientData.patient_first_name} {patientData.patient_last_name}
-        </Title>
-
-        {patientData.patient_email && (
-          <View style={styles.content}>
-            <MaterialIcons name="email" size={20} color="white" />
-            <Text style={styles.mytext}> {patientData.patient_email}</Text>
-          </View>
-        )}
-
-        <View style={styles.content}>
-          <MaterialIcons name="call" size={20} color="white" />
-          <Text style={styles.mytext}> {patientData.patient_phone}</Text>
-        </View>
-
-        {patientData.patient_address1 && (
-          <View style={styles.content}>
-            <MaterialIcons name="location-on" size={20} color="white" />
-            <Text style={styles.mytext}> {patientData.patient_address1}</Text>
-          </View>
-        )}
-      </>
-    );
-  };
-
-  const renderTherapyPlanCards = () => {
-    if (!patientData?.therapy_plans || patientData.therapy_plans.length === 0) {
-      return null;
-    }
-
-    return patientData.therapy_plans
-      .slice()
-      .reverse()
-      .map((plan, index) => (
-        <TouchableOpacity
-          key={plan._id}
-          onPress={() =>
-            navigation.navigate("planDetails", { planId: plan._id })
-          }
-          style={{ width: "100%" }} // Ensure full width
-        >
-          <Card style={[styles.therapyPlanCard, { width: "100%" }]}>
-            <View style={styles.cardHeader}>
-              <Title
-                style={[
-                  styles.cardTitle,
-                  index === 0 && { fontWeight: "bold", fontSize: 18 },
-                ]}
-              >
-                {index === 0
-                  ? "Current Therapy Plan"
-                  : `Past Therapy Plan ${index + 1}`}
-              </Title>
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  navigation.navigate("EditTherapyPlan", {
-                    planId: plan._id,
-                  });
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="square-edit-outline"
-                  size={24}
-                  color="#119FB3"
-                />
-              </TouchableOpacity>
-            </View>
-            <Card.Content>
-              <Paragraph>Name: {plan.therapy_name}</Paragraph>
-              <Paragraph>Diagnosis: {plan.patient_diagnosis}</Paragraph>
-              <Paragraph>Symptoms: {plan.patient_symptoms}</Paragraph>
-              <Paragraph>Duration: {plan.therapy_duration}</Paragraph>
-              <Paragraph>
-                Start Date: {new Date(plan.therapy_start).toLocaleDateString()}
-              </Paragraph>
-              <Paragraph>
-                End Date: {new Date(plan.therapy_end).toLocaleDateString()}
-              </Paragraph>
-              <Paragraph>Category: {plan.patient_therapy_category}</Paragraph>
-            </Card.Content>
-          </Card>
-        </TouchableOpacity>
-      ));
-  };
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="#119FB3"
+          translucent={false}
+        />
         <ActivityIndicator size="large" color="#119FB3" />
         <Text style={styles.loadingText}>Loading patient information...</Text>
       </View>
     );
   }
 
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <BackTopTab screenName="Patient" />
-      <ScrollView
-        style={styles.main}
-        contentContainerStyle={styles.mainContent}
-      >
-        <View style={styles.profileContainer}>{renderPatientInfo()}</View>
+  if (!patientData) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Patient not found</Text>
+      </View>
+    );
+  }
 
-        <View style={styles.botscrview}>
-          <Text style={styles.headlist}>Account Overview</Text>
-          <View style={styles.container}>
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <BackTopTab screenName="Patient" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="black"
+        translucent={false}
+      />
+
+      <ScrollView style={styles.container}>
+        {/* Patient Information Card */}
+        <View style={styles.mainCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.patientName}>
+              {patientData.patient_first_name} {patientData.patient_last_name}
+            </Text>
+          </View>
+
+          <View style={styles.contactInfo}>
+            {patientData.patient_email && (
+              <View style={styles.infoRow}>
+                <MaterialIcons name="email" size={20} color="#119FB3" />
+                <Text style={styles.infoText}>{patientData.patient_email}</Text>
+              </View>
+            )}
+            <View style={styles.infoRow}>
+              <MaterialIcons name="call" size={20} color="#119FB3" />
+              <Text style={styles.infoText}>{patientData.patient_phone}</Text>
+            </View>
+            {patientData.patient_address1 && (
+              <View style={styles.infoRow}>
+                <MaterialIcons name="location-on" size={20} color="#119FB3" />
+                <Text style={styles.infoText}>
+                  {patientData.patient_address1}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Quick Actions Card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActionsContainer}>
             <TouchableOpacity
-              style={styles.linkContainer}
+              style={styles.quickActionButton}
               onPress={() =>
                 navigation.navigate("UpdatePatient", {
                   patientId: patientId,
                 })
               }
-              disabled={!patientData}
             >
-              <View style={styles.iconleft}>
-                <MaterialCommunityIcons
-                  name="square-edit-outline"
-                  size={30}
-                  color="#65b6e7"
-                  style={styles.iconlist}
-                />
-                <Text style={styles.link}>Update Patient</Text>
-              </View>
-              <Octicons name="chevron-right" size={24} color="black" />
+              <MaterialCommunityIcons
+                name="square-edit-outline"
+                size={24}
+                color="#65b6e7"
+              />
+              <Text style={styles.quickActionText}>Update</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={styles.linkContainer}
+              style={styles.quickActionButton}
               onPress={() =>
                 navigation.navigate("CreateTherapyPlan", {
                   patientId: patientId,
                 })
               }
-              disabled={!patientData}
             >
-              <View style={styles.iconleft}>
-                <Ionicons
-                  name="clipboard"
-                  size={30}
-                  color="#6A0DAD"
-                  style={[styles.iconlist, styles.therapyicon]}
-                />
-                <Text style={styles.link}>Therapy Plan</Text>
-              </View>
-              <Octicons name="chevron-right" size={24} color="black" />
+              <Ionicons name="clipboard" size={24} color="#6A0DAD" />
+              <Text style={styles.quickActionText}>Therapy Plan</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.linkContainer}
+              style={styles.quickActionButton}
               onPress={() =>
                 navigation.navigate("CreateTherapy", {
                   patientId: patientId,
                 })
               }
-              disabled={!patientData}
             >
-              <View style={styles.iconleft}>
-                <MaterialCommunityIcons
-                  name="file"
-                  size={30}
-                  color="#6e54ef"
-                  style={[styles.iconlist, styles.reportsicon]}
-                />
-                <Text style={styles.link}>Book Appointment</Text>
-              </View>
-              <Octicons name="chevron-right" size={24} color="black" />
+              <MaterialCommunityIcons name="file" size={24} color="#6e54ef" />
+              <Text style={styles.quickActionText}>Appointment</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={styles.linkContainer}
+              style={styles.quickActionButton}
               onPress={() =>
                 navigation.navigate("UpdateTherapy", {
                   patientId: patientId,
                 })
               }
-              disabled={!patientData}
             >
-              <View style={styles.iconleft}>
-                <Ionicons
-                  name="medical"
-                  size={30}
-                  color="#55b55b"
-                  style={[styles.iconlist, styles.therapyicon]}
-                />
-                <Text style={styles.link}>Therapy Session</Text>
-              </View>
-              <Octicons name="chevron-right" size={24} color="black" />
+              <Ionicons name="medical" size={24} color="#55b55b" />
+              <Text style={styles.quickActionText}>Sessions</Text>
             </TouchableOpacity>
-
-            {renderTherapyPlanCards()}
           </View>
         </View>
+
+        {/* Therapy Plans Card */}
+        {patientData.therapy_plans && patientData.therapy_plans.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Therapy Plans</Text>
+            {patientData.therapy_plans
+              .slice()
+              .reverse()
+              .map((plan, index) => {
+                const progressPercentage = calculateTherapyProgress(
+                  plan.therapy_start,
+                  plan.therapy_end
+                );
+
+                return (
+                  <TouchableOpacity
+                    key={plan._id}
+                    onPress={() =>
+                      navigation.navigate("planDetails", { planId: plan._id })
+                    }
+                    style={styles.therapyPlanItem}
+                  >
+                    <View style={styles.therapyPlanHeader}>
+                      <Text style={styles.therapyPlanTitle}>
+                        {index === 0
+                          ? "Current Plan"
+                          : `Past Plan ${index + 1}`}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          navigation.navigate("EditTherapyPlan", {
+                            planId: plan._id,
+                          });
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name="square-edit-outline"
+                          size={24}
+                          color="#119FB3"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.therapyPlanName}>
+                      {plan.therapy_name}
+                    </Text>
+                    <View style={styles.therapyPlanDetails}>
+                      <Text style={styles.therapyPlanDetailText}>
+                        {plan.patient_diagnosis}
+                      </Text>
+                      <Text style={styles.therapyPlanDetailText}>
+                        {new Date(plan.therapy_start).toLocaleDateString()} -{" "}
+                        {new Date(plan.therapy_end).toLocaleDateString()}
+                      </Text>
+
+                      {/* Progress Bar */}
+                      <View style={styles.progressContainer}>
+                        <View
+                          style={[
+                            styles.progressBar,
+                            { width: `${progressPercentage}%` },
+                          ]}
+                        />
+                        <Text style={styles.progressText}>
+                          {`${Math.round(progressPercentage)}% Complete`}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+          </View>
+        )}
       </ScrollView>
-    </GestureHandlerRootView>
+    </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  cardTitle: {
-    flex: 1,
-  },
-  editButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  main: {
-    flex: 1,
-    backgroundColor: "#119FB3",
-  },
-  mainContent: {
-    flexGrow: 1,
-  },
-  content: {
-    flexDirection: "row",
-    margin: 3,
-  },
-  mytext: {
-    fontSize: 14,
-    color: "white",
-    fontWeight: "bold",
-  },
-  botscrview: {
-    backgroundColor: "white",
-    width: "100%",
-    borderTopLeftRadius: 40,
-    marginTop: 20,
-    borderTopRightRadius: 40,
-    paddingTop: 20,
-    flexGrow: 1,
-  },
-  container: {
-    padding: 20,
-    width: "100%",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "#119FB3",
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  link: {
-    fontSize: 16,
-    marginLeft: 15,
-    color: "black",
-    fontWeight: "bold",
-  },
-  linkContainer: {
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    height: 60,
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    flexDirection: "row",
-    marginBottom: 10,
-  },
-  content1: {
-    margin: 5,
-    fontSize: 10,
-    marginBottom: -15,
-  },
-  iconleft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  iconlist: {
-    padding: 7,
-    borderRadius: 15,
-    backgroundColor: "#d6e6f2",
-  },
-  headlist: {
-    fontSize: 16,
-    fontWeight: "bold",
-    margin: 20,
-    marginBottom: 0,
-  },
-  therapyicon: {
-    backgroundColor: "#d3edda",
-  },
-  reportsicon: {
-    backgroundColor: "#dddaf2",
-  },
-  remarksicon: {
-    backgroundColor: "#ebe0dc",
-  },
-  mediaicon: {
-    backgroundColor: "#eaddeb",
-  },
-  backcover: {
-    position: "absolute",
-    resizeMode: "cover",
-    width: "100%",
-    height: "100%",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    backgroundColor: "#119FB3",
-  },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  backButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    marginLeft: 5,
-    fontSize: 18,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F5FCFF",
-  },
-  profileContainer: {
-    paddingLeft: 10,
-    alignItems: "flex-start",
-    marginBottom: 20,
-    marginTop: 10,
-  },
-  profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginTop: 10,
-    borderWidth: 3,
-    borderColor: "white",
-  },
-  patientName: {
-    fontSize: 23,
-    color: "white",
-    fontWeight: "bold",
-  },
-  therapyPlanCard: {
-    marginTop: 20,
-    width: "100%",
-    elevation: 4,
-    backgroundColor: "white",
-  },
-});
+const getStyles = (theme: ReturnType<typeof getTheme>) =>
+  StyleSheet.create({
+    therapyPlanDetails: {
+      flexDirection: "column",
+    },
+    progressContainer: {
+      marginTop: 8,
+      height: 20,
+      backgroundColor: "#E0E0E0",
+      borderRadius: 10,
+      overflow: "hidden",
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    progressBar: {
+      height: "100%",
+      backgroundColor: "#119FB3",
+      borderRadius: 10,
+    },
+    progressText: {
+      position: "absolute",
+      width: "100%",
+      textAlign: "center",
+      fontSize: 12,
+      color: "white",
+      fontWeight: "bold",
+    },
+    therapyPlanDetailText: {
+      fontSize: 14,
+      color: theme.colors.text,
+      marginBottom: 4,
+    },
+    safeArea: {
+      flex: 1,
+      backgroundColor: "#119FB3",
+    },
+    container: {
+      flex: 1,
+      backgroundColor: "#119FB3",
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "#119FB3",
+    },
+    loadingText: {
+      marginTop: 10,
+      fontSize: 16,
+      color: "#FFFFFF",
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "#119FB3",
+    },
+    errorText: {
+      color: "#FFFFFF",
+      fontSize: 16,
+    },
+    mainCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: 12,
+      padding: 16,
+      margin: 16,
+      marginBottom: 8,
+      elevation: 2,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+    },
+    card: {
+      backgroundColor: theme.colors.card,
+      borderRadius: 12,
+      padding: 16,
+      margin: 16,
+      marginBottom: 8,
+      elevation: 2,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    patientName: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: "#119FB3",
+    },
+    contactInfo: {
+      marginTop: 8,
+    },
+    infoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    infoText: {
+      marginLeft: 8,
+      fontSize: 14,
+      color: theme.colors.text,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: theme.colors.text,
+      marginBottom: 12,
+    },
+    quickActionsContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    quickActionButton: {
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 8,
+    },
+    quickActionText: {
+      marginTop: 4,
+      fontSize: 12,
+      color: theme.colors.text,
+    },
+    therapyPlanItem: {
+      backgroundColor: "rgb(240, 246, 255)",
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 8,
+    },
+    therapyPlanHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    therapyPlanTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: "#119FB3",
+    },
+    therapyPlanName: {
+      fontSize: 16,
+      fontWeight: "bold",
+      marginBottom: 8,
+    },
+  });
 
 export default PatientScreen;

@@ -9,7 +9,6 @@ import {
   StatusBar,
   SafeAreaView,
 } from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
 import { useTheme } from "./ThemeContext";
 import { getTheme } from "./Theme";
 import axiosInstance from "../utils/axiosConfig";
@@ -35,6 +34,7 @@ interface TherapyPlanDetails {
   therapy_plan: {
     _id: string;
     therapy_name: string;
+    patient_id: string;
     patient_diagnosis: string;
     patient_symptoms: string[] | string;
     therapy_duration: string;
@@ -82,6 +82,12 @@ const TherapyPlanDetails: React.FC = () => {
       setLoading(false);
     }
   };
+  const handlePaymentNavigation = () => {
+    navigation.navigate("payment", {
+      planId: planId,
+      patientId: planDetails.therapy_plan.patient_id,
+    });
+  };
 
   const calculateProgress = (startDate: string, endDate: string): number => {
     const start = new Date(startDate).getTime();
@@ -97,7 +103,7 @@ const TherapyPlanDetails: React.FC = () => {
       <View style={styles.loadingContainer}>
         <StatusBar
           barStyle="light-content"
-          backgroundColor="#119FB3"
+          backgroundColor="black"
           translucent={false}
         />
         <ActivityIndicator size="large" color="#119FB3" />
@@ -122,7 +128,7 @@ const TherapyPlanDetails: React.FC = () => {
       <BackTabTop screenName="Plan Details" />
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#119FB3"
+        backgroundColor="black"
         translucent={false}
       />
 
@@ -184,7 +190,19 @@ const TherapyPlanDetails: React.FC = () => {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Payment Details</Text>
+          <View style={styles.cardHeader}>
+            <Text style={styles.sectionTitle}>Payment Details</Text>
+            <TouchableOpacity
+              style={styles.paymentInfoButton}
+              onPress={handlePaymentNavigation}
+            >
+              <MaterialCommunityIcons
+                name="information-outline"
+                size={24}
+                color="#119FB3"
+              />
+            </TouchableOpacity>
+          </View>
           <View style={styles.paymentInfo}>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Total Amount:</Text>
@@ -290,6 +308,11 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       color: "#119FB3",
       marginBottom: 12,
       marginTop: 8,
+    },
+
+    paymentInfoButton: {
+      padding: 8,
+      marginLeft: 8,
     },
     editButton: {
       padding: 8,
@@ -465,7 +488,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontWeight: "bold",
     },
     paymentInfo: {
-      backgroundColor: theme.colors.background,
+      backgroundColor: "rgb(240, 246, 255)",
       padding: 12,
       borderRadius: 8,
     },
