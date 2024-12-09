@@ -20,6 +20,7 @@ import { useSession } from "../context/SessionContext";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import axiosInstance from "../utils/axiosConfig";
 import BackTabTop from "./BackTopTab";
+import TherapyCategoryDropdown from "../screens/TherapyCategoryDropdown";
 
 type CreateTherapyPlanProps = {
   navigation: StackNavigationProp<RootStackParamList, "CreateTherapyPlan">;
@@ -269,7 +270,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
         ]}
       >
         <Text style={styles.title}>Create Therapy Plan</Text>
-        <Dropdown
+        <TherapyCategoryDropdown
           value={therapyPlan.therapy_category}
           onValueChange={(itemValue) =>
             setTherapyPlan({ ...therapyPlan, therapy_category: itemValue })
