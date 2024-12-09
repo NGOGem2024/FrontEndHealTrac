@@ -19,6 +19,7 @@ import axios from "axios";
 import { useSession } from "../context/SessionContext";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import instance from "../utils/axiosConfig";
+import BackTabTop from "./BackTopTab";
 
 const { width } = Dimensions.get("window");
 
@@ -55,6 +56,12 @@ const DoctorProfileEdit: React.FC = () => {
     useState<ProfileInfo>(initialProfileState);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+    const validateIndianPhoneNumber = (phone: string): boolean => {
+    const indianPhoneRegex = /^(\+?91[-\s]?)?[6-9]\d{9}$/;
+    return indianPhoneRegex.test(phone.replace(/[-\s]/g, ''));
+  };
 
   useEffect(() => {
     if (session.idToken) {
@@ -87,7 +94,23 @@ const DoctorProfileEdit: React.FC = () => {
   };
 
   const handleInputChange = (field: keyof ProfileInfo, value: string) => {
-    setProfileInfo((prev) => ({ ...prev, [field]: value }));
+    if (field === "doctor_phone") {
+      const cleanedPhone = value.replace(/[^\d+]/g, '');
+      
+      if (cleanedPhone) {
+        setPhoneError(
+          validateIndianPhoneNumber(cleanedPhone) 
+            ? null 
+            : "Please enter a valid Indian mobile number"
+        );
+      } else {
+        setPhoneError(null);
+      }
+
+      setProfileInfo((prev) => ({ ...prev, [field]: cleanedPhone }));
+    } else {
+      setProfileInfo((prev) => ({ ...prev, [field]: value }));
+    }
   };
 
   const hasChanges = () => {
@@ -108,6 +131,14 @@ const DoctorProfileEdit: React.FC = () => {
 
     if (!session.idToken) {
       handleError(new Error("You must be logged in to update your profile"));
+      return;
+    }
+
+    if (phoneError) {
+      Alert.alert(
+        "Invalid Phone Number", 
+        "Please enter a valid 10-digit Indian mobile number starting with 6-9"
+      );
       return;
     }
 
@@ -164,11 +195,13 @@ const DoctorProfileEdit: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+    <BackTabTop screenName="Profile"  />
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
+
           <Text style={styles.headerText}>Edit Profile</Text>
         </View>
 
@@ -223,10 +256,19 @@ const DoctorProfileEdit: React.FC = () => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone</Text>
             <TextInput
-              style={styles.input}
-              value={profileInfo.doctor_phone}
-              onChangeText={(text) => handleInputChange("doctor_phone", text)}
-            />
+            style={[
+              styles.input, 
+              phoneError && styles.inputError
+            ]}
+            value={profileInfo.doctor_phone}
+            onChangeText={(text) => handleInputChange("doctor_phone", text)}
+            keyboardType="phone-pad"
+            placeholder="Enter 10-digit mobile number"
+            maxLength={13} // Accounts for +91 and 10 digits
+          />
+          {phoneError && (
+            <Text style={styles.errorText}>{phoneError}</Text>
+          )}
           </View>
 
           <TouchableOpacity
@@ -258,7 +300,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     header: {
       padding: 16,
-      paddingTop: 40,
+      paddingTop: 10,
       backgroundColor: "#119FB3",
     },
     headerText: {
@@ -341,6 +383,15 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       color: "#FFFFFF",
       fontSize: 18,
       fontWeight: "bold",
+    },
+    inputError: {
+      borderColor: 'red',
+      borderWidth: 1,
+    },
+    errorText: {
+      color: 'red',
+      fontSize: 12,
+      marginTop: 5,
     },
   });
 

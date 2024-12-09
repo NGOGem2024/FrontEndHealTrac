@@ -68,6 +68,12 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
     useState<ProfileInfo>(initialProfileState);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const validateIndianPhoneNumber = (phone: string): boolean => {
+    const indianPhoneRegex = /^(\+?91[-\s]?)?[6-9]\d{9}$/;
+    return indianPhoneRegex.test(phone.replace(/[-\s]/g, ""));
+  };
 
   useEffect(() => {
     if (session.idToken) {
@@ -103,7 +109,25 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
   };
 
   const handleInputChange = (field: keyof ProfileInfo, value: any) => {
-    setProfileInfo((prev) => ({ ...prev, [field]: value }));
+    if (field === "doctor_phone") {
+      // Remove all non-digit characters except '+'
+      const cleanedPhone = value.replace(/[^\d+]/g, "");
+
+      // Validate phone number
+      if (cleanedPhone) {
+        setPhoneError(
+          validateIndianPhoneNumber(cleanedPhone)
+            ? null
+            : "Please enter a valid Indian mobile number"
+        );
+      } else {
+        setPhoneError(null);
+      }
+
+      setProfileInfo((prev) => ({ ...prev, [field]: cleanedPhone }));
+    } else {
+      setProfileInfo((prev) => ({ ...prev, [field]: value }));
+    }
   };
 
   const hasChanges = () => {
@@ -118,6 +142,14 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
 
     if (!session.idToken) {
       handleError(new Error("You must be logged in to update the profile"));
+      return;
+    }
+
+    if (phoneError) {
+      Alert.alert(
+        "Invalid Phone Number",
+        "Please enter a valid 10-digit Indian mobile number starting with 6-9"
+      );
       return;
     }
 
@@ -238,10 +270,14 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Phone</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, phoneError && styles.inputError]}
               value={profileInfo.doctor_phone}
               onChangeText={(text) => handleInputChange("doctor_phone", text)}
+              keyboardType="phone-pad"
+              placeholder="Enter 10-digit mobile number"
+              maxLength={13} 
             />
+            {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
           </View>
 
           <View style={styles.inputGroup}>
@@ -409,6 +445,15 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       color: "#FFFFFF",
       fontSize: 18,
       fontWeight: "bold",
+    },
+    inputError: {
+      borderColor: "red",
+      borderWidth: 1,
+    },
+    errorText: {
+      color: "red",
+      fontSize: 12,
+      marginTop: 5,
     },
   });
 
