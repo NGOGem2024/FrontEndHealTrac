@@ -5,7 +5,6 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Animated,
   KeyboardTypeOptions,
   ActivityIndicator,
@@ -13,17 +12,11 @@ import {
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
 import { ScrollView } from "react-native-gesture-handler";
-import axios from "axios";
 import {
   Ionicons,
   MaterialIcons,
-  FontAwesome,
-  AntDesign,
 } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import BackTabTop from "./BackTopTab";
-import { Picker } from "@react-native-picker/picker";
-import { useSession } from "../context/SessionContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import axiosInstance from "../utils/axiosConfig";
@@ -36,6 +29,10 @@ type UpdatePatientProps = {
 const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
   const { patientId } = route.params;
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({
+    email: "",
+    phone: "",
+  });
   const [patientData, setPatientData] = useState({
     patient_first_name: "",
     patient_last_name: "",
@@ -54,38 +51,58 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
     patient_id: "",
   });
 
-  const [selectedCategory, setSelectedCategory] = useState("");
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [duration, setDuration] = useState("");
-
   const [fadeAnim] = useState(new Animated.Value(0));
 
-  const handleTextChange = (field: string, inputText: string) => {
-    if (field === "patient_first_name" || field === "patient_last_name") {
-      // Allow any text input for first name and last name
-      setPatientData({ ...patientData, [field]: inputText });
-    } else {
-      // For all other fields, including patient_symptoms, update normally
-      setPatientData({ ...patientData, [field]: inputText });
-    }
-  };
-  const handleEmailChange = (value: string) => {
-    const lowerCaseValue = value.toLowerCase(); // Convert to lowercase
-    setPatientData({ ...patientData, patient_email: lowerCaseValue });
-  };
+// Email validation function
+const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isValid = emailRegex.test(email);
+  setErrors(prev => ({
+    ...prev,
+    email: isValid ? "" : "Please enter a valid email address"
+  }));
+  return isValid;
+};
 
-  const categories = [
-    "Musculoskeletal",
-    "Neurological",
-    "Cardiorespiratory",
-    "Paediatrics",
-    "Women's Health",
-    "Geriatrics",
-    "Post surgical rehabilitation",
-  ];
+// Phone validation function
+const validatePhone = (phone: string): boolean => {
+  const indianPhoneRegex = /^(\+?91[-\s]?)?[6-9]\d{9}$/;
+  const isValid = indianPhoneRegex.test(phone.replace(/[-\s]/g, ''));
+  setErrors(prev => ({
+    ...prev,
+    phone: isValid ? "" : "Please enter a valid Indian phone number starting with 6-9"
+  }));
+  return isValid;
+};
+
+const handleTextChange = (field: string, inputText: string) => {
+  if (field === "patient_first_name" || field === "patient_last_name") {
+    setPatientData({ ...patientData, [field]: inputText });
+  } else {
+    setPatientData({ ...patientData, [field]: inputText });
+  }
+};
+
+const handleEmailChange = (value: string) => {
+  const lowerCaseValue = value.toLowerCase();
+  setPatientData({ ...patientData, patient_email: lowerCaseValue });
+  validateEmail(lowerCaseValue);
+};
+
+const handlePhoneChange = (value: string) => {
+  // Allow digits, plus sign, hyphens and spaces initially
+  const cleanValue = value.replace(/[^\d\s+-]/g, '');
+  // Limit the length considering possible "+91" prefix and separators
+  const maxLength = 15; // Accommodates: +91 xxxxx xxxxx format
+  const truncatedValue = cleanValue.slice(0, maxLength);
+  
+  setPatientData({ ...patientData, patient_phone: truncatedValue });
+  validatePhone(truncatedValue);
+};
+
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -95,14 +112,6 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
     }).start();
     fetchPatientData();
   }, []);
-
-  useEffect(() => {
-    if (startDate && endDate) {
-      const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      setDuration(`${diffDays} days`);
-    }
-  }, [startDate, endDate]);
 
   const fetchPatientData = async () => {
     setIsLoading(true);
@@ -122,7 +131,6 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
         patient_diagnosis: patientInfo.patient_diagnosis || "",
         patient_id: patientInfo.patient_id,
       });
-      setSelectedCategory(patientInfo.patient_therepy_category || "");
       setDuration(patientInfo.therepy_duration || "");
 
       if (patientInfo.therepy_start) {
@@ -146,29 +154,15 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
     return null;
   };
 
-  const onChangeStartDate = (event: any, selectedDate?: Date) => {
-    setShowStartDatePicker(false);
-    if (selectedDate) {
-      setStartDate(selectedDate);
-    }
-  };
-
-  const onChangeEndDate = (event: any, selectedDate?: Date) => {
-    setShowEndDatePicker(false);
-    if (selectedDate) {
-      setEndDate(selectedDate);
-    }
-  };
-
-  const showStartDatepicker = () => {
-    setShowStartDatePicker(true);
-  };
-
-  const showEndDatepicker = () => {
-    setShowEndDatePicker(true);
-  };
-
   const handlePatientUpdate = async () => {
+    const isEmailValid = validateEmail(patientData.patient_email);
+    const isPhoneValid = validatePhone(patientData.patient_phone);
+
+    if (!isEmailValid || !isPhoneValid) {
+      handleError("Please correct the validation errors before submitting.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -205,10 +199,6 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
     return `${day}-${month}-${year}`;
   };
 
-  const formatDateForDisplay = (date: Date): string => {
-    return date.toLocaleDateString("en-GB"); // This will format as DD/MM/YYYY
-  };
-
   return (
     <>
       <BackTabTop screenName="Patient" />
@@ -229,20 +219,26 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
             value={patientData.patient_last_name}
             onChangeText={(text) => handleTextChange("patient_last_name", text)}
           />
+          <View>
           <InputField
             icon={<MaterialIcons name="email" size={24} color="#119FB3" />}
             placeholder="Email"
             value={patientData.patient_email}
             onChangeText={handleEmailChange}
+             keyboardType="email-address"
           />
+            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+          </View>
+            
+          <View>
           <InputField
             icon={<Ionicons name="call" size={24} color="#119FB3" />}
             placeholder="Contact No"
             value={patientData.patient_phone}
-            onChangeText={(text) =>
-              setPatientData({ ...patientData, patient_phone: text })
-            }
+            onChangeText={handlePhoneChange}
           />
+           {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
+           </View>
           <InputField
             icon={<Ionicons name="location" size={24} color="#119FB3" />}
             placeholder="Address 1"
@@ -307,49 +303,6 @@ const InputField = ({
   </View>
 );
 
-const DatePickerField = ({
-  label,
-  date,
-  showDatePicker,
-  onPress,
-  onChange,
-  formatDate,
-}) => (
-  <View style={styles.dateBlock}>
-    <Text style={styles.dateLabel}>{label}</Text>
-    <TouchableOpacity style={styles.dateContainer} onPress={onPress}>
-      <Text style={styles.dateText}>
-        {date ? formatDate(date) : "Select date"}
-      </Text>
-      <FontAwesome name="calendar" size={24} color="#119FB3" />
-    </TouchableOpacity>
-    {showDatePicker && (
-      <DateTimePicker
-        value={date || new Date()}
-        mode="date"
-        display="default"
-        onChange={onChange}
-      />
-    )}
-  </View>
-);
-
-const Dropdown = ({ value, onValueChange, items }) => (
-  <View style={styles.inputContainer}>
-    <MaterialIcons name="category" size={24} color="#119FB3" />
-    <Picker
-      selectedValue={value}
-      onValueChange={onValueChange}
-      style={styles.picker}
-    >
-      <Picker.Item label="Therapy Category" value="" />
-      {items.map((item, index) => (
-        <Picker.Item key={index} label={item} value={item} />
-      ))}
-    </Picker>
-  </View>
-);
-
 const styles = StyleSheet.create({
   scrollView: {
     backgroundColor: "#F0F8FF",
@@ -358,6 +311,13 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: "#F0F8FF",
+  },
+  errorText: {
+    color: '#FF0000',
+    fontSize: 12,
+    marginTop: -10,
+    marginBottom: 10,
+    marginLeft: 15,
   },
   title: {
     fontSize: 28,
