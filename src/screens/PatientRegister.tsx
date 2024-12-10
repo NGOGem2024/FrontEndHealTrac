@@ -76,6 +76,10 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
     return emailRegex.test(email);
   };
 
+  const isValidIndianMobileNumber = (phone: string) => {
+    const indianMobileRegex = /^[6-9]\d{9}$/;
+    return indianMobileRegex.test(phone);
+  };
   const handlePatientRegister = async () => {
     if (!patientData.patient_first_name || !patientData.patient_last_name) {
       handleError(new Error("First name and last name are required"));
@@ -84,6 +88,11 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
 
     if (patientData.patient_phone.length !== 10) {
       handleError(new Error("Please enter a valid 10-digit phone number"));
+      return;
+    }
+    
+    if (!isValidIndianMobileNumber(patientData.patient_phone)) {
+      handleError(new Error("Please enter a valid 10-digit Indian mobile number starting with 6-9"));
       return;
     }
 
@@ -227,6 +236,11 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
                   maxLength={10}
                 />
               </View>
+              {patientData.patient_phone.length > 0 && !isValidIndianMobileNumber(patientData.patient_phone) && (
+                <Text style={styles.errorText}>
+                  Mobile number must start with 6-9 and be 10 digits
+                </Text>
+              )}
             </Animatable.View>
             {/* Referral source picker */}
             <Animatable.View animation="fadeInUp" style={styles.inputContainer}>
@@ -445,6 +459,12 @@ const styles = StyleSheet.create({
     color: "red",
     fontSize: 14,
     marginBottom: 2, // Reduced from 5 to 2
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 5,
+    textAlign: 'left'
   },
 });
 
