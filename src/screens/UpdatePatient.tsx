@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,18 +8,18 @@ import {
   Animated,
   KeyboardTypeOptions,
   ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
 import { ScrollView } from "react-native-gesture-handler";
-import {
-  Ionicons,
-  MaterialIcons,
-} from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import BackTabTop from "./BackTopTab";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import axiosInstance from "../utils/axiosConfig";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 type UpdatePatientProps = {
   navigation: StackNavigationProp<RootStackParamList, "UpdatePatient">;
@@ -29,6 +29,7 @@ type UpdatePatientProps = {
 const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
   const { patientId } = route.params;
   const [isLoading, setIsLoading] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [errors, setErrors] = useState({
     email: "",
     phone: "",
@@ -55,62 +56,83 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [duration, setDuration] = useState("");
   const [fadeAnim] = useState(new Animated.Value(0));
+  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
 
-// Email validation function
-const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const isValid = emailRegex.test(email);
-  setErrors(prev => ({
-    ...prev,
-    email: isValid ? "" : "Please enter a valid email address"
-  }));
-  return isValid;
-};
+  // Email validation function
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isValid = emailRegex.test(email);
+    setErrors((prev) => ({
+      ...prev,
+      email: isValid ? "" : "Please enter a valid email address",
+    }));
+    return isValid;
+  };
 
-// Phone validation function
-const validatePhone = (phone: string): boolean => {
-  const indianPhoneRegex = /^(\+?91[-\s]?)?[6-9]\d{9}$/;
-  const isValid = indianPhoneRegex.test(phone.replace(/[-\s]/g, ''));
-  setErrors(prev => ({
-    ...prev,
-    phone: isValid ? "" : "Please enter a valid Indian phone number starting with 6-9"
-  }));
-  return isValid;
-};
+  // Phone validation function
+  const validatePhone = (phone: string): boolean => {
+    const indianPhoneRegex = /^(\+?91[-\s]?)?[6-9]\d{9}$/;
+    const isValid = indianPhoneRegex.test(phone.replace(/[-\s]/g, ""));
+    setErrors((prev) => ({
+      ...prev,
+      phone: isValid
+        ? ""
+        : "Please enter a valid Indian phone number starting with 6-9",
+    }));
+    return isValid;
+  };
 
-const handleTextChange = (field: string, inputText: string) => {
-  if (field === "patient_first_name" || field === "patient_last_name") {
-    setPatientData({ ...patientData, [field]: inputText });
-  } else {
-    setPatientData({ ...patientData, [field]: inputText });
-  }
-};
+  const handleTextChange = (field: string, inputText: string) => {
+    if (field === "patient_first_name" || field === "patient_last_name") {
+      setPatientData({ ...patientData, [field]: inputText });
+    } else {
+      setPatientData({ ...patientData, [field]: inputText });
+    }
+  };
 
-const handleEmailChange = (value: string) => {
-  const lowerCaseValue = value.toLowerCase();
-  setPatientData({ ...patientData, patient_email: lowerCaseValue });
-  validateEmail(lowerCaseValue);
-};
+  const handleEmailChange = (value: string) => {
+    const lowerCaseValue = value.toLowerCase();
+    setPatientData({ ...patientData, patient_email: lowerCaseValue });
+    validateEmail(lowerCaseValue);
+  };
 
-const handlePhoneChange = (value: string) => {
-  // Allow digits, plus sign, hyphens and spaces initially
-  const cleanValue = value.replace(/[^\d\s+-]/g, '');
-  // Limit the length considering possible "+91" prefix and separators
-  const maxLength = 15; // Accommodates: +91 xxxxx xxxxx format
-  const truncatedValue = cleanValue.slice(0, maxLength);
-  
-  setPatientData({ ...patientData, patient_phone: truncatedValue });
-  validatePhone(truncatedValue);
-};
+  const handlePhoneChange = (value: string) => {
+    // Allow digits, plus sign, hyphens and spaces initially
+    const cleanValue = value.replace(/[^\d\s+-]/g, "");
+    // Limit the length considering possible "+91" prefix and separators
+    const maxLength = 15; // Accommodates: +91 xxxxx xxxxx format
+    const truncatedValue = cleanValue.slice(0, maxLength);
 
+    setPatientData({ ...patientData, patient_phone: truncatedValue });
+    validatePhone(truncatedValue);
+  };
 
   useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setKeyboardVisible(true);
+        // Scroll to bottom when keyboard appears
+        scrollViewRef.current?.scrollToPosition(0, 100, true); // Adjust `y` value as needed
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 1000,
       useNativeDriver: true,
     }).start();
     fetchPatientData();
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
   }, []);
 
   const fetchPatientData = async () => {
@@ -155,6 +177,7 @@ const handlePhoneChange = (value: string) => {
   };
 
   const handlePatientUpdate = async () => {
+    Keyboard.dismiss();
     const isEmailValid = validateEmail(patientData.patient_email);
     const isPhoneValid = validatePhone(patientData.patient_phone);
 
@@ -200,84 +223,102 @@ const handlePhoneChange = (value: string) => {
   };
 
   return (
-    <>
-      <BackTabTop screenName="Patient" />
-      <ScrollView style={styles.scrollView}>
-        <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-          <Text style={styles.title}>Update Patient</Text>
-          <InputField
-            icon={<Ionicons name="person" size={24} color="#119FB3" />}
-            placeholder="First Name"
-            value={patientData.patient_first_name}
-            onChangeText={(text) =>
-              handleTextChange("patient_first_name", text)
-            }
-          />
-          <InputField
-            icon={<Ionicons name="person" size={24} color="#119FB3" />}
-            placeholder="Last Name"
-            value={patientData.patient_last_name}
-            onChangeText={(text) => handleTextChange("patient_last_name", text)}
-          />
-          <View>
-          <InputField
-            icon={<MaterialIcons name="email" size={24} color="#119FB3" />}
-            placeholder="Email"
-            value={patientData.patient_email}
-            onChangeText={handleEmailChange}
-             keyboardType="email-address"
-          />
-            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
-          </View>
-            
-          <View>
-          <InputField
-            icon={<Ionicons name="call" size={24} color="#119FB3" />}
-            placeholder="Contact No"
-            value={patientData.patient_phone}
-            onChangeText={handlePhoneChange}
-          />
-           {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
-           </View>
-          <InputField
-            icon={<Ionicons name="location" size={24} color="#119FB3" />}
-            placeholder="Address 1"
-            value={patientData.patient_address1}
-            onChangeText={(text) =>
-              setPatientData({ ...patientData, patient_address1: text })
-            }
-          />
-          <InputField
-            icon={<Ionicons name="location" size={24} color="#119FB3" />}
-            placeholder="Address 2"
-            value={patientData.patient_address2}
-            onChangeText={(text) =>
-              setPatientData({ ...patientData, patient_address2: text })
-            }
-          />
-          <InputField
-            icon={<MaterialIcons name="numbers" size={24} color="#119FB3" />}
-            placeholder="Age"
-            value={patientData.patient_age}
-            onChangeText={(text) =>
-              setPatientData({ ...patientData, patient_age: text })
-            }
-            keyboardType="numeric"
-          />
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handlePatientUpdate}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveButtonText}>Save</Text>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-      </ScrollView>
-    </>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <>
+        <BackTabTop screenName="Patient" />
+        <KeyboardAwareScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}
+          extraScrollHeight={100}
+          enableOnAndroid={true}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+            <Text style={styles.title}>Update Patient</Text>
+            <InputField
+              icon={<Ionicons name="person" size={24} color="#119FB3" />}
+              placeholder="First Name"
+              value={patientData.patient_first_name}
+              onChangeText={(text) =>
+                handleTextChange("patient_first_name", text)
+              }
+            />
+            <InputField
+              icon={<Ionicons name="person" size={24} color="#119FB3" />}
+              placeholder="Last Name"
+              value={patientData.patient_last_name}
+              onChangeText={(text) =>
+                handleTextChange("patient_last_name", text)
+              }
+            />
+            <View>
+              <InputField
+                icon={<MaterialIcons name="email" size={24} color="#119FB3" />}
+                placeholder="Email"
+                value={patientData.patient_email}
+                onChangeText={handleEmailChange}
+                keyboardType="email-address"
+              />
+              {errors.email ? (
+                <Text style={styles.errorText}>{errors.email}</Text>
+              ) : null}
+            </View>
+
+            <View>
+              <InputField
+                icon={<Ionicons name="call" size={24} color="#119FB3" />}
+                placeholder="Contact No"
+                value={patientData.patient_phone}
+                onChangeText={handlePhoneChange}
+              />
+              {errors.phone ? (
+                <Text style={styles.errorText}>{errors.phone}</Text>
+              ) : null}
+            </View>
+            <InputField
+              icon={<Ionicons name="location" size={24} color="#119FB3" />}
+              placeholder="Address 1"
+              value={patientData.patient_address1}
+              onChangeText={(text) =>
+                setPatientData({ ...patientData, patient_address1: text })
+              }
+            />
+            <InputField
+              icon={<Ionicons name="location" size={24} color="#119FB3" />}
+              placeholder="Address 2"
+              value={patientData.patient_address2}
+              onChangeText={(text) =>
+                setPatientData({ ...patientData, patient_address2: text })
+              }
+            />
+            <InputField
+              icon={<MaterialIcons name="numbers" size={24} color="#119FB3" />}
+              placeholder="Age"
+              value={patientData.patient_age}
+              onChangeText={(text) =>
+                setPatientData({ ...patientData, patient_age: text })
+              }
+              keyboardType="numeric"
+            />
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                isKeyboardVisible && styles.saveButtonKeyboardVisible,
+              ]}
+              onPress={handlePatientUpdate}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save</Text>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+        </KeyboardAwareScrollView>
+      </>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -313,7 +354,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0F8FF",
   },
   errorText: {
-    color: '#FF0000',
+    color: "#FF0000",
     fontSize: 12,
     marginTop: -10,
     marginBottom: 10,
@@ -424,12 +465,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     color: "#333333",
   },
-  saveButton: {
-    backgroundColor: "#119FB3",
-    paddingVertical: 15,
-    borderRadius: 10,
-    alignItems: "center",
-  },
   saveButtonText: {
     color: "#FFFFFF",
     fontSize: 18,
@@ -439,6 +474,20 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     color: "#333333",
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    justifyContent: "flex-end",
+  },
+  saveButton: {
+    backgroundColor: "#119FB3",
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  saveButtonKeyboardVisible: {
+    marginBottom: 100, // Ensures button is above keyboard
   },
 });
 

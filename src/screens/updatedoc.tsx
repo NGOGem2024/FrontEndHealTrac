@@ -214,6 +214,7 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
           <Text style={styles.headerText}>Edit Profile</Text>
@@ -275,7 +276,7 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
               onChangeText={(text) => handleInputChange("doctor_phone", text)}
               keyboardType="phone-pad"
               placeholder="Enter 10-digit mobile number"
-              maxLength={13} 
+              maxLength={13}
             />
             {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
           </View>

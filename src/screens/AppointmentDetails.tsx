@@ -181,7 +181,7 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.headerText}>Appointment Details</Text>
       <View style={styles.dateContainer}>
         {isStarted ? (

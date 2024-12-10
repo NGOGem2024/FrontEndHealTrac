@@ -258,7 +258,8 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
   }, [therapyPlan.total_amount, therapyPlan.received_amount]);
 
   return (
-    <ScrollView style={styles.scrollView}>
+    <ScrollView style={styles.scrollView}
+      keyboardShouldPersistTaps="handled">
       <BackTabTop screenName="Plan" />
       <Animated.View
         style={[

@@ -199,6 +199,7 @@ const DoctorProfileEdit: React.FC = () => {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
 
