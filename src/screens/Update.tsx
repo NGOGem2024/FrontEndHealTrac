@@ -82,7 +82,7 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
   const [hasLiveSwitchAccess, setHasLiveSwitchAccess] =
     useState<boolean>(false);
 
-  const appointmentTypes = ["LiveSwitch", "In Clinic", "In Home"];
+  const appointmentTypes = ["LiveSwitch", "In Clinic", "In Home", "IP/ICU"];
   useEffect(() => {
     fetchDoctors();
   }, []);
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   modalView: {
     backgroundColor: "white",
     borderRadius: 20,
-    width: "95%",
+    width: "100%",
     maxHeight: "90%",
     shadowColor: "#000",
     shadowOffset: {
@@ -584,12 +584,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 5,
-    paddingHorizontal: 15,
     marginBottom: 15,
+    paddingRight: 20,
   },
   typeButton: {
     paddingVertical: 10,
     paddingHorizontal: 20,
+    marginRight: 2,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#119FB3",
