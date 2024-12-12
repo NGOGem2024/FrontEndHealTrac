@@ -450,14 +450,15 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
           </View>
         ))}
       </View>
-      {paymentInfo.payment_structure.payment_type !== "one-time" && (
-        <TouchableOpacity
-          style={styles.recordPaymentButton}
-          onPress={() => setIsPaymentModalVisible(true)}
-        >
-          <Text style={styles.buttonText}>Record Payment</Text>
-        </TouchableOpacity>
-      )}
+      {paymentInfo.payment_structure.payment_type !== "one-time" &&
+        paymentInfo.payment_summary.balance !== 0 && (
+          <TouchableOpacity
+            style={styles.recordPaymentButton}
+            onPress={() => setIsPaymentModalVisible(true)}
+          >
+            <Text style={styles.buttonText}>Record Payment</Text>
+          </TouchableOpacity>
+        )}
       <PaymentModal
         visible={isPaymentModalVisible}
         onClose={() => setIsPaymentModalVisible(false)}

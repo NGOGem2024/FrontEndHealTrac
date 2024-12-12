@@ -162,9 +162,6 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     } else if (isNaN(parseFloat(therapyPlan.received_amount))) {
       newErrors.received_amount = "Received amount must be a valid number";
     }
-    if (startDate >= endDate) {
-      newErrors.date = "End date must be after start date";
-    }
     if (therapyPlan.payment_type === "recurring") {
       if (
         !therapyPlan.per_session_amount ||
@@ -258,8 +255,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
   }, [therapyPlan.total_amount, therapyPlan.received_amount]);
 
   return (
-    <ScrollView style={styles.scrollView}
-      keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
       <BackTabTop screenName="Plan" />
       <Animated.View
         style={[

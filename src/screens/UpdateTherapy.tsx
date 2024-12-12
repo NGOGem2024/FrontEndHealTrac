@@ -319,12 +319,19 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
 
   const renderTherapyItem = ({ item }: { item: Therapy }) => {
     const now = new Date();
+    const therapyDate = new Date(item.therepy_date);
     const therapyStartTime = new Date(
       `${item.therepy_date}T${item.therepy_start_time}`
     );
     const therapyEndTime = new Date(
       `${item.therepy_date}T${item.therepy_end_time}`
     );
+
+    const isToday =
+      now.getFullYear() === therapyDate.getFullYear() &&
+      now.getMonth() === therapyDate.getMonth() &&
+      now.getDate() === therapyDate.getDate();
+
     const isUpcoming = therapyStartTime > now && item.status !== "completed";
     const isOngoing =
       now >= therapyStartTime &&
@@ -332,26 +339,27 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
       item.status !== "completed";
     const isPast = now > therapyEndTime || item.status === "completed";
     const canStart =
-      now >= therapyStartTime &&
-      now < therapyEndTime &&
+      (isToday || (now >= therapyStartTime && now < therapyEndTime)) &&
       item.status !== "completed";
 
     return (
       <View style={styles.therapyCard}>
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => handleEditTherapy(item)}
-          >
-            <MaterialIcons name="edit" size={24} color="#119FB3" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeleteTherapy(item)}
-          >
-            <MaterialIcons name="delete" size={24} color="#FF6B6B" />
-          </TouchableOpacity>
-        </View>
+        {item.status !== "completed" && (
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => handleEditTherapy(item)}
+            >
+              <MaterialIcons name="edit" size={24} color="#119FB3" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => handleDeleteTherapy(item)}
+            >
+              <MaterialIcons name="delete" size={24} color="#FF6B6B" />
+            </TouchableOpacity>
+          </View>
+        )}
         <View style={styles.therapyHeader}>
           <MaterialIcons name="event" size={24} color="#119FB3" />
           <Text style={styles.therapyType}>{item.therepy_type}</Text>
@@ -386,7 +394,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
               </Text>
             </TouchableOpacity>
           )}
-          {isPast && (
+          {isPast && item.therepy_id && (
             <TouchableOpacity
               style={[styles.actionButton, styles.recordButton]}
               onPress={() => handleRecTherapy(item.therepy_id)}
@@ -413,7 +421,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
           style={styles.dropdownButton}
         >
           <Text style={styles.dropdownButtonText}>
-            {showPastTherapies ? "Past Therapies" : "Upcoming Therapies"}
+            {showPastTherapies ? "Past Sessions" : "Upcoming Sessions"}
           </Text>
           <Icon
             name={isDropdownOpen ? "chevron-up" : "chevron-down"}
@@ -428,13 +436,13 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
               onPress={() => selectTherapyType("past")}
               style={styles.dropdownItem}
             >
-              <Text>Past Therapies</Text>
+              <Text>Past Sessions</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => selectTherapyType("upcoming")}
               style={styles.dropdownItem}
             >
-              <Text>Upcoming Therapies</Text>
+              <Text>Upcoming Sessions</Text>
             </TouchableOpacity>
           </View>
         )}
