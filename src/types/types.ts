@@ -8,7 +8,7 @@ export type RootStackParamList = {
   UpdatePatient: { patientId?: string };
   PatientRegister: undefined;
   Doctor: { doctorId?: string };
-  Patient: undefined;
+  Patient: { patientId?: string };
   TherapyHistory: undefined;
   HomeStack: undefined;
   Tabs: undefined;

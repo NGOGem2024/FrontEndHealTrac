@@ -30,6 +30,7 @@ interface SessionRemark {
   timestamp: string;
 }
 
+
 interface TherapyPlanDetails {
   therapy_plan: {
     _id: string;
@@ -58,11 +59,13 @@ const TherapyPlanDetails: React.FC = () => {
   const { theme } = useTheme();
   const styles = getStyles(getTheme(theme));
   const { session } = useSession();
+  const [patientId, setPatientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [planDetails, setPlanDetails] = useState<TherapyPlanDetails | null>(
     null
   );
   const { planId } = route.params;
+  
 
   useEffect(() => {
     fetchPlanDetails();
@@ -75,6 +78,7 @@ const TherapyPlanDetails: React.FC = () => {
       const response = await axiosInstance.get(`/get/plan/${planId}`, {
         headers: { Authorization: `Bearer ${session.idToken}` },
       });
+      setPatientId(response.data.patient_id)
       setPlanDetails(response.data);
     } catch (error) {
       handleError(error);
@@ -135,7 +139,28 @@ const TherapyPlanDetails: React.FC = () => {
       <ScrollView style={styles.container}>
         <View style={styles.mainCard}>
           <View style={styles.cardHeader}>
-            <Text style={styles.patientName}>{planDetails.patient_name}</Text>
+          <TouchableOpacity onPress={() =>
+                navigation.navigate("Patient", { patientId: patientId 
+                })
+                  }
+               >
+              <Text style={styles.patientName}>{planDetails.patient_name}</Text>
+          </TouchableOpacity>
+            <View style={styles.actionButtons}>
+            <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() =>
+                  navigation.navigate("CreateTherapy", {
+                    patientId: patientId,
+                  })
+                }
+              >
+                <MaterialCommunityIcons
+                  name="calendar-clock"
+                  size={24}
+                  color="#119FB3"
+                />
+              </TouchableOpacity>
             <TouchableOpacity
               style={styles.editButton}
               onPress={() =>
@@ -150,6 +175,7 @@ const TherapyPlanDetails: React.FC = () => {
                 color="#119FB3"
               />
             </TouchableOpacity>
+            </View>
           </View>
           <Text style={styles.therapyName}>{plan.therapy_name}</Text>
           <Text style={styles.category}>{plan.patient_therapy_category}</Text>
@@ -297,10 +323,19 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     remarkSection: {
       marginBottom: 16,
     },
+    actionButtons: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    iconButton: {
+      padding: 8,
+      marginLeft: 8,
+    },
     cardHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
+      marginBottom: 8,
     },
     remarkSectionTitle: {
       fontSize: 16,
