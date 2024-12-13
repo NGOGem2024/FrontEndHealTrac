@@ -68,10 +68,10 @@ def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInRelea
  * The preferred build flavor of JavaScriptCore (JSC)
  *
  * For example, to use the international variant, you can use:
- * `def jscFlavor = 'org.webkit:android-jsc-intl:+'`
+ * def jscFlavor = 'org.webkit:android-jsc-intl:+'
  *
  * The international variant includes ICU i18n library and necessary data
- * allowing to use e.g. `Date.toLocaleString` and `String.localeCompare` that
+ * allowing to use e.g. Date.toLocaleString and String.localeCompare that
  * give correct results when using with locales other than en-US. Note that
  * this variant is about 6MiB larger per architecture than default.
  */
@@ -95,16 +95,6 @@ manifestPlaceholders = [auth0Domain: "dev-e2ng22nf1lkiirzs.us.auth0.com", auth0S
         versionName "1.0.0"
     }
     signingConfigs {
-        release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
-            }
-        }
-    }
-    signingConfigs {
         debug {
             storeFile file('debug.keystore')
             storePassword 'android'
@@ -123,7 +113,6 @@ manifestPlaceholders = [auth0Domain: "dev-e2ng22nf1lkiirzs.us.auth0.com", auth0S
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-            signingConfig signingConfigs.release
         }
     }
     packagingOptions {
@@ -133,20 +122,20 @@ manifestPlaceholders = [auth0Domain: "dev-e2ng22nf1lkiirzs.us.auth0.com", auth0S
     }
 }
 
-// Apply static values from `gradle.properties` to the `android.packagingOptions`
+// Apply static values from gradle.properties to the android.packagingOptions
 // Accepts values in comma delimited lists, example:
-// android.packagingOptions.pickFirsts=/LICENSE,**/picasa.ini
+// android.packagingOptions.pickFirsts=/LICENSE,/picasa.ini
 ["pickFirsts", "excludes", "merges", "doNotStrip"].each { prop ->
     // Split option: 'foo,bar' -> ['foo', 'bar']
     def options = (findProperty("android.packagingOptions.$prop") ?: "").split(",");
     // Trim all elements in place.
     for (i in 0..<options.size()) options[i] = options[i].trim();
-    // `[] - ""` is essentially `[""].filter(Boolean)` removing all empty strings.
+    // [] - "" is essentially [""].filter(Boolean) removing all empty strings.
     options -= ""
 
     if (options.length > 0) {
         println "android.packagingOptions.$prop += $options ($options.length)"
-        // Ex: android.packagingOptions.pickFirsts += '**/SCCS/**'
+        // Ex: android.packagingOptions.pickFirsts += '/SCCS/'
         options.each {
             android.packagingOptions[prop] += it
         }
