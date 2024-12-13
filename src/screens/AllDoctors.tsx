@@ -70,6 +70,13 @@ const AllDoctors: React.FC<RootStackNavProps<"AllDoctors">> = ({
           Authorization: "Bearer " + session.idToken,
         },
       });
+      const sortedDoctors = response.data.doctors.sort((a: Doctor, b: Doctor) => {
+        
+        if (a.is_admin === b.is_admin) {
+          return (a.doctor_last_name || '').localeCompare(b.doctor_last_name || '');
+        }
+        return a.is_admin ? -1 : 1;
+      });
       setDoctors(response.data.doctors);
     } catch (error) {
       handleError(error);

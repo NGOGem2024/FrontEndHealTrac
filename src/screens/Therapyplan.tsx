@@ -255,7 +255,8 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
   }, [therapyPlan.total_amount, therapyPlan.received_amount]);
 
   return (
-    <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled"  contentContainerStyle={{ flexGrow: 1 }}
+    showsVerticalScrollIndicator={false}>
       <BackTabTop screenName="Plan" />
       <Animated.View
         style={[
@@ -544,19 +545,22 @@ const Dropdown = ({ value, onValueChange, items }) => (
 
 const styles = StyleSheet.create({
   scrollView: {
+    flex: 1,
     backgroundColor: "#F0F8FF",
   },
   container: {
     flex: 1,
-    padding: 30,
+    paddingHorizontal: '5%', 
+    paddingVertical: 30,
     backgroundColor: "#F0F8FF",
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#119FB3",
     textAlign: "center",
     marginBottom: 20,
+    paddingHorizontal: 10,
   },
   labeledInputContainer: {
     marginBottom: 0,
@@ -647,7 +651,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#119FB3",
     paddingVertical: 12,
     borderRadius: 10,
-    width: "50%",
+    width: "100%",
+    maxWidth: 300,
     alignItems: "center",
     alignSelf: "center",
     marginTop: 20,
@@ -669,6 +674,7 @@ const styles = StyleSheet.create({
   },
   paymentTypeContainer: {
     marginBottom: 20,
+    width: '100%',
   },
   radioGroup: {
     flexDirection: "row",

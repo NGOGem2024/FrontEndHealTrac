@@ -95,16 +95,6 @@ manifestPlaceholders = [auth0Domain: "dev-e2ng22nf1lkiirzs.us.auth0.com", auth0S
         versionName "1.0.0"
     }
     signingConfigs {
-        release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
-            }
-        }
-    }
-    signingConfigs {
         debug {
             storeFile file('debug.keystore')
             storePassword 'android'
@@ -123,7 +113,6 @@ manifestPlaceholders = [auth0Domain: "dev-e2ng22nf1lkiirzs.us.auth0.com", auth0S
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-            signingConfig signingConfigs.release
         }
     }
     packagingOptions {
