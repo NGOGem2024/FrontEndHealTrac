@@ -71,7 +71,7 @@ const CreateTherapy = ({ route, navigation }: Props) => {
 
   const styles = createStyles(colors);
 
-  const appointmentTypes = ["Liveswitch", "In Clinic", "In Home"];
+  const appointmentTypes = ["Liveswitch", "In Clinic", "In Home", "IP/ICU"];
 
   useEffect(() => {
     setShowLiveSwitchLogin(

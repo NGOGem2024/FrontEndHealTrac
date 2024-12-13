@@ -12,6 +12,7 @@ import {
   Dimensions,
   Modal,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -75,6 +76,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
   const [therapyToDelete, setTherapyToDelete] = useState<Therapy | null>(null);
   const [showNewUserPopup, setShowNewUserPopup] = useState(false);
   const popupScale = useSharedValue(0);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!patientId) {
@@ -145,6 +147,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
   const confirmDeleteTherapy = async () => {
     if (!therapyToDelete) return;
 
+    setIsDeleting(true); // Start loading
     try {
       const response = await axiosInstance.delete(
         `/therapy/delete/${therapyToDelete._id}`
@@ -163,6 +166,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
     } catch (error) {
       handleError(error);
     } finally {
+      setIsDeleting(false); // Stop loading
       setShowDeleteConfirmation(false);
       setTherapyToDelete(null);
     }
@@ -538,8 +542,13 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
               <TouchableOpacity
                 style={[styles.button, styles.buttonDelete]}
                 onPress={confirmDeleteTherapy}
+                disabled={isDeleting} // Disable button during loading
               >
-                <Text style={styles.textStyle}>Delete</Text>
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.textStyle}>Delete</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
