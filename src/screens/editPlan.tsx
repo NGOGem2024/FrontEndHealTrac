@@ -295,7 +295,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
     );
   }
   return (
-    <ScrollView style={styles.scrollView}>
+    <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
       <BackTabTop screenName="Edit Plan" />
       <Animated.View
         style={[
