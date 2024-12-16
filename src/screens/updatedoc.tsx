@@ -70,11 +70,19 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
-  const validateIndianPhoneNumber = (phone: string): boolean => {
-    const indianPhoneRegex = /^(\+?91[-\s]?)?[6-9]\d{9}$/;
-    return indianPhoneRegex.test(phone.replace(/[-\s]/g, ""));
+  const validatePhone = (phone: string): boolean => {
+    const cleanPhone = phone.replace(/[^\d+]/g, '');
+    const indianPhoneRegex = /^\+91[6-9]\d{9}$/;
+    const isValid = indianPhoneRegex.test(cleanPhone);
+    
+    setPhoneError(
+      isValid
+        ? null
+        : "Please enter a valid phone number starting with 6-9"
+    );
+    
+    return isValid;
   };
-
   useEffect(() => {
     if (session.idToken) {
       fetchDoctorInfo();
@@ -107,28 +115,30 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
       setIsLoading(false);
     }
   };
+  const handlePhoneChange = (value: string) => {
+    let formattedValue = value;
+    if (!value.startsWith('+91')) {
+      formattedValue = '+91 ' + value.replace(/[^\d]/g, '');
+    }
+    const maxLength = 14;
+    const truncatedValue = formattedValue.slice(0, maxLength);
+    const cleanValue = truncatedValue.replace(/[^\d+]/g, '');
+    const finalValue = cleanValue.length > 3 
+      ? `${cleanValue.slice(0, 3)} ${cleanValue.slice(3)}` 
+      : cleanValue;
+  
+    setProfileInfo((prev) => ({ ...prev, doctor_phone: finalValue }));
+    validatePhone(finalValue);
+  };
 
   const handleInputChange = (field: keyof ProfileInfo, value: any) => {
     if (field === "doctor_phone") {
-      // Remove all non-digit characters except '+'
-      const cleanedPhone = value.replace(/[^\d+]/g, "");
-
-      // Validate phone number
-      if (cleanedPhone) {
-        setPhoneError(
-          validateIndianPhoneNumber(cleanedPhone)
-            ? null
-            : "Please enter a valid Indian mobile number"
-        );
-      } else {
-        setPhoneError(null);
-      }
-
-      setProfileInfo((prev) => ({ ...prev, [field]: cleanedPhone }));
+      handlePhoneChange(value);
     } else {
       setProfileInfo((prev) => ({ ...prev, [field]: value }));
     }
   };
+
 
   const hasChanges = () => {
     return JSON.stringify(profileInfo) !== JSON.stringify(originalProfileInfo);
@@ -144,8 +154,9 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
       handleError(new Error("You must be logged in to update the profile"));
       return;
     }
-
-    if (phoneError) {
+    
+    const isPhoneValid = validatePhone(profileInfo.doctor_phone);
+    if (!isPhoneValid) {
       Alert.alert(
         "Invalid Phone Number",
         "Please enter a valid 10-digit Indian mobile number starting with 6-9"
@@ -176,8 +187,6 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
 
       setOriginalProfileInfo(profileInfo);
       showSuccessToast("Profile updated successfully");
-
-      // Redirect to the doctor's profile
       navigation.navigate("Doctor", { doctorId: profileInfo._id });
     } catch (error) {
       handleError(error);
@@ -223,7 +232,6 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
         <View style={styles.profileImageContainer}>
           <Image source={profilePhoto} style={styles.profilePhoto} />
           <TouchableOpacity style={styles.editImageButton}>
-            {/*<Icon name="camera-outline" size={24} color="#FFFFFF" />*/}
           </TouchableOpacity>
         </View>
 
@@ -269,17 +277,17 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone</Text>
-            <TextInput
-              style={[styles.input, phoneError && styles.inputError]}
-              value={profileInfo.doctor_phone}
-              onChangeText={(text) => handleInputChange("doctor_phone", text)}
-              keyboardType="phone-pad"
-              placeholder="Enter 10-digit mobile number"
-              maxLength={13}
-            />
-            {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
-          </View>
+          <Text style={styles.label}>Phone</Text>
+          <TextInput
+            style={[styles.input, phoneError && styles.inputError]}
+            value={profileInfo.doctor_phone}
+            onChangeText={(text) => handleInputChange("doctor_phone", text)}
+            keyboardType="phone-pad"
+            placeholder="+91 Enter 10-digit mobile number"
+            maxLength={14} // +91 + space + 10 digits
+          />
+          {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
+        </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Role</Text>
