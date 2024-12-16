@@ -340,7 +340,7 @@ const CreateTherapy = ({ route, navigation }: Props) => {
       const doctorName = selectedDoctor
         ? `${selectedDoctor.doctor_first_name} ${selectedDoctor.doctor_last_name}`
         : undefined;
-
+  
       return (
         <>
           {renderPickerField(
@@ -348,47 +348,67 @@ const CreateTherapy = ({ route, navigation }: Props) => {
             () => setShowDoctorPicker(true),
             "Select a doctor"
           )}
-          {renderIOSPicker(
-            showDoctorPicker,
-            () => setShowDoctorPicker(false),
-            (itemValue: string) => {
-              const doctor = doctors.find((d) => d._id === itemValue);
-              setSelectedDoctor(doctor || null);
-              setAvailableSlots([]);
-              setSelectedSlot(null);
-            },
-            selectedDoctor?._id,
-            doctors.map((doctor) => ({
-              _id: doctor._id,
-              label: `${doctor.doctor_first_name} ${doctor.doctor_last_name}`,
-            })),
-            "Doctor"
-          )}
+          <Modal visible={showDoctorPicker} transparent={true} animationType="slide">
+            <View style={styles.modalContainer}>
+              <View style={styles.pickerContainer}>
+                <View style={styles.pickerHeader}>
+                  <Text style={styles.pickerTitle}>Select Doctor</Text>
+                  <TouchableOpacity onPress={() => setShowDoctorPicker(false)} style={styles.doneButton}>
+                    <Text style={styles.doneButtonText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <Picker
+                  selectedValue={selectedDoctor?._id ?? ""}
+                  onValueChange={(itemValue: string) => {
+                    if (itemValue !== "") {
+                      const doctor = doctors.find((d) => d._id === itemValue);
+                      setSelectedDoctor(doctor || null);
+                      setAvailableSlots([]);
+                      setSelectedSlot(null);
+                      setShowDoctorPicker(false);
+                    }
+                  }}
+                  style={styles.iosPicker}
+                >
+                  {doctors.map((doctor) => (
+                    <Picker.Item
+                      key={doctor._id}
+                      label={`${doctor.doctor_first_name} ${doctor.doctor_last_name}`}
+                      value={doctor._id}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+          </Modal>
         </>
       );
     }
 
     return (
-      <Picker
-        selectedValue={selectedDoctor?._id ?? ""}
-        onValueChange={(itemValue: string) => {
-          if (itemValue !== "") {
-            setSelectedDoctor(doctors.find((d) => d._id === itemValue) || null);
-            setAvailableSlots([]);
-            setSelectedSlot(null);
-          }
-        }}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select a doctor" value="" />
-        {doctors.map((doctor) => (
-          <Picker.Item
-            key={doctor._id}
-            label={`${doctor.doctor_first_name} ${doctor.doctor_last_name}`}
-            value={doctor._id}
-          />
-        ))}
-      </Picker>
+      <View style={styles.pickerWrapper}>
+        <Picker
+          selectedValue={selectedDoctor?._id ?? ""}
+          onValueChange={(itemValue: string) => {
+            if (itemValue !== "") {
+              setSelectedDoctor(doctors.find((d) => d._id === itemValue) || null);
+              setAvailableSlots([]);
+              setSelectedSlot(null);
+            }
+          }}
+          style={styles.picker}
+          dropdownIconColor="#119FB3"
+        >
+          {doctors.map((doctor) => (
+            <Picker.Item
+              key={doctor._id}
+              label={`${doctor.doctor_first_name} ${doctor.doctor_last_name}`}
+              value={doctor._id}
+              style={styles.pickerItem}
+            />
+          ))}
+        </Picker>
+      </View>
     );
   };
 
@@ -401,48 +421,65 @@ const CreateTherapy = ({ route, navigation }: Props) => {
             () => setShowTherapyPicker(true),
             "Select a therapy plan"
           )}
-          {renderIOSPicker(
-            showTherapyPicker,
-            () => setShowTherapyPicker(false),
-            (itemValue: string) => {
-              setSelectedPlan(
-                therapyPlans.find((p) => p._id === itemValue) || null
-              );
-            },
-            selectedPlan?._id,
-            therapyPlans.map((plan) => ({
-              _id: plan._id,
-              label: plan.therapy_name,
-            })),
-            "Therapy Plan"
-          )}
+          <Modal visible={showTherapyPicker} transparent={true} animationType="slide">
+            <View style={styles.modalContainer}>
+              <View style={styles.pickerContainer}>
+                <View style={styles.pickerHeader}>
+                  <Text style={styles.pickerTitle}>Select Therapy Plan</Text>
+                  <TouchableOpacity onPress={() => setShowTherapyPicker(false)} style={styles.doneButton}>
+                    <Text style={styles.doneButtonText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <Picker
+                  selectedValue={selectedPlan?._id ?? ""}
+                  onValueChange={(itemValue: string) => {
+                    if (itemValue !== "") {
+                      setSelectedPlan(therapyPlans.find((p) => p._id === itemValue) || null);
+                      setShowTherapyPicker(false);
+                    }
+                  }}
+                  style={styles.iosPicker}
+                >
+                  {therapyPlans.map((plan) => (
+                    <Picker.Item
+                      key={plan._id}
+                      label={plan.therapy_name}
+                      value={plan._id}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+          </Modal>
         </>
       );
     }
-
+  
     return (
-      <Picker
-        selectedValue={selectedPlan?._id ?? ""}
-        onValueChange={(itemValue: string) => {
-          if (itemValue !== "") {
-            setSelectedPlan(
-              therapyPlans.find((p) => p._id === itemValue) || null
-            );
-          }
-        }}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select a plan" value="" />
-        {therapyPlans.map((plan) => (
-          <Picker.Item
-            key={plan._id}
-            label={plan.therapy_name}
-            value={plan._id}
-          />
-        ))}
-      </Picker>
+      <View style={styles.pickerWrapper}>
+        <Picker
+          selectedValue={selectedPlan?._id ?? ""}
+          onValueChange={(itemValue: string) => {
+            if (itemValue !== "") {
+              setSelectedPlan(therapyPlans.find((p) => p._id === itemValue) || null);
+            }
+          }}
+          style={styles.picker}
+          dropdownIconColor="#119FB3"
+        >
+          {therapyPlans.map((plan) => (
+            <Picker.Item
+              key={plan._id}
+              label={plan.therapy_name}
+              value={plan._id}
+              style={styles.pickerItem}
+            />
+          ))}
+        </Picker>
+      </View>
     );
   };
+  
 
   const handleBookAppointment = async () => {
     try {
@@ -517,13 +554,19 @@ const CreateTherapy = ({ route, navigation }: Props) => {
         </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appointment Type</Text>
-          <View style={styles.appointmentTypes}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.appointmentTypesScrollView}
+            style={styles.appointmentTypesScrollViewContainer}
+          >
             {appointmentTypes.map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[
                   styles.typeButton,
                   appointmentType === type && styles.selectedTypeButton,
+                  { marginRight: 10 } // Add some spacing between buttons
                 ]}
                 onPress={() => handleAppointmentTypeChange(type)}
               >
@@ -537,7 +580,7 @@ const CreateTherapy = ({ route, navigation }: Props) => {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         {showLiveSwitchLogin && (
@@ -661,14 +704,29 @@ const createStyles = (colors: any) =>
   StyleSheet.create({
     modalContainer: {
       flex: 1,
-      justifyContent: "flex-end",
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     pickerContainer: {
-      backgroundColor: "#FFFFFF",
+      backgroundColor: '#FFFFFF',
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       paddingBottom: 20,
+    },
+    pickerWrapper: {
+      backgroundColor: '#F5F8FF',
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: '#E0E0E0',
+      marginTop: 8,
+      overflow: 'hidden',
+    },
+    picker: {
+      backgroundColor: 'transparent',
+      marginTop: 0,
+      marginBottom: 0,
+      paddingVertical: 8,
+      color: '#333333',
     },
     pickerHeader: {
       flexDirection: "row",
@@ -696,19 +754,23 @@ const createStyles = (colors: any) =>
       height: 215,
     },
     pickerField: {
-      backgroundColor: "#F0F8FF",
+      backgroundColor: '#F5F8FF',
       borderRadius: 10,
-      padding: 12,
+      padding: 16,
       marginTop: 8,
       borderWidth: 1,
-      borderColor: "#E0E0E0",
+      borderColor: '#E0E0E0',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
     },
     pickerFieldText: {
       fontSize: 16,
-      color: "#333333",
+      color: '#333333',
+      flex: 1,
     },
     pickerPlaceholder: {
-      color: "#999999",
+      color: '#999999',
     },
     container: {
       flex: 1,
@@ -722,8 +784,8 @@ const createStyles = (colors: any) =>
     bcontainer: {
       flex: 1,
       backgroundColor: "#F0F8FF",
-      justifyContent: "center", // Vertically center
-      alignItems: "center", // Horizontally center
+      justifyContent: "center", 
+      alignItems: "center",
     },
     googleButtonContainer: {
       alignItems: "center",
@@ -857,13 +919,18 @@ const createStyles = (colors: any) =>
       textAlign: "center",
       marginTop: 10,
     },
-    picker: {
-      backgroundColor: "#F0F8FF",
-      borderRadius: 10,
-      marginTop: 8,
-    },
     pickerItem: {
-      color: "#333333",
+      fontSize: 16,
+      color: '#333333',
+      backgroundColor: '#FFFFFF',
+    },
+    appointmentTypesScrollView: {
+      flexGrow: 1,
+      alignItems: 'center',
+      paddingRight: 16,
+    },
+    appointmentTypesScrollViewContainer: {
+      maxHeight: 80, 
     },
   });
 
