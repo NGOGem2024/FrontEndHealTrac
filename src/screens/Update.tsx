@@ -404,7 +404,7 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
         <View style={styles.modalView}>
           <ScrollView>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Update Therapy</Text>
+              <Text style={styles.modalTitle}>Update Session</Text>
             </View>
             {/* <Text style={styles.modalTitle}>Edit Therapy Session</Text> */}
             <View style={styles.section}>
