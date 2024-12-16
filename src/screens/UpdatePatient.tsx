@@ -69,19 +69,21 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
     return isValid;
   };
 
-  // Phone validation function
   const validatePhone = (phone: string): boolean => {
-    const indianPhoneRegex = /^(\+?91[-\s]?)?[6-9]\d{9}$/;
-    const isValid = indianPhoneRegex.test(phone.replace(/[-\s]/g, ""));
+    const cleanPhone = phone.replace(/[^\d+]/g, '');
+    const indianPhoneRegex = /^\+91[6-9]\d{9}$/;
+    const isValid = indianPhoneRegex.test(cleanPhone);
+    
     setErrors((prev) => ({
       ...prev,
       phone: isValid
         ? ""
-        : "Please enter a valid Indian phone number starting with 6-9",
+        : "Please enter a valid phone number start with 6-9",
     }));
+    
     return isValid;
   };
-
+  
   const handleTextChange = (field: string, inputText: string) => {
     if (field === "patient_first_name" || field === "patient_last_name") {
       setPatientData({ ...patientData, [field]: inputText });
@@ -97,23 +99,29 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
   };
 
   const handlePhoneChange = (value: string) => {
-    // Allow digits, plus sign, hyphens and spaces initially
-    const cleanValue = value.replace(/[^\d\s+-]/g, "");
-    // Limit the length considering possible "+91" prefix and separators
-    const maxLength = 15; // Accommodates: +91 xxxxx xxxxx format
-    const truncatedValue = cleanValue.slice(0, maxLength);
+    let formattedValue = value;
+    if (!value.startsWith('+91')) {
+      formattedValue = '+91 ' + value.replace(/[^\d]/g, '');
+    }
+    
+    
+    const maxLength = 14; 
+    const truncatedValue = formattedValue.slice(0, maxLength);
+    const cleanValue = truncatedValue.replace(/[^\d+]/g, '');
 
-    setPatientData({ ...patientData, patient_phone: truncatedValue });
-    validatePhone(truncatedValue);
+    const finalValue = cleanValue.length > 3 
+      ? `${cleanValue.slice(0, 3)} ${cleanValue.slice(3)}` 
+      : cleanValue;
+  
+    setPatientData({ ...patientData, patient_phone: finalValue });
+    validatePhone(finalValue);
   };
-
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       "keyboardDidShow",
       () => {
         setKeyboardVisible(true);
-        // Scroll to bottom when keyboard appears
-        scrollViewRef.current?.scrollToPosition(0, 100, true); // Adjust `y` value as needed
+        scrollViewRef.current?.scrollToPosition(0, 100, true); 
       }
     );
     const keyboardDidHideListener = Keyboard.addListener(
