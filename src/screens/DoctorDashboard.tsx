@@ -524,6 +524,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       paddingVertical: 5,
     },
     dashboardHeader: {
+      position: "absolute",
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
@@ -531,6 +532,8 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       paddingHorizontal: 15,
       paddingTop: 10,
       backgroundColor: "#119FB3",
+      zIndex: 10,
+      width: "100%"
     },
     logoImage: {
       width: 120,
@@ -650,7 +653,8 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     profileSection: {
       flexDirection: "row",
-      padding: 24,
+      paddingTop: 70,
+      paddingBottom:30,
       backgroundColor: theme.colors.card,
       borderBottomLeftRadius: 0,
       borderBottomRightRadius: 150,

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  ScrollView as HorizontalScrollView,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import moment from "moment-timezone";
@@ -413,6 +414,10 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
             </View>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Appointment Type</Text>
+              <HorizontalScrollView 
+                horizontal
+                contentContainerStyle={styles.appointmentTypesContainer}
+              >
               <View style={styles.appointmentTypes}>
                 {appointmentTypes.map((type) => (
                   <TouchableOpacity
@@ -435,6 +440,7 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
                   </TouchableOpacity>
                 ))}
               </View>
+              </HorizontalScrollView>
             </View>
             {showLiveSwitchLogin && (
               <View style={styles.liveSwitchButtonContainer}>
@@ -556,6 +562,34 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+
+  appointmentTypesContainer: {
+    paddingRight: 16,
+    paddingLeft: 16,
+  },
+  appointmentTypes: {
+    flexDirection: 'row',
+    marginTop: 5,
+    marginBottom: 15,
+  },
+  typeButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginRight: 10, // Add space between buttons
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#119FB3",
+  },
+  selectedTypeButton: {
+    backgroundColor: "#119FB3",
+  },
+  typeButtonText: {
+    color: "#119FB3",
+    fontSize: 14, // Optional: adjust font size if needed
+  },
+  selectedTypeButtonText: {
+    color: "#FFFFFF",
+  },
   modalHeader: {
     alignItems: "center",
     paddingVertical: 15,
@@ -579,30 +613,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#119FB3",
     marginBottom: 10,
-  },
-  appointmentTypes: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 5,
-    marginBottom: 15,
-    paddingRight: 20,
-  },
-  typeButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginRight: 2,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#119FB3",
-  },
-  selectedTypeButton: {
-    backgroundColor: "#119FB3",
-  },
-  typeButtonText: {
-    color: "#119FB3",
-  },
-  selectedTypeButtonText: {
-    color: "#FFFFFF",
   },
   slotsContainer: {
     flexDirection: "row",
