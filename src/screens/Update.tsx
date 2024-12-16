@@ -82,7 +82,7 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
   const [hasLiveSwitchAccess, setHasLiveSwitchAccess] =
     useState<boolean>(false);
 
-  const appointmentTypes = ["LiveSwitch", "In Clinic", "In Home", "IP/ICU"];
+  const appointmentTypes = ["Liveswitch", "In Clinic", "In Home", "IP/ICU"];
   useEffect(() => {
     fetchDoctors();
   }, []);
