@@ -37,25 +37,24 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [addonInput, setAddonInput] = useState<string>("");
   const [addonAmount, setAddonAmount] = useState<string>("");
   const [addons, setAddons] = useState<Addon[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
 
   const { theme } = useTheme();
   const styles = getModalStyles();
 
   useEffect(() => {
     if (visible && paymentInfo?.session_info?.per_session_amount) {
+      setPaymentMethod("CASH");
       setAmount(paymentInfo.session_info.per_session_amount.toString());
     } else {
       setAmount("");
     }
   }, [visible, paymentInfo]);
 
-  // Handle addon amount changes
   const handleAddonAmountChange = (value: string) => {
     setAddonAmount(value);
   };
 
-  // New function to handle addon submission
   const handleAddonSubmit = () => {
     if (addonInput.trim() && addonAmount.trim()) {
       const numAmount = parseFloat(addonAmount);
@@ -81,10 +80,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     }
   };
 
+  const calculateBaseAmount = () => {
+    return parseFloat(amount) || 0;
+  };
+
+  const calculateAddonTotal = () => {
+    return addons.reduce((sum, addon) => sum + addon.amount, 0);
+  };
+
   const calculateTotalAmount = () => {
-    const baseAmount = parseFloat(amount) || 0;
-    const addonTotal = addons.reduce((sum, addon) => sum + addon.amount, 0);
-    return baseAmount + addonTotal;
+    return calculateBaseAmount() + calculateAddonTotal();
   };
 
   return (
@@ -114,7 +119,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
           {/* Payment Amount Section */}
           <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>Payment Amount</Text>
+            <Text style={styles.inputLabel}>Base Session Payment</Text>
             <View style={styles.currencyInputContainer}>
               <Text style={styles.currencySymbol}>₹</Text>
               <TextInput
@@ -136,12 +141,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 onValueChange={(itemValue) => setPaymentMethod(itemValue)}
                 style={styles.picker}
               >
-                <Picker.Item
-                  label="Payment Method"
-                  value={null}
-                  enabled={false}
-                  style={styles.placeholderItem}
-                />
                 <Picker.Item label="Cash" value="CASH" style={styles.item} />
                 <Picker.Item
                   label="Online"
@@ -151,7 +150,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               </Picker>
             </View>
           </View>
-
           {/* Additional Services Section */}
           <View style={styles.servicesSection}>
             <TouchableOpacity
@@ -210,7 +208,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
           {/* Total Amount */}
           <View style={styles.totalContainer}>
-            <Text style={styles.totalLabel}>Total Amount</Text>
+            <Text style={styles.totalLabel}>Total Payment</Text>
             <Text style={styles.totalAmount}>
               ₹{calculateTotalAmount().toLocaleString()}
             </Text>
@@ -221,7 +219,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <TouchableOpacity
               style={styles.confirmButton}
               onPress={() => {
-                onSubmit(calculateTotalAmount(), paymentMethod, addons);
+                // Send only the base amount, with addons as a separate array
+                onSubmit(calculateBaseAmount(), paymentMethod, addons);
                 onClose();
               }}
             >
@@ -233,7 +232,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     </Modal>
   );
 };
-
 const COLORS = {
   primary: "#119FB3",
   secondary: "#6c757d",
