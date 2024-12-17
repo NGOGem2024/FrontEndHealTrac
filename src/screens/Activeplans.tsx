@@ -21,7 +21,7 @@ interface TherapyPlan {
   _id: string;
   therapy_start: string;
   therapy_end: string;
-  therapy_type: string;
+  therapy_name: string;
   patient_name: string;
   days_remaining: number;
 }
@@ -78,7 +78,7 @@ const ActiveTherapyPlans: React.FC = () => {
           <View style={styles.planMainInfo}>
             <View>
               <Text style={styles.patientName}>{item.patient_name}</Text>
-              <Text style={styles.therapyType}>{item.therapy_type}</Text>
+              <Text style={styles.therapyType}>{item.therapy_name}</Text>
             </View>
           </View>
           <View style={styles.progressContainer}>
@@ -118,7 +118,7 @@ const ActiveTherapyPlans: React.FC = () => {
           style={styles.refreshButton}
           onPress={fetchTherapyPlans}
         >
-          <Icon name="refresh-outline" size={20} color="#119FB3" />
+          <Icon name="refresh-outline" size={20} color="#fffff" />
         </TouchableOpacity>
       </View>
 
@@ -135,7 +135,6 @@ const ActiveTherapyPlans: React.FC = () => {
 const getStyles = (theme: ReturnType<typeof getTheme>) =>
   StyleSheet.create({
     container: {
-      margin: 16,
       backgroundColor: "#119FB3",
     },
     loadingContainer: {

@@ -533,7 +533,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       paddingTop: 10,
       backgroundColor: "#119FB3",
       zIndex: 10,
-      width: "100%"
+      width: "100%",
     },
     logoImage: {
       width: 120,
@@ -654,7 +654,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     profileSection: {
       flexDirection: "row",
       paddingTop: 70,
-      paddingBottom:30,
+      paddingBottom: 30,
       backgroundColor: theme.colors.card,
       borderBottomLeftRadius: 0,
       borderBottomRightRadius: 150,
@@ -744,7 +744,6 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     section: {
       display: "flex",
       margin: 16,
-
       marginBottom: 0,
       backgroundColor: "#119FB3",
     },
