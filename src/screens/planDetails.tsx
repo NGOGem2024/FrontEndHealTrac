@@ -30,7 +30,6 @@ interface SessionRemark {
   timestamp: string;
 }
 
-
 interface TherapyPlanDetails {
   therapy_plan: {
     _id: string;
@@ -45,7 +44,7 @@ interface TherapyPlanDetails {
     total_amount: number | string;
     received_amount: string;
     balance: string;
-    extra_addons: string[];
+    extra_addons: string[] | Array<{ name: string; amount: number }>;
     addons_amount: number | string;
     presession_remarks?: SessionRemark[];
     postsession_remarks?: SessionRemark[];
@@ -65,7 +64,6 @@ const TherapyPlanDetails: React.FC = () => {
     null
   );
   const { planId } = route.params;
-  
 
   useEffect(() => {
     fetchPlanDetails();
@@ -78,7 +76,7 @@ const TherapyPlanDetails: React.FC = () => {
       const response = await axiosInstance.get(`/get/plan/${planId}`, {
         headers: { Authorization: `Bearer ${session.idToken}` },
       });
-      setPatientId(response.data.patient_id)
+      setPatientId(response.data.patient_id);
       setPlanDetails(response.data);
     } catch (error) {
       handleError(error);
@@ -139,15 +137,15 @@ const TherapyPlanDetails: React.FC = () => {
       <ScrollView style={styles.container}>
         <View style={styles.mainCard}>
           <View style={styles.cardHeader}>
-          <TouchableOpacity onPress={() =>
-                navigation.navigate("Patient", { patientId: patientId 
-                })
-                  }
-               >
-              <Text style={styles.patientName}>{planDetails.patient_name}</Text>
-          </TouchableOpacity>
-            <View style={styles.actionButtons}>
             <TouchableOpacity
+              onPress={() =>
+                navigation.navigate("Patient", { patientId: patientId })
+              }
+            >
+              <Text style={styles.patientName}>{planDetails.patient_name}</Text>
+            </TouchableOpacity>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
                 style={styles.iconButton}
                 onPress={() =>
                   navigation.navigate("CreateTherapy", {
@@ -161,20 +159,20 @@ const TherapyPlanDetails: React.FC = () => {
                   color="#119FB3"
                 />
               </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() =>
-                navigation.navigate("EditTherapyPlan", {
-                  planId: plan._id,
-                })
-              }
-            >
-              <MaterialCommunityIcons
-                name="square-edit-outline"
-                size={24}
-                color="#119FB3"
-              />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() =>
+                  navigation.navigate("EditTherapyPlan", {
+                    planId: plan._id,
+                  })
+                }
+              >
+                <MaterialCommunityIcons
+                  name="square-edit-outline"
+                  size={24}
+                  color="#119FB3"
+                />
+              </TouchableOpacity>
             </View>
           </View>
           <Text style={styles.therapyName}>{plan.therapy_name}</Text>
@@ -248,7 +246,9 @@ const TherapyPlanDetails: React.FC = () => {
               <View style={styles.infoRow}>
                 <Text style={styles.label}>Extra Addons:</Text>
                 <Text style={styles.value}>
-                  {plan.extra_addons.join(", ")} (₹{plan.addons_amount})
+                  {plan.extra_addons
+                    .map((addon) => `${addon.name} (₹${addon.amount})`)
+                    .join(", ")}
                 </Text>
               </View>
             )}
@@ -324,8 +324,8 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 16,
     },
     actionButtons: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
     },
     iconButton: {
       padding: 8,
