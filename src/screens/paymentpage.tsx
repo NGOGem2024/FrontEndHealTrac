@@ -17,6 +17,7 @@ import axiosInstance from "../utils/axiosConfig";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
 import BackTabTop from "./BackTopTab";
+import PaymentModal from "./PaymentModal";
 
 type PaymentPageProps = {
   navigation: StackNavigationProp<RootStackParamList, "payment">;
@@ -80,172 +81,6 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
     onSubmit: (amount: number, type: string, addons?: Addon[]) => void;
     currentSession: number;
   }
-
-  const PaymentModal: React.FC<PaymentModalProps> = ({
-    visible,
-    onClose,
-    onSubmit,
-    currentSession,
-  }) => {
-    const [amount, setAmount] = useState<string>("");
-    const [paymentType, setPaymentType] = useState("CASH");
-    const [addonInput, setAddonInput] = useState<string>("");
-    const [addonAmount, setAddonAmount] = useState<string>("");
-    const [addons, setAddons] = useState<Addon[]>([]);
-
-    // Update amount when the modal becomes visible
-    useEffect(() => {
-      if (visible && paymentInfo?.session_info?.per_session_amount) {
-        setAmount(paymentInfo.session_info.per_session_amount.toString());
-      } else {
-        setAmount(""); // Set to empty string if no amount is available
-      }
-    }, [visible, paymentInfo]);
-    const handleAddAddon = () => {
-      // Validate addon input
-      if (!addonInput.trim().startsWith("#")) {
-        Alert.alert("Error", "Addon name must start with #");
-        return;
-      }
-
-      const numAddonAmount = parseFloat(addonAmount);
-      if (isNaN(numAddonAmount) || numAddonAmount <= 0) {
-        Alert.alert("Error", "Please enter a valid addon amount");
-        return;
-      }
-
-      // Add addon to list
-      const newAddon: Addon = {
-        name: addonInput.trim(),
-        amount: numAddonAmount,
-      };
-
-      setAddons([...addons, newAddon]);
-
-      // Reset addon input fields
-      setAddonInput("");
-      setAddonAmount("");
-    };
-    const handleRemoveAddon = (index: number) => {
-      const updatedAddons = addons.filter((_, i) => i !== index);
-      setAddons(updatedAddons);
-    };
-    const handleSubmit = () => {
-      const numAmount = parseFloat(amount);
-      if (isNaN(numAmount) || numAmount <= 0) {
-        Alert.alert("Error", "Please enter a valid amount");
-        return;
-      }
-
-      onSubmit(numAmount, paymentType, addons);
-
-      // Reset all fields
-      setAmount("");
-      setPaymentType("CASH");
-      setAddons([]);
-    };
-
-    return (
-      <Modal
-        visible={visible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={onClose}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Record Payment</Text>
-            {paymentInfo.payment_structure.next_payment_number && (
-              <View style={styles.paymentNumberContainer}>
-                <Text style={styles.paymentNumberLabel}>
-                  Payment Number:
-                  {paymentInfo.payment_structure.next_payment_number}
-                </Text>
-              </View>
-            )}
-            <TextInput
-              style={styles.input}
-              placeholder="Enter amount"
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-            />
-
-            {/* Addon Input Section */}
-            <View style={styles.addonContainer}>
-              <TextInput
-                style={styles.addonInput}
-                placeholder="#Addon Name"
-                value={addonInput}
-                onChangeText={setAddonInput}
-              />
-              <TextInput
-                style={styles.addonAmountInput}
-                placeholder="Amount"
-                keyboardType="numeric"
-                value={addonAmount}
-                onChangeText={setAddonAmount}
-              />
-              <TouchableOpacity
-                style={styles.addAddonButton}
-                onPress={handleAddAddon}
-              >
-                <Text style={styles.addAddonButtonText}>+</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Addons List */}
-            {addons.map((addon, index) => (
-              <View key={index} style={styles.addonListItem}>
-                <Text style={styles.addonListItemText}>
-                  {addon.name} - ₹{addon.amount}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => handleRemoveAddon(index)}
-                  style={styles.removeAddonButton}
-                >
-                  <Text style={styles.removeAddonButtonText}>X</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-
-            <View style={styles.paymentTypeSelector}>
-              <TouchableOpacity
-                style={[
-                  styles.typeButton,
-                  paymentType === "CASH" && styles.selectedTypeButton,
-                ]}
-                onPress={() => setPaymentType("CASH")}
-              >
-                <Text style={styles.typeButtonText}>Cash</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.typeButton,
-                  paymentType === "ONLINE" && styles.selectedTypeButton,
-                ]}
-                onPress={() => setPaymentType("ONLINE")}
-              >
-                <Text style={styles.typeButtonText}>Online</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleSubmit}
-              >
-                <Text style={styles.buttonText}>Submit</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    );
-  };
 
   const fetchPaymentInfo = async () => {
     try {
@@ -464,6 +299,7 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
         onClose={() => setIsPaymentModalVisible(false)}
         onSubmit={handleRecordPayment}
         currentSession={paymentInfo.session_info.completed_sessions}
+        paymentInfo={paymentInfo}
       />
       <TouchableOpacity
         style={styles.closeButton}
@@ -513,8 +349,217 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
   );
 };
 
-const getStyles = (theme: ReturnType<typeof getTheme>) =>
-  StyleSheet.create({
+const getStyles = (theme: ReturnType<typeof getTheme>) => {
+  const baseStyles = StyleSheet.create({
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 16,
+    },
+    enhancedModalContainer: {
+      width: "95%",
+      maxWidth: 500,
+      backgroundColor: "white",
+      borderRadius: 16,
+      padding: 20,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    
+    inputSection: {
+      marginBottom: 16,
+    },
+    inputLabel: {
+      fontSize: 16,
+      color: "#2c3e50",
+      marginBottom: 8,
+      fontWeight: "600",
+    },
+    currencyInputContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: "#ced4da",
+      borderRadius: 10,
+      backgroundColor: "#f8f9fa",
+    },
+    currencySymbol: {
+      fontSize: 18,
+      color: "#6c757d",
+      paddingLeft: 12,
+      paddingRight: 8,
+    },
+    currencyInput: {
+      flex: 1,
+      fontSize: 18,
+      color: "#2c3e50",
+      padding: 12,
+    },
+    addonInputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    addonNameInput: {
+      flex: 2,
+      borderWidth: 1,
+      borderColor: "#ced4da",
+      borderRadius: 10,
+      backgroundColor: "#f8f9fa",
+      padding: 12,
+      marginRight: 8,
+      fontSize: 16,
+    },
+    addonAmountInputContainer: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: "#ced4da",
+      borderRadius: 10,
+      backgroundColor: "#f8f9fa",
+      marginRight: 8,
+    },
+    addonAmountInput: {
+      flex: 1,
+      fontSize: 16,
+      color: "#2c3e50",
+      padding: 12,
+    },
+    addAddonButton: {
+      backgroundColor: "#119FB3",
+      borderRadius: 10,
+      width: 48,
+      height: 48,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    addAddonButtonText: {
+      color: "white",
+      fontSize: 24,
+      fontWeight: "bold",
+    },
+    addonsListContainer: {
+      marginBottom: 16,
+    },
+    addonListItem: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: "#f1f3f5",
+      padding: 12,
+      borderRadius: 10,
+      marginBottom: 8,
+    },
+    addonListItemContent: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      flex: 1,
+      marginRight: 12,
+    },
+    addonName: {
+      fontSize: 16,
+      color: "#2c3e50",
+      fontWeight: "500",
+    },
+    addonAmount: {
+      fontSize: 16,
+      color: "#119FB3",
+      fontWeight: "600",
+    },
+    removeAddonButton: {
+      backgroundColor: "#e74c3c",
+      borderRadius: 15,
+      width: 30,
+      height: 30,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    removeAddonButtonText: {
+      color: "white",
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+    paymentMethodContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    paymentMethodButton: {
+      flex: 1,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: "#ced4da",
+      borderRadius: 10,
+      marginHorizontal: 4,
+      alignItems: "center",
+      backgroundColor: "#f8f9fa",
+    },
+    selectedPaymentMethod: {
+      backgroundColor: "#119FB3",
+      borderColor: "#119FB3",
+    },
+    paymentMethodButtonText: {
+      fontSize: 16,
+      color: "#2c3e50",
+      fontWeight: "500",
+    },
+    selectedPaymentMethodText: {
+      color: "white",
+    },
+    totalAmountContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: "#f1f3f5",
+      padding: 16,
+      borderRadius: 10,
+      marginVertical: 16,
+    },
+    totalAmountLabel: {
+      fontSize: 18,
+      color: "#2c3e50",
+      fontWeight: "600",
+    },
+    totalAmountValue: {
+      fontSize: 20,
+      color: "#119FB3",
+      fontWeight: "bold",
+    },
+    modalFooter: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    cancelModalButton: {
+      flex: 1,
+      backgroundColor: "#6c757d",
+      padding: 15,
+      borderRadius: 10,
+      marginRight: 8,
+      alignItems: "center",
+    },
+    cancelModalButtonText: {
+      color: "white",
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+    confirmModalButton: {
+      flex: 1,
+      backgroundColor: "#119FB3",
+      padding: 15,
+      borderRadius: 10,
+      marginLeft: 8,
+      alignItems: "center",
+    },
+    confirmModalButtonText: {
+      color: "white",
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+
     addonContainer: {
       flexDirection: "row",
       marginBottom: 16,
@@ -529,52 +574,9 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginRight: 8,
       fontSize: 16,
     },
-    addonAmountInput: {
-      flex: 1,
-      borderWidth: 1,
-      borderColor: "#ced4da",
-      borderRadius: 8,
-      padding: 12,
-      marginRight: 8,
-      fontSize: 16,
-    },
-    addAddonButton: {
-      backgroundColor: "#119FB3",
-      borderRadius: 8,
-      padding: 12,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    addAddonButtonText: {
-      color: "white",
-      fontSize: 18,
-      fontWeight: "bold",
-    },
-    addonListItem: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      backgroundColor: "#f8f9fa",
-      padding: 12,
-      borderRadius: 8,
-      marginBottom: 8,
-    },
     addonListItemText: {
       fontSize: 16,
       color: "#2c3e50",
-    },
-    removeAddonButton: {
-      backgroundColor: "#e74c3c",
-      borderRadius: 16,
-      width: 24,
-      height: 24,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    removeAddonButtonText: {
-      color: "white",
-      fontSize: 14,
-      fontWeight: "bold",
     },
 
     modalContainer: {
@@ -887,5 +889,9 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontWeight: "bold",
     },
   });
-
+  return {
+    ...baseStyles,
+    ...getStyles,
+  };
+};
 export default PaymentDetailsScreen;
