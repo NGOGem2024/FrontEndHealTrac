@@ -17,6 +17,7 @@ import axiosInstance from "../utils/axiosConfig";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
 import BackTabTop from "./BackTopTab";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
 import PaymentModal from "./PaymentModal";
 
 type PaymentPageProps = {
@@ -93,14 +94,9 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
 
       if (response.status === 200 && response.data) {
         setPaymentInfo(response.data);
-      } else {
-        setError("Failed to fetch payment details.");
-        Alert.alert("Error", "Failed to fetch payment details.");
       }
     } catch (error) {
-      console.error("Failed to fetch payment info:", error);
-      setError("Failed to fetch payment details.");
-      Alert.alert("Error", "Failed to fetch payment details.");
+      handleError(error);
     } finally {
       setLoading(false);
     }
@@ -133,14 +129,13 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
       );
 
       if (response.status === 200) {
-        Alert.alert("Success", "Payment recorded successfully");
+        showSuccessToast("Payment Recorded Successfully");
         await fetchPaymentInfo(); // Refresh payment info
       } else {
         Alert.alert("Error", "Failed to record payment");
       }
     } catch (error) {
-      console.error("Error recording payment:", error);
-      Alert.alert("Error", "Failed to record payment");
+      handleError(error);
     } finally {
       setLoading(false);
       setIsPaymentModalVisible(false);
@@ -285,15 +280,12 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
           </View>
         ))}
       </View>
-      {paymentInfo.payment_structure.payment_type !== "one-time" &&
-        paymentInfo.payment_summary.balance !== 0 && (
-          <TouchableOpacity
-            style={styles.recordPaymentButton}
-            onPress={() => setIsPaymentModalVisible(true)}
-          >
-            <Text style={styles.buttonText}>Record Payment</Text>
-          </TouchableOpacity>
-        )}
+      <TouchableOpacity
+        style={styles.recordPaymentButton}
+        onPress={() => setIsPaymentModalVisible(true)}
+      >
+        <Text style={styles.buttonText}>Record Payment</Text>
+      </TouchableOpacity>
       <PaymentModal
         visible={isPaymentModalVisible}
         onClose={() => setIsPaymentModalVisible(false)}
@@ -370,7 +362,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
       shadowRadius: 10,
       elevation: 8,
     },
-    
+
     inputSection: {
       marginBottom: 16,
     },
