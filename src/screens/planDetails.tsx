@@ -44,8 +44,8 @@ interface TherapyPlanDetails {
     total_amount: number | string;
     received_amount: string;
     balance: string;
-    extra_addons: string[] | Array<{ name: string; amount: number }>;
-    addons_amount: number | string;
+    extra_addons?: string[] | Array<{ name: string; amount: number }>;
+    addons_amount?: number | string;
     presession_remarks?: SessionRemark[];
     postsession_remarks?: SessionRemark[];
   };
@@ -242,14 +242,23 @@ const TherapyPlanDetails: React.FC = () => {
                 ₹{plan.balance}
               </Text>
             </View>
-            {plan.extra_addons?.length > 0 && (
-              <View style={styles.infoRow}>
-                <Text style={styles.label}>Extra Addons:</Text>
-                <Text style={styles.value}>
-                  {plan.extra_addons
-                    .map((addon) => `${addon.name} (₹${addon.amount})`)
-                    .join(", ")}
-                </Text>
+            {plan.extra_addons && plan.extra_addons.length > 0 && (
+              <View style={styles.extraAddonsSection}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Extra Addons:</Text>
+                </View>
+                {plan.extra_addons.map((addon, index) => (
+                  <View key={index} style={styles.addonRow}>
+                    <Text style={styles.addonName}>{addon.name}</Text>
+                    <Text style={styles.addonAmount}>₹{addon.amount}</Text>
+                  </View>
+                ))}
+                {plan.addons_amount && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.label}>Total Addons Amount:</Text>
+                    <Text style={styles.value}>₹{plan.addons_amount}</Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -336,6 +345,27 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       justifyContent: "space-between",
       alignItems: "center",
       marginBottom: 8,
+    },
+    extraAddonsSection: {
+      marginTop: 8,
+      backgroundColor: "rgba(17, 159, 179, 0.05)",
+      borderRadius: 8,
+      padding: 8,
+    },
+    addonRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 4,
+    },
+    addonName: {
+      fontSize: 14,
+      color: theme.colors.text,
+      opacity: 0.7,
+    },
+    addonAmount: {
+      fontSize: 14,
+      color: theme.colors.text,
+      fontWeight: "500",
     },
     remarkSectionTitle: {
       fontSize: 16,
