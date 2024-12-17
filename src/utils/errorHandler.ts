@@ -7,7 +7,10 @@ export const handleError = (error: any) => {
   if (axios.isAxiosError(error)) {
     if (error.response) {
       message =
-        error.response.data.msg || error.response.data.error || error.message;
+        error.response.data.msg ||
+        error.response.data.error ||
+        error.message ||
+        error.response.data.message;
     } else if (error.request) {
       message = "No response received from the server";
     } else {
