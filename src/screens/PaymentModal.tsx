@@ -141,6 +141,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 onValueChange={(itemValue) => setPaymentMethod(itemValue)}
                 style={styles.picker}
               >
+                <Picker.Item
+                  label="Payment Method"
+                  value=""
+                  style={styles.item1}
+                  enabled={false}
+                />
                 <Picker.Item label="Cash" value="CASH" style={styles.item} />
                 <Picker.Item
                   label="Online"
@@ -245,6 +251,10 @@ const COLORS = {
 
 const getModalStyles = () =>
   StyleSheet.create({
+    item1: {
+      color: "gray", // Set the color for selected items to black
+    },
+
     item: {
       color: "black", // Set the color for selected items to black
     },
