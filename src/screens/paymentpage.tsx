@@ -484,9 +484,10 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
       marginBottom: 16,
     },
     buttonText: {
-      color: "white",
+      color: 'white',
       fontSize: 16,
-      fontWeight: "bold",
+      fontWeight: 'bold',
+      textAlign: 'center',
     },
     closeButtonText: {
       fontSize: 20,
@@ -546,20 +547,24 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
       flexDirection: "row",
       justifyContent: "space-between",
       paddingHorizontal: 20,
+      paddingVertical: 10,
+      alignItems: 'center',
+
     },
     button: {
       flex: 1,
-      padding: 15,
+      height: 48, // Fixed height for consistency
       borderRadius: 15,
-      alignItems: "center",
+      justifyContent: 'center', // Center content vertically
+      alignItems: 'center',
       marginHorizontal: 10,
       // Shadow for iOS
-      shadowColor: "#fff",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 1,
-      shadowRadius: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
       // Shadow for Android
-      elevation: 10,
+      elevation: 5,
     },
     recordPaymentButton: {
       backgroundColor: "#119FB3",

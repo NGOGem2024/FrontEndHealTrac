@@ -23,6 +23,7 @@ import { Picker } from "@react-native-picker/picker";
 import { RadioButton } from "react-native-paper";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import axiosInstance from "../utils/axiosConfig";
+import BackTabTop from "./BackTopTab";
 
 const { width } = Dimensions.get("window");
 
@@ -220,15 +221,13 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+       <BackTabTop screenName="Doctor Profile"  />
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-          <Text style={styles.headerText}>Edit Profile</Text>
-        </View>
-
+        
         <View style={styles.profileImageContainer}>
           <Image source={profilePhoto} style={styles.profilePhoto} />
           <TouchableOpacity style={styles.editImageButton}>
@@ -353,16 +352,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flex: 1,
       backgroundColor: "#119FB3",
     },
-    header: {
-      padding: 16,
-      paddingTop: 40,
-      backgroundColor: "#119FB3",
-    },
-    headerText: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: theme.colors.card,
-    },
+    
     loadingContainer: {
       flex: 1,
       justifyContent: "center",
@@ -376,8 +366,8 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     profileImageContainer: {
       alignItems: "center",
-      marginTop: 5,
-      marginBottom: 30,
+      marginTop: 20,
+      marginBottom: 20,
     },
     profilePhoto: {
       width: 150,

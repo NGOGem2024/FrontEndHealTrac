@@ -307,6 +307,7 @@ const styles = StyleSheet.create({
   },
   doctorName: {
     fontSize: 23,
+    marginTop: 5,
     color: "white",
     fontWeight: "bold",
   },

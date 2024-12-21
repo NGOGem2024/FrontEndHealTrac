@@ -9,6 +9,7 @@ import {
   Animated,
   ActivityIndicator,
   ScrollView,
+  SafeAreaView,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
@@ -295,230 +296,235 @@ const EditTherapyPlan: React.FC<EditTherapyPlanProps> = ({
     );
   }
   return (
-    <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={styles.safeArea}>
       <BackTabTop screenName="Edit Plan" />
-      <Animated.View
-        style={[
-          styles.container,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
-        <Text style={styles.patientName}>Patient: {patientName}</Text>
-
-        <Dropdown
-          value={therapyPlan.therapy_category}
-          onValueChange={(itemValue) =>
-            setTherapyPlan({ ...therapyPlan, therapy_category: itemValue })
-          }
-          items={categories}
-        />
-        {errors.therapy_category && (
-          <Text style={styles.errorText}>{errors.therapy_category}</Text>
-        )}
-
-        <InputField
-          icon={<MaterialIcons name="edit" size={24} color="#119FB3" />}
-          placeholder="Therapy Name"
-          value={therapyPlan.therapy_name}
-          onChangeText={(text) =>
-            setTherapyPlan({ ...therapyPlan, therapy_name: text })
-          }
-        />
-        {errors.therapy_name && (
-          <Text style={styles.errorText}>{errors.therapy_name}</Text>
-        )}
-        <InputField
-          icon={<MaterialIcons name="healing" size={24} color="#119FB3" />}
-          placeholder="Patient Symptoms"
-          value={therapyPlan.patient_symptoms}
-          onChangeText={(text) =>
-            setTherapyPlan({ ...therapyPlan, patient_symptoms: text })
-          }
-        />
-        {errors.patient_symptoms && (
-          <Text style={styles.errorText}>{errors.patient_symptoms}</Text>
-        )}
-        <InputField
-          icon={
-            <MaterialIcons name="local-hospital" size={24} color="#119FB3" />
-          }
-          placeholder="Patient Diagnosis"
-          value={therapyPlan.patient_diagnosis}
-          onChangeText={(text) =>
-            setTherapyPlan({ ...therapyPlan, patient_diagnosis: text })
-          }
-        />
-        {errors.patient_diagnosis && (
-          <Text style={styles.errorText}>{errors.patient_diagnosis}</Text>
-        )}
-
-        <View style={styles.dateTimeRow}>
-          <DatePickerField
-            label="Start Date"
-            date={startDate}
-            showDatePicker={showStartDatePicker}
-            onPress={showStartDatepicker}
-            onChange={onChangeStartDate}
-            disabled={true} // Disable the start date picker
-          />
-
-          <DatePickerField
-            label="End Date"
-            date={endDate}
-            showDatePicker={showEndDatePicker}
-            onPress={showEndDatepicker}
-            onChange={onChangeEndDate}
-          />
-        </View>
-        {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
-
-        <View style={styles.durationContainer}>
-          <MaterialIcons name="timer" size={24} color="#119FB3" />
-          <Text style={styles.durationValue}>
-            Duration: {therapyPlan.therapy_duration}
-          </Text>
-        </View>
-        <View style={styles.paymentTypeContainer}>
-          <Text style={styles.inputLabel}>Payment Type</Text>
-          <View style={styles.radioGroup}>
-            {paymentTypes.map((type) => (
-              <TouchableOpacity
-                key={type.value}
-                style={[
-                  styles.radioButton,
-                  therapyPlan.payment_type === type.value &&
-                    styles.radioButtonSelected,
-                ]}
-                onPress={() =>
-                  setTherapyPlan({ ...therapyPlan, payment_type: type.value })
-                }
-              >
-                <View style={styles.radio}>
-                  {therapyPlan.payment_type === type.value && (
-                    <View style={styles.radioSelected} />
-                  )}
-                </View>
-                <Text style={styles.radioLabel}>{type.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.labeledInputContainer}>
-          <Text style={styles.inputLabel}>Estimated Sessions</Text>
-          <View style={styles.inputContainer}>
-            <MaterialIcons name="event-repeat" size={24} color="#119FB3" />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter estimated sessions"
-              value={therapyPlan.estimated_sessions}
-              onChangeText={(text) => {
-                setTherapyPlan((prev) => ({
-                  ...prev,
-                  estimated_sessions: text,
-                  total_amount:
-                    text && prev.per_session_amount
-                      ? (
-                          parseFloat(text) * parseFloat(prev.per_session_amount)
-                        ).toFixed(2)
-                      : prev.total_amount,
-                }));
-              }}
-              keyboardType="numeric"
-              placeholderTextColor="#A0A0A0"
-            />
-          </View>
-        </View>
-
-        {therapyPlan.payment_type === "recurring" && (
-          <>
-            <View style={styles.labeledInputContainer}>
-              <Text style={styles.inputLabel}>Amount Per Session</Text>
-              <View style={styles.inputContainer}>
-                <FontAwesome name="rupee" size={24} color="#119FB3" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter amount per session"
-                  value={therapyPlan.per_session_amount}
-                  onChangeText={(text) => {
-                    setTherapyPlan((prev) => ({
-                      ...prev,
-                      per_session_amount: text,
-                      total_amount:
-                        text && prev.estimated_sessions
-                          ? (
-                              parseFloat(text) *
-                              parseFloat(prev.estimated_sessions)
-                            ).toFixed(2)
-                          : prev.total_amount,
-                    }));
-                  }}
-                  keyboardType="numeric"
-                  placeholderTextColor="#A0A0A0"
-                />
-              </View>
-              {errors.per_session_amount && (
-                <Text style={styles.errorText}>
-                  {errors.per_session_amount}
-                </Text>
-              )}
-            </View>
-          </>
-        )}
-        <View style={styles.labeledInputContainer}>
-          <Text style={styles.inputLabel}>Total Amount</Text>
-          <View style={styles.inputContainer}>
-            <FontAwesome name="rupee" size={24} color="#119FB3" />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter total amount"
-              value={therapyPlan.total_amount}
-              onChangeText={(text) =>
-                setTherapyPlan({ ...therapyPlan, total_amount: text })
-              }
-              keyboardType="numeric"
-              placeholderTextColor="#A0A0A0"
-            />
-          </View>
-        </View>
-        {errors.total_amount && (
-          <Text style={styles.errorText}>{errors.total_amount}</Text>
-        )}
-
-        <View style={styles.balanceContainer}>
-          <FontAwesome name="rupee" size={24} color="#119FB3" />
-          <Text style={styles.balanceValue}>
-            Received: {therapyPlan.received_amount} Rs
-          </Text>
-        </View>
-        {errors.received_amount && (
-          <Text style={styles.errorText}>{errors.received_amount}</Text>
-        )}
-        <View style={styles.balanceContainer}>
-          <MaterialIcons name="account-balance" size={24} color="#119FB3" />
-          <Text style={styles.balanceValue}>
-            Balance: {therapyPlan.balance} Rs
-          </Text>
-        </View>
-
-        {errors.submit && <Text style={styles.errorText}>{errors.submit}</Text>}
-
-        <TouchableOpacity
-          style={styles.saveButton}
-          onPress={handleUpdateTherapyPlan}
-          disabled={isLoading}
+      <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+        <Animated.View
+          style={[
+            styles.container,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
         >
-          {isSaving ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>Edit Plan</Text>
+          <Text style={styles.patientName}>Patient: {patientName}</Text>
+
+          <Dropdown
+            value={therapyPlan.therapy_category}
+            onValueChange={(itemValue) =>
+              setTherapyPlan({ ...therapyPlan, therapy_category: itemValue })
+            }
+            items={categories}
+          />
+          {errors.therapy_category && (
+            <Text style={styles.errorText}>{errors.therapy_category}</Text>
           )}
-        </TouchableOpacity>
-      </Animated.View>
-    </ScrollView>
+
+          <InputField
+            icon={<MaterialIcons name="edit" size={24} color="#119FB3" />}
+            placeholder="Therapy Name"
+            value={therapyPlan.therapy_name}
+            onChangeText={(text) =>
+              setTherapyPlan({ ...therapyPlan, therapy_name: text })
+            }
+          />
+          {errors.therapy_name && (
+            <Text style={styles.errorText}>{errors.therapy_name}</Text>
+          )}
+          <InputField
+            icon={<MaterialIcons name="healing" size={24} color="#119FB3" />}
+            placeholder="Patient Symptoms"
+            value={therapyPlan.patient_symptoms}
+            onChangeText={(text) =>
+              setTherapyPlan({ ...therapyPlan, patient_symptoms: text })
+            }
+          />
+          {errors.patient_symptoms && (
+            <Text style={styles.errorText}>{errors.patient_symptoms}</Text>
+          )}
+          <InputField
+            icon={
+              <MaterialIcons name="local-hospital" size={24} color="#119FB3" />
+            }
+            placeholder="Patient Diagnosis"
+            value={therapyPlan.patient_diagnosis}
+            onChangeText={(text) =>
+              setTherapyPlan({ ...therapyPlan, patient_diagnosis: text })
+            }
+          />
+          {errors.patient_diagnosis && (
+            <Text style={styles.errorText}>{errors.patient_diagnosis}</Text>
+          )}
+
+          <View style={styles.dateTimeRow}>
+            <DatePickerField
+              label="Start Date"
+              date={startDate}
+              showDatePicker={showStartDatePicker}
+              onPress={showStartDatepicker}
+              onChange={onChangeStartDate}
+              disabled={true} // Disable the start date picker
+            />
+
+            <DatePickerField
+              label="End Date"
+              date={endDate}
+              showDatePicker={showEndDatePicker}
+              onPress={showEndDatepicker}
+              onChange={onChangeEndDate}
+            />
+          </View>
+          {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
+
+          <View style={styles.durationContainer}>
+            <MaterialIcons name="timer" size={24} color="#119FB3" />
+            <Text style={styles.durationValue}>
+              Duration: {therapyPlan.therapy_duration}
+            </Text>
+          </View>
+          <View style={styles.paymentTypeContainer}>
+            <Text style={styles.inputLabel}>Payment Type</Text>
+            <View style={styles.radioGroup}>
+              {paymentTypes.map((type) => (
+                <TouchableOpacity
+                  key={type.value}
+                  style={[
+                    styles.radioButton,
+                    therapyPlan.payment_type === type.value &&
+                      styles.radioButtonSelected,
+                  ]}
+                  onPress={() =>
+                    setTherapyPlan({ ...therapyPlan, payment_type: type.value })
+                  }
+                >
+                  <View style={styles.radio}>
+                    {therapyPlan.payment_type === type.value && (
+                      <View style={styles.radioSelected} />
+                    )}
+                  </View>
+                  <Text style={styles.radioLabel}>{type.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.labeledInputContainer}>
+            <Text style={styles.inputLabel}>Estimated Sessions</Text>
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="event-repeat" size={24} color="#119FB3" />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter estimated sessions"
+                value={therapyPlan.estimated_sessions}
+                onChangeText={(text) => {
+                  setTherapyPlan((prev) => ({
+                    ...prev,
+                    estimated_sessions: text,
+                    total_amount:
+                      text && prev.per_session_amount
+                        ? (
+                            parseFloat(text) *
+                            parseFloat(prev.per_session_amount)
+                          ).toFixed(2)
+                        : prev.total_amount,
+                  }));
+                }}
+                keyboardType="numeric"
+                placeholderTextColor="#A0A0A0"
+              />
+            </View>
+          </View>
+
+          {therapyPlan.payment_type === "recurring" && (
+            <>
+              <View style={styles.labeledInputContainer}>
+                <Text style={styles.inputLabel}>Amount Per Session</Text>
+                <View style={styles.inputContainer}>
+                  <FontAwesome name="rupee" size={24} color="#119FB3" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter amount per session"
+                    value={therapyPlan.per_session_amount}
+                    onChangeText={(text) => {
+                      setTherapyPlan((prev) => ({
+                        ...prev,
+                        per_session_amount: text,
+                        total_amount:
+                          text && prev.estimated_sessions
+                            ? (
+                                parseFloat(text) *
+                                parseFloat(prev.estimated_sessions)
+                              ).toFixed(2)
+                            : prev.total_amount,
+                      }));
+                    }}
+                    keyboardType="numeric"
+                    placeholderTextColor="#A0A0A0"
+                  />
+                </View>
+                {errors.per_session_amount && (
+                  <Text style={styles.errorText}>
+                    {errors.per_session_amount}
+                  </Text>
+                )}
+              </View>
+            </>
+          )}
+          <View style={styles.labeledInputContainer}>
+            <Text style={styles.inputLabel}>Total Amount</Text>
+            <View style={styles.inputContainer}>
+              <FontAwesome name="rupee" size={24} color="#119FB3" />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter total amount"
+                value={therapyPlan.total_amount}
+                onChangeText={(text) =>
+                  setTherapyPlan({ ...therapyPlan, total_amount: text })
+                }
+                keyboardType="numeric"
+                placeholderTextColor="#A0A0A0"
+              />
+            </View>
+          </View>
+          {errors.total_amount && (
+            <Text style={styles.errorText}>{errors.total_amount}</Text>
+          )}
+
+          <View style={styles.balanceContainer}>
+            <FontAwesome name="rupee" size={24} color="#119FB3" />
+            <Text style={styles.balanceValue}>
+              Received: {therapyPlan.received_amount} Rs
+            </Text>
+          </View>
+          {errors.received_amount && (
+            <Text style={styles.errorText}>{errors.received_amount}</Text>
+          )}
+          <View style={styles.balanceContainer}>
+            <MaterialIcons name="account-balance" size={24} color="#119FB3" />
+            <Text style={styles.balanceValue}>
+              Balance: {therapyPlan.balance} Rs
+            </Text>
+          </View>
+
+          {errors.submit && (
+            <Text style={styles.errorText}>{errors.submit}</Text>
+          )}
+
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleUpdateTherapyPlan}
+            disabled={isLoading}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveButtonText}>Edit Plan</Text>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 const InputField = ({ icon, placeholder, value, onChangeText }) => (
@@ -594,6 +600,9 @@ const Dropdown = ({ value, onValueChange, items }) => (
 );
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   paymentTypeContainer: {
     marginBottom: 20,
   },

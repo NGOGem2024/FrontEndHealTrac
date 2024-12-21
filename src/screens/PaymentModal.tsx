@@ -362,7 +362,7 @@ const getModalStyles = () =>
       borderRadius: 10,
       padding: 12,
       marginRight: 8,
-      fontSize: 16,
+      fontSize: 13,
     },
     addonAmountWrapper: {
       flex: 2,
@@ -377,7 +377,7 @@ const getModalStyles = () =>
     addonAmountInput: {
       flex: 1,
       padding: 12,
-      fontSize: 16,
+      fontSize: 13,
     },
     addButton: {
       backgroundColor: "#119FB3",
