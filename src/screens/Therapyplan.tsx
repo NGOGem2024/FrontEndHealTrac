@@ -725,7 +725,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#119FB3",
   },
   radioLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#333333",
   },
   sessionInfoContainer: {

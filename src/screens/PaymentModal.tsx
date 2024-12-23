@@ -6,10 +6,12 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  ScrollView,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { FontAwesome } from "@expo/vector-icons";
 import { useTheme } from "./ThemeContext";
+
 
 interface Addon {
   name: string;
@@ -54,6 +56,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const handleAddonAmountChange = (value: string) => {
     setAddonAmount(value);
   };
+  
 
   const handleAddonSubmit = () => {
     if (addonInput.trim() && addonAmount.trim()) {
@@ -99,9 +102,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          {/* Modal Header */}
+      <View style={styles.modalOverlay} >
+      <ScrollView
+          contentContainerStyle={styles.modalContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+       
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Record Payment</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -233,7 +240,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               <Text style={styles.buttonText}>Confirm Payment</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -268,8 +275,8 @@ const getModalStyles = () =>
       alignItems: "center",
     },
     modalContainer: {
-      width: "90%",
-      maxWidth: 500,
+      width: "90%",  // Increased from 50% to 90%
+      maxWidth: 650, // Increased from 500 to 800
       backgroundColor: "white",
       borderRadius: 16,
       padding: 20,
@@ -278,6 +285,9 @@ const getModalStyles = () =>
       shadowOpacity: 0.25,
       shadowRadius: 10,
       elevation: 5,
+      marginTop: "20%", // Decreased from 30% to 10% to show more content
+      marginBottom: "20%", // Ad
+      
     },
     modalHeader: {
       flexDirection: "row",

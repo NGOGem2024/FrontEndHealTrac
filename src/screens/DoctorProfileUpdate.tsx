@@ -214,11 +214,6 @@ const DoctorProfileEdit: React.FC = () => {
         showsVerticalScrollIndicator={false}
          keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-
-          <Text style={styles.headerText}>Edit Profile</Text>
-        </View>
-
         <View style={styles.profileImageContainer}>
           <Image source={profilePhoto} style={styles.profilePhoto} />
           <TouchableOpacity style={styles.editImageButton}>
@@ -330,8 +325,8 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     profileImageContainer: {
       alignItems: "center",
-      marginTop: 5,
-      marginBottom: 30,
+      marginTop: 20,
+      marginBottom: 15,
     },
     profilePhoto: {
       width: 150,

@@ -97,57 +97,68 @@ const DoctorScreen: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
         <View style={styles.profileContainer}>
           {doctorData ? (
             <>
-              <Title style={styles.doctorName}>
-                Dr. {doctorData.doctor_first_name} {doctorData.doctor_last_name}
-              </Title>
-              <View style={styles.content}>
-                <MaterialIcons name="email" size={20} color="white" />
-                <Text style={styles.mytext}> {doctorData.doctor_email}</Text>
-              </View>
-              <View style={styles.content}>
-                <MaterialIcons name="call" size={20} color="white" />
-                <Text style={styles.mytext}> {doctorData.doctor_phone}</Text>
-              </View>
-              <View style={styles.content}>
-                <AntDesign name="idcard" size={20} color="white" />
-                <Text style={styles.mytext}> {doctorData._id}</Text>
-              </View>
-              <View style={styles.content}>
-                <MaterialIcons name="business" size={20} color="white" />
-                <Text style={styles.mytext}>
-                  {doctorData.organization_name}
-                </Text>
-              </View>
-              <View style={styles.content}>
-                <MaterialCommunityIcons name="doctor" size={20} color="white" />
-                <Text style={styles.mytext}> {doctorData.qualification}</Text>
-              </View>
-              <View style={styles.content}>
-                <MaterialCommunityIcons
-                  name="account-group"
-                  size={20}
-                  color="white"
-                />
-                <Text style={styles.mytext}>
-                  patients: {doctorData.patients.length}
-                </Text>
-              </View>
-              <View style={styles.content}>
-                <MaterialCommunityIcons
-                  name="checkbox-marked-circle"
-                  size={20}
-                  color="white"
-                />
-                <Text style={styles.mytext}>Status: {doctorData.status}</Text>
-              </View>
-              {doctorData.is_admin && (
-                <View style={styles.adminBadge}>
-                  <Text style={styles.adminBadgeText}>Admin</Text>
+              <View style={styles.infoCard}>
+                <Title style={styles.doctorName}>
+                  Dr. {doctorData.doctor_first_name}{" "}
+                  {doctorData.doctor_last_name}
+                </Title>
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="email" size={20} color="#119FB3" />
+                  <Text style={styles.infoText}>{doctorData.doctor_email}</Text>
                 </View>
-              )}
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="call" size={20} color="#119FB3" />
+                  <Text style={styles.infoText}>{doctorData.doctor_phone}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <AntDesign name="idcard" size={20} color="#119FB3" />
+                  <Text style={styles.infoText}>{doctorData._id}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="business" size={20} color="#119FB3" />
+                  <Text style={styles.infoText}>
+                    {doctorData.organization_name}
+                  </Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <MaterialCommunityIcons
+                    name="doctor"
+                    size={20}
+                    color="#119FB3"
+                  />
+                  <Text style={styles.infoText}>
+                    {doctorData.qualification}
+                  </Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <MaterialCommunityIcons
+                    name="account-group"
+                    size={20}
+                    color="#119FB3"
+                  />
+                  <Text style={styles.infoText}>
+                    Patients: {doctorData.patients.length}
+                  </Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <MaterialCommunityIcons
+                    name="checkbox-marked-circle"
+                    size={20}
+                    color="#119FB3"
+                  />
+                  <Text style={styles.infoText}>
+                    Status: {doctorData.status}
+                  </Text>
+                </View>
+                {doctorData.is_admin && (
+                  <View style={styles.adminBadge}>
+                    <Text style={styles.adminBadgeText}>Admin</Text>
+                  </View>
+                )}
+              </View>
             </>
           ) : (
-            <Text>No doctor data available</Text>
+            <Text style={styles.noDataText}>No doctor data available</Text>
           )}
         </View>
         <View style={styles.botscrview}>
@@ -172,7 +183,6 @@ const DoctorScreen: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
                   />
                   <Text style={styles.link}>Update Profile</Text>
                 </View>
-                <Octicons name="chevron-right" size={24} color="black" />
               </TouchableOpacity>
             )}
           </View>
@@ -201,6 +211,37 @@ const DoctorScreen: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
+  infoCard: {
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: 20,
+    marginTop: 20,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
+    width: 370,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical:5,
+  },
+  infoText: {
+    fontSize: 16,
+    color: "#333",
+    marginLeft: 10,
+    fontWeight: "500",
+  },
+  noDataText: {
+    fontSize: 16,
+    color: "white",
+    textAlign: "center",
+    marginTop: 20,
+  },
+  
   main: {
     flex: 1,
     backgroundColor: "#119FB3",
@@ -221,14 +262,14 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     width: "100%",
     borderTopLeftRadius: 40,
-    marginTop: 20,
+    marginTop: 10,
     borderTopRightRadius: 40,
     paddingTop: 20,
     flexGrow: 1,
   },
   container: {
     padding: 20,
-    width: "100%",
+    width: "50%",
     alignItems: "center",
   },
   link: {
@@ -250,6 +291,8 @@ const styles = StyleSheet.create({
   iconleft: {
     flexDirection: "row",
     alignItems: "center",
+    marginTop:5,
+    marginBottom:5,
   },
   iconlist: {
     padding: 7,
@@ -295,7 +338,8 @@ const styles = StyleSheet.create({
   profileContainer: {
     paddingLeft: 10,
     alignItems: "flex-start",
-    marginBottom: 20,
+    marginBottom: 10,
+    
   },
   profileImage: {
     width: 120,
@@ -308,7 +352,7 @@ const styles = StyleSheet.create({
   doctorName: {
     fontSize: 23,
     marginTop: 5,
-    color: "white",
+    color: "Black",
     fontWeight: "bold",
   },
   adminBadge: {
@@ -317,6 +361,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     marginTop: 5,
+    width: 50,
   },
   adminBadgeText: {
     color: "#000000",
@@ -327,7 +372,6 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#F4F4F4",
     borderRadius: 10,
-    marginBottom: 20,
   },
   appointmentsTitle: {
     fontSize: 18,

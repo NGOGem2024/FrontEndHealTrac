@@ -77,6 +77,27 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
   const [showNewUserPopup, setShowNewUserPopup] = useState(false);
   const popupScale = useSharedValue(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedView, setSelectedView] = useState<"all" | "past" | "upcoming">(
+    "all"
+  );
+
+  const selectTherapyType = (type: "all" | "past" | "upcoming") => {
+    setSelectedView(type);
+    setIsDropdownOpen(false);
+  };
+
+  const getDisplayedTherapies = () => {
+    switch (selectedView) {
+      case "all":
+        return [...upcomingTherapies, ...pastTherapies];
+      case "past":
+        return pastTherapies;
+      case "upcoming":
+        return upcomingTherapies;
+      default:
+        return [];
+    }
+  };
 
   useEffect(() => {
     if (!patientId) {
@@ -176,11 +197,6 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
     setIsDropdownOpen(!isDropdownOpen);
   };
 
-  const selectTherapyType = (type: "past" | "upcoming") => {
-    setShowPastTherapies(type === "past");
-    toggleDropdown();
-  };
-
   const handleRecTherapy = async (therepy_id: string) => {
     const recordingUrl = `https://app.contact.liveswitch.com/conversations/${therepy_id}`;
     try {
@@ -213,10 +229,9 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
     try {
       const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
 
-      // Wait for the response
       const response = await axiosInstance.patch(
         `/therepy/update/${updatedTherapy._id}`,
-        updatedTherapy, // Send the data directly, no need for JSON.stringify
+        updatedTherapy,
         {
           headers: {
             "Content-Type": "application/json",
@@ -225,15 +240,12 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
         }
       );
 
-      // Check if the response is successful
       if (response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Get the updated data from response
       const updatedData = response.data;
 
-      // Update the local state with the response data
       setTherapies((prevTherapies) =>
         prevTherapies?.map((therapy) =>
           therapy._id === updatedData.therapy._id
@@ -242,13 +254,10 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
         )
       );
 
-      // Close the edit modal
       setEditingTherapy(null);
 
-      // Show success message only after successful update
       showSuccessToast("Therapy updated successfully");
 
-      // Refresh the therapies list
       await fetchTherapies();
     } catch (error) {
       handleError(error);
@@ -281,7 +290,6 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.idToken}`,
-            //auth: `Bearer ${session.tokens.accessToken}`,
           },
         }
       );
@@ -290,7 +298,6 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Update the local state
       setTherapies((prevTherapies) =>
         prevTherapies?.map((therapy) =>
           therapy._id === selectedTherapyId
@@ -421,11 +428,15 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
         {error && <Text style={styles.error}>{error}</Text>}
 
         <TouchableOpacity
-          onPress={toggleDropdown}
+          onPress={() => setIsDropdownOpen(!isDropdownOpen)}
           style={styles.dropdownButton}
         >
           <Text style={styles.dropdownButtonText}>
-            {showPastTherapies ? "Past Sessions" : "Upcoming Sessions"}
+            {selectedView === "all"
+              ? "All Sessions"
+              : selectedView === "past"
+              ? "Past Sessions"
+              : "Upcoming Sessions"}
           </Text>
           <Icon
             name={isDropdownOpen ? "chevron-up" : "chevron-down"}
@@ -437,16 +448,55 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
         {isDropdownOpen && (
           <View style={styles.dropdownContent}>
             <TouchableOpacity
-              onPress={() => selectTherapyType("past")}
-              style={styles.dropdownItem}
+              onPress={() => selectTherapyType("all")}
+              style={[
+                styles.dropdownItem,
+                selectedView === "all" && styles.selectedDropdownItem,
+              ]}
             >
-              <Text>Past Sessions</Text>
+              <Text
+                style={
+                  selectedView === "all"
+                    ? styles.selectedDropdownText
+                    : styles.dropdownText
+                }
+              >
+                All Sessions
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => selectTherapyType("past")}
+              style={[
+                styles.dropdownItem,
+                selectedView === "past" && styles.selectedDropdownItem,
+              ]}
+            >
+              <Text
+                style={
+                  selectedView === "past"
+                    ? styles.selectedDropdownText
+                    : styles.dropdownText
+                }
+              >
+                Past Sessions
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => selectTherapyType("upcoming")}
-              style={styles.dropdownItem}
+              style={[
+                styles.dropdownItem,
+                selectedView === "upcoming" && styles.selectedDropdownItem,
+              ]}
             >
-              <Text>Upcoming Sessions</Text>
+              <Text
+                style={
+                  selectedView === "upcoming"
+                    ? styles.selectedDropdownText
+                    : styles.dropdownText
+                }
+              >
+                Upcoming Sessions
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -455,13 +505,17 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
           <Text style={styles.loadingText}>Loading therapies...</Text>
         ) : (
           <FlatList
-            data={showPastTherapies ? pastTherapies : upcomingTherapies}
+            data={getDisplayedTherapies()}
             keyExtractor={(item) => item._id}
             renderItem={renderTherapyItem}
             ListEmptyComponent={
               <Text style={styles.noTherapyText}>
-                No {showPastTherapies ? "past" : "upcoming"} therapies available
+                No {selectedView === "all" ? "" : selectedView} sessions
+                available
               </Text>
+            }
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
           />
         )}
@@ -598,6 +652,35 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
 const windowWidth = Dimensions.get("window").width;
 
 const styles = StyleSheet.create({
+  selectedDropdownItem: {
+    backgroundColor: "rgba(17, 159, 179, 0.1)",
+  },
+  selectedDropdownText: {
+    color: "#119FB3",
+    fontWeight: "bold",
+  },
+  dropdownText: {
+    color: "#333333",
+  },
+  dropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEEEEE",
+  },
+  dropdownContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 5,
+    overflow: "hidden",
+    marginBottom: 10,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
   backgroundImage: {
     flex: 1,
     resizeMode: "cover",
@@ -805,17 +888,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
-  },
-  dropdownContent: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 5,
-    overflow: "hidden",
-    marginBottom: 10,
-  },
-  dropdownItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEEEEE",
   },
   modalView: {
     // margin: 20,
