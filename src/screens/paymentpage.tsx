@@ -484,10 +484,10 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
       marginBottom: 16,
     },
     buttonText: {
-      color: 'white',
+      color: "white",
       fontSize: 16,
-      fontWeight: 'bold',
-      textAlign: 'center',
+      fontWeight: "bold",
+      textAlign: "center",
     },
     closeButtonText: {
       fontSize: 20,
@@ -548,18 +548,17 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
       justifyContent: "space-between",
       paddingHorizontal: 20,
       paddingVertical: 10,
-      alignItems: 'center',
-
+      alignItems: "center",
     },
     button: {
       flex: 1,
       height: 48, // Fixed height for consistency
       borderRadius: 15,
-      justifyContent: 'center', // Center content vertically
-      alignItems: 'center',
+      justifyContent: "center", // Center content vertically
+      alignItems: "center",
       marginHorizontal: 10,
       // Shadow for iOS
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.25,
       shadowRadius: 3.84,
