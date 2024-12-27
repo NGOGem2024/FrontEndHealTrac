@@ -323,9 +323,6 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
             <View style={styles.modalContainer}>
               <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>
-                    What would you like to do?
-                  </Text>
                   <TouchableOpacity
                     onPress={() => setIsCloseModalVisible(false)}
                     style={styles.closeButton1}
@@ -333,11 +330,14 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
                     <Text style={styles.closeButtonText}>✕</Text>
                   </TouchableOpacity>
                 </View>
+                <Text style={styles.modalTitle}>
+                  What would you like to do?
+                </Text>
                 <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => {
                     setIsCloseModalVisible(false);
-                    navigation.navigate("DoctorDashboard"); // Replace with your dashboard route
+                    navigation.navigate("DoctorDashboard");
                   }}
                 >
                   <Text style={styles.buttonText}>Go to Dashboard</Text>
@@ -348,7 +348,7 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
                     setIsCloseModalVisible(false);
                     navigation.navigate("CreateTherapy", {
                       patientId: patientId,
-                    }); // Replace with your appointment route
+                    });
                   }}
                 >
                   <Text style={styles.buttonText}>Set up an Appointment</Text>
@@ -455,44 +455,47 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
       backgroundColor: "white",
       borderRadius: 12,
       padding: 20,
-      width: "70%",
+      width: "80%",
       maxWidth: 400,
+      position: "relative",
     },
     modalHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
+      position: "absolute",
+      top: 12,
+      right: 12,
+      zIndex: 1,
     },
     modalTitle: {
-      fontSize: 18,
-      fontWeight: "bold",
+      fontSize: 20,
+      fontWeight: "600",
       color: "#2c3e50",
-      marginBottom: 10,
+      marginTop: 28,
+      marginBottom: 18,
+      textAlign: "center",
     },
     actionButton: {
       backgroundColor: "#119FB3",
-      padding: 12,
+      padding: 14,
       borderRadius: 8,
       alignItems: "center",
       marginVertical: 8,
       width: "100%",
     },
-
     modalSubtitle: {
       fontSize: 16,
       color: "#6c757d",
       marginBottom: 16,
     },
     buttonText: {
-      color: 'white',
+      color: "white",
       fontSize: 16,
-      fontWeight: 'bold',
-      textAlign: 'center',
+      fontWeight: "bold",
+      textAlign: "center",
     },
     closeButtonText: {
       fontSize: 20,
       color: "#6c757d",
-      marginBottom: 10,
+      lineHeight: 20,
     },
     input: {
       borderWidth: 1,
@@ -548,22 +551,19 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
       justifyContent: "space-between",
       paddingHorizontal: 20,
       paddingVertical: 10,
-      alignItems: 'center',
-
+      alignItems: "center",
     },
     button: {
       flex: 1,
-      height: 48, // Fixed height for consistency
+      height: 48,
       borderRadius: 15,
-      justifyContent: 'center', // Center content vertically
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
       marginHorizontal: 10,
-      // Shadow for iOS
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.25,
       shadowRadius: 3.84,
-      // Shadow for Android
       elevation: 5,
     },
     recordPaymentButton: {
@@ -574,6 +574,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
     },
     closeButton1: {
       padding: 8,
+      borderRadius: 20,
     },
     loadingContainer: {
       flex: 1,

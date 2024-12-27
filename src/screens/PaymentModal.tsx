@@ -232,7 +232,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <TouchableOpacity
               style={styles.confirmButton}
               onPress={() => {
-                // Send only the base amount, with addons as a separate array
                 onSubmit(calculateBaseAmount(), paymentMethod, addons);
                 onClose();
               }}
@@ -259,14 +258,14 @@ const COLORS = {
 const getModalStyles = () =>
   StyleSheet.create({
     item1: {
-      color: "gray", // Set the color for selected items to black
+      color: "gray", 
     },
 
     item: {
-      color: "black", // Set the color for selected items to black
+      color: "black", 
     },
     placeholderItem: {
-      color: "gray", // Set the placeholder color to gray
+      color: "gray", 
     },
     modalOverlay: {
       flex: 1,
@@ -275,8 +274,8 @@ const getModalStyles = () =>
       alignItems: "center",
     },
     modalContainer: {
-      width: "90%",  // Increased from 50% to 90%
-      maxWidth: 650, // Increased from 500 to 800
+      width: "90%",  
+      maxWidth: 650, 
       backgroundColor: "white",
       borderRadius: 16,
       padding: 20,
@@ -285,8 +284,8 @@ const getModalStyles = () =>
       shadowOpacity: 0.25,
       shadowRadius: 10,
       elevation: 5,
-      marginTop: "20%", // Decreased from 30% to 10% to show more content
-      marginBottom: "20%", // Ad
+      marginTop: "20%", 
+      marginBottom: "20%", 
       
     },
     modalHeader: {

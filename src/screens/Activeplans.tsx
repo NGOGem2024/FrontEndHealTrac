@@ -64,6 +64,10 @@ const ActiveTherapyPlans: React.FC = () => {
     return Math.min(Math.max((elapsed / total) * 100, 0), 100);
   };
 
+  const getDaysRemainingText = (days: number): string => {
+    return `${days} ${days === 1 ? "day" : "days"} remaining`;
+  };
+
   const renderTherapyPlan = (item: TherapyPlan) => {
     const progress = calculateProgress(item.therapy_start, item.therapy_end);
 
@@ -86,7 +90,7 @@ const ActiveTherapyPlans: React.FC = () => {
               <View style={[styles.progressFill, { width: `${progress}%` }]} />
             </View>
             <Text style={styles.daysRemaining}>
-              {item.days_remaining} days remaining
+              {getDaysRemainingText(item.days_remaining)}
             </Text>
           </View>
           <View style={styles.dateInfo}>

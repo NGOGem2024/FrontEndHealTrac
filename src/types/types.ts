@@ -34,6 +34,7 @@ export type RootStackParamList = {
   TodaysAppointments: undefined;
   AllDoctors: undefined;
   SearchPatients: undefined;
+  AllAppointments: undefined;
   payment: { planId?: string; patientId?: string };
 };
 

@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     marginTop: 5,
-    width: 50,
+    width:55,
   },
   adminBadgeText: {
     color: "#000000",

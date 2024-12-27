@@ -374,7 +374,7 @@ const DoctorDashboard: React.FC = () => {
               <Text style={styles.profileName}>
                 Dr. {doctorInfo.doctor_first_name} {doctorInfo.doctor_last_name}
               </Text>
-              <Text style={styles.profileDetailText}>
+              <Text style={styles.profileDetailText1}>
                 {doctorInfo.qualification}
               </Text>
               {doctorInfo.organization_name && (
@@ -447,11 +447,21 @@ const DoctorDashboard: React.FC = () => {
 
         <View style={styles.section}>
           <View style={styles.appointmentHeader}>
-            <Text style={styles.sectionTitle}>
-              {showAllAppointments
-                ? "All Appointments"
-                : "Today's Appointments"}
-            </Text>
+          {/* <TouchableOpacity
+              onPress={() => navigation.navigate("AllAppointments")}
+              style={styles.appointmentHeader}
+            >
+              <Text style={styles.sectionTitle}>
+                {showAllAppointments
+                  ? "All Appointments"
+                  : "Today's Appointments"}
+              </Text>
+            </TouchableOpacity> */}
+             <Text style={styles.sectionTitle}>
+                {showAllAppointments
+                  ? "All Appointments"
+                  : "Today's Appointments"}
+              </Text>
             <TouchableOpacity
               style={styles.toggleButton}
               onPress={toggleAllAppointments}
@@ -668,12 +678,13 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       width: 100,
       height: 100,
       borderRadius: 50,
-      marginRight: 20,
+      marginRight: 3,
     },
     profileInfo: {
       flex: 1,
       justifyContent: "center",
       marginBottom: 20,
+      marginRight: 5,
     },
     profileName: {
       fontSize: 24,
@@ -685,19 +696,25 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontSize: 18,
       // color: theme.colors.primary,
       color: "#119FB3",
-      marginBottom: 12,
     },
     profileDetail: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 2,
+      marginBottom: 3,
+      marginTop: 3,
+      marginRight: 5,
     },
     profileDetailIcon: {
       // color: theme.colors.primary,
       color: "#119FB3",
-      marginRight: 8,
+      marginRight: 12,
     },
     profileDetailText: {
+      fontSize: 16,
+      color: theme.colors.text,
+      marginLeft: 5,
+    },
+    profileDetailText1: {
       fontSize: 16,
       color: theme.colors.text,
     },

@@ -24,6 +24,7 @@ import SettingsScreen from "./settings";
 import EditTherapyPlan from "./editPlan";
 import TherapyPlanDetails from "./planDetails";
 import PaymentDetailsScreen from "./paymentpage";
+import AllAppointmentsScreen from "./AllAppointmentsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -74,7 +75,6 @@ const HomeStackNavigator = () => {
         component={PaymentDetailsScreen}
         options={{ headerShown: false }}
       />
-
       <Stack.Screen
         name="PatientRegister"
         component={PatientRegister}
@@ -138,6 +138,11 @@ const HomeStackNavigator = () => {
       <Stack.Screen
         name="UpdateDoctor"
         component={EditDoctor}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AllAppointments"
+        component={AllAppointmentsScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
