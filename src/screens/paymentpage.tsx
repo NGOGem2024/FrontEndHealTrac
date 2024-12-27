@@ -557,10 +557,11 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
       flex: 1,
       height: 48,
       borderRadius: 15,
-      justifyContent: "center",
-      alignItems: "center",
+      justifyContent: 'center', // Center content vertically
+      alignItems: 'center',
       marginHorizontal: 10,
-      shadowColor: "#000",
+      // Shadow for iOS
+      shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.25,
       shadowRadius: 3.84,

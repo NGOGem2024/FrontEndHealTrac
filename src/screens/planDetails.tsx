@@ -87,7 +87,7 @@ const TherapyPlanDetails: React.FC = () => {
   const handlePaymentNavigation = () => {
     navigation.navigate("payment", {
       planId: planId,
-      patientId: planDetails.therapy_plan.patient_id,
+      patientId: patientId,
     });
   };
 
