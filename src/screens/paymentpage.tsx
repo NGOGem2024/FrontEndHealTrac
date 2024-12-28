@@ -21,6 +21,7 @@ import { RootStackParamList } from "../types/types";
 import BackTabTop from "./BackTopTab";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import PaymentModal from "./PaymentModal";
+import EditPaymentModal from "./EditPaymentModal";
 
 type PaymentPageProps = {
   navigation: StackNavigationProp<RootStackParamList, "payment">;
@@ -58,6 +59,7 @@ interface PaymentInfo {
     date: string;
     type: string;
     session_number: number;
+    addon_services?: Addon[];
   }>;
 }
 
@@ -74,16 +76,12 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
   const [isCloseModalVisible, setIsCloseModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
 
   useEffect(() => {
     fetchPaymentInfo();
   }, []);
-  interface PaymentModalProps {
-    visible: boolean;
-    onClose: () => void;
-    onSubmit: (amount: number, type: string, addons?: Addon[]) => void;
-    currentSession: number;
-  }
 
   const fetchPaymentInfo = async () => {
     try {
@@ -103,6 +101,7 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
       setLoading(false);
     }
   };
+
   const handleRecordPayment = async (
     amount: number,
     type: string,
@@ -144,12 +143,95 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
     }
   };
 
+  const handleEditPayment = async (
+    amount: number,
+    type: string,
+    addons: Addon[] = []
+  ) => {
+    try {
+      if (!selectedPayment) return;
+
+      setLoading(true);
+      const response = await axiosInstance.put(
+        `/plans/${planId}/payments/${selectedPayment.date}`,
+        {
+          amount,
+          type,
+          addon_services: addons.map((addon) => ({
+            name: addon.name,
+            amount: addon.amount,
+          })),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        showSuccessToast("Payment Updated Successfully");
+        await fetchPaymentInfo(); // Refresh payment info
+      } else {
+        Alert.alert("Error", "Failed to update payment");
+      }
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setLoading(false);
+      setIsEditModalVisible(false);
+      setSelectedPayment(null);
+    }
+  };
+
+  const handleDeletePayment = async (payment: any) => {
+    Alert.alert(
+      "Delete Payment",
+      "Are you sure you want to delete this payment?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const response = await axiosInstance.delete(
+                `/plans/${planId}/payments/${payment.date}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${idToken}`,
+                  },
+                }
+              );
+
+              if (response.status === 200) {
+                showSuccessToast("Payment Deleted Successfully");
+                await fetchPaymentInfo(); // Refresh payment info
+              } else {
+                Alert.alert("Error", "Failed to delete payment");
+              }
+            } catch (error) {
+              handleError(error);
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const formatCurrency = (amount: number) => {
     return `₹${Number(amount).toLocaleString("en-IN")}`;
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-IN", {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -274,21 +356,37 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
             <Text style={styles.sectionTitle}>Payment History</Text>
             {paymentInfo.payment_history.map((payment, index) => (
               <View key={index} style={styles.paymentHistoryItem}>
-                <View style={styles.paymentHistoryLeft}>
-                  <Text style={styles.paymentHistorySession}>
-                    {payment.payment_number &&
-                      `Payment #${payment.payment_number}`}
-                  </Text>
-                  <Text style={styles.paymentHistoryDate}>
-                    {formatDate(payment.date)}
-                  </Text>
-                </View>
-                <View style={styles.paymentHistoryRight}>
-                  <Text style={styles.paymentHistoryAmount}>
-                    {formatCurrency(payment.amount)}
-                  </Text>
-                  <Text style={styles.paymentHistoryType}>{payment.type}</Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.paymentHistoryContent}
+                  onPress={() => {
+                    setSelectedPayment(payment);
+                    setIsEditModalVisible(true);
+                  }}
+                >
+                  <View style={styles.paymentHistoryLeft}>
+                    <Text style={styles.paymentHistorySession}>
+                      {payment.payment_number &&
+                        `Payment #${payment.payment_number}`}
+                    </Text>
+                    <Text style={styles.paymentHistoryDate}>
+                      {formatDate(payment.date)}
+                    </Text>
+                  </View>
+                  <View style={styles.paymentHistoryRight}>
+                    <Text style={styles.paymentHistoryAmount}>
+                      {formatCurrency(payment.amount)}
+                    </Text>
+                    <Text style={styles.paymentHistoryType}>
+                      {payment.type}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeletePayment(payment)}
+                >
+                  <Text style={styles.deleteButtonText}>×</Text>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -313,6 +411,27 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
             onSubmit={handleRecordPayment}
             currentSession={paymentInfo.session_info.completed_sessions}
             paymentInfo={paymentInfo}
+          />
+          <EditPaymentModal
+            visible={isEditModalVisible}
+            onClose={() => {
+              setIsEditModalVisible(false);
+              setSelectedPayment(null);
+            }}
+            onSubmit={handleEditPayment}
+            paymentData={
+              selectedPayment
+                ? {
+                    amount: selectedPayment.amount,
+                    type: selectedPayment.type,
+                    addon_services: selectedPayment.addon_services || [],
+                  }
+                : {
+                    amount: 0,
+                    type: "CASH",
+                    addon_services: [],
+                  }
+            }
           />
           <Modal
             visible={isCloseModalVisible}
@@ -362,8 +481,8 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
   );
 };
 
-const getStyles = (theme: ReturnType<typeof getTheme>) => {
-  const baseStyles = StyleSheet.create({
+const getStyles = (theme: ReturnType<typeof getTheme>) =>
+  StyleSheet.create({
     contentContainer: {
       flex: 1,
       backgroundColor: "white",
@@ -557,11 +676,11 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
       flex: 1,
       height: 48,
       borderRadius: 15,
-      justifyContent: 'center', // Center content vertically
-      alignItems: 'center',
+      justifyContent: "center", // Center content vertically
+      alignItems: "center",
       marginHorizontal: 10,
       // Shadow for iOS
-      shadowColor: '#000',
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.25,
       shadowRadius: 3.84,
@@ -767,10 +886,20 @@ const getStyles = (theme: ReturnType<typeof getTheme>) => {
       color: "#6c757d",
       marginTop: 2,
     },
+    paymentHistoryContent: {
+      flex: 1,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    deleteButton: {
+      padding: 10,
+      marginLeft: 10,
+    },
+    deleteButtonText: {
+      color: "#e74c3c",
+      fontSize: 20,
+      fontWeight: "bold",
+    },
   });
-  return {
-    ...baseStyles,
-    ...getStyles,
-  };
-};
 export default PaymentDetailsScreen;

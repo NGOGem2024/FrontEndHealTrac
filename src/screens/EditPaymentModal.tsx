@@ -17,24 +17,25 @@ interface Addon {
   amount: number;
 }
 
-interface PaymentModalProps {
+interface EditPaymentModalProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (amount: number, type: string, addons?: Addon[]) => void;
-  currentSession: number;
-  paymentInfo: any;
+  paymentData: {
+    amount: number;
+    type: string;
+    addon_services?: Addon[];
+  };
 }
 
-const PaymentModal: React.FC<PaymentModalProps> = ({
+const EditPaymentModal: React.FC<EditPaymentModalProps> = ({
   visible,
   onClose,
   onSubmit,
-  currentSession,
-  paymentInfo,
+  paymentData,
 }) => {
   const [amount, setAmount] = useState<string>("");
-  const [isAdditionalServicesOpen, setIsAdditionalServicesOpen] =
-    useState(false);
+  const [isAdditionalServicesOpen, setIsAdditionalServicesOpen] = useState(false);
   const [addonInput, setAddonInput] = useState<string>("");
   const [addonAmount, setAddonAmount] = useState<string>("");
   const [addons, setAddons] = useState<Addon[]>([]);
@@ -44,13 +45,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const styles = getModalStyles();
 
   useEffect(() => {
-    if (visible && paymentInfo?.session_info?.per_session_amount) {
-      setPaymentMethod("CASH");
-      setAmount(paymentInfo.session_info.per_session_amount.toString());
-    } else {
-      setAmount("");
+    if (visible && paymentData) {
+      setAmount(paymentData.amount.toString());
+      setPaymentMethod(paymentData.type);
+      setAddons(paymentData.addon_services || []);
+      setIsAdditionalServicesOpen(
+        paymentData.addon_services && paymentData.addon_services.length > 0
+      );
     }
-  }, [visible, paymentInfo]);
+  }, [visible, paymentData]);
 
   const handleAddonAmountChange = (value: string) => {
     setAddonAmount(value);
@@ -69,12 +72,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           newAddons[existingAddonIndex].amount = numAmount;
           setAddons(newAddons);
         } else {
-          setAddons([
-            ...addons,
-            { name: addonInput.trim(), amount: numAmount },
-          ]);
+          setAddons([...addons, { name: addonInput.trim(), amount: numAmount }]);
         }
-        // Clear inputs after successful submission
         setAddonInput("");
         setAddonAmount("");
       }
@@ -107,19 +106,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Record Payment</Text>
+            <Text style={styles.modalTitle}>Edit Payment</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
-
-          {paymentInfo.payment_structure.next_payment_number && (
-            <View style={styles.paymentNumberBadge}>
-              <Text style={styles.paymentNumberBadgeText}>
-                Payment #{paymentInfo.payment_structure.next_payment_number}
-              </Text>
-            </View>
-          )}
 
           {/* Payment Amount Section */}
           <View style={styles.inputSection}>
@@ -145,28 +136,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 onValueChange={(itemValue) => setPaymentMethod(itemValue)}
                 style={styles.picker}
               >
-                <Picker.Item
-                  label="Payment Method"
-                  value=""
-                  style={styles.item1}
-                  enabled={false}
-                />
                 <Picker.Item label="Cash" value="CASH" style={styles.item} />
-                <Picker.Item
-                  label="Online"
-                  value="ONLINE"
-                  style={styles.item}
-                />
+                <Picker.Item label="Online" value="ONLINE" style={styles.item} />
               </Picker>
             </View>
           </View>
+
           {/* Additional Services Section */}
           <View style={styles.servicesSection}>
             <TouchableOpacity
               style={styles.servicesHeader}
-              onPress={() =>
-                setIsAdditionalServicesOpen(!isAdditionalServicesOpen)
-              }
+              onPress={() => setIsAdditionalServicesOpen(!isAdditionalServicesOpen)}
             >
               <FontAwesome
                 name={isAdditionalServicesOpen ? "minus" : "plus"}
@@ -233,7 +213,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 onClose();
               }}
             >
-              <Text style={styles.buttonText}>Confirm Payment</Text>
+              <Text style={styles.buttonText}>Save Changes</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -241,6 +221,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     </Modal>
   );
 };
+
 const COLORS = {
   primary: "#119FB3",
   secondary: "#6c757d",
@@ -254,15 +235,8 @@ const COLORS = {
 
 const getModalStyles = () =>
   StyleSheet.create({
-    item1: {
-      color: "gray",
-    },
-
     item: {
       color: "black",
-    },
-    placeholderItem: {
-      color: "gray",
     },
     modalOverlay: {
       flex: 1,
@@ -288,6 +262,7 @@ const getModalStyles = () =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
+      marginBottom: 20,
     },
     modalTitle: {
       fontSize: 24,
@@ -384,16 +359,6 @@ const getModalStyles = () =>
       padding: 12,
       fontSize: 13,
     },
-    addButton: {
-      backgroundColor: "#119FB3",
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 10,
-    },
-    addButtonText: {
-      color: "white",
-      fontWeight: "bold",
-    },
     addonItem: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -439,14 +404,6 @@ const getModalStyles = () =>
       flexDirection: "row",
       justifyContent: "center",
     },
-    cancelButton: {
-      flex: 1,
-      backgroundColor: "#6c757d",
-      padding: 15,
-      borderRadius: 10,
-      marginRight: 8,
-      alignItems: "center",
-    },
     confirmButton: {
       width: "50%",
       backgroundColor: "#119FB3",
@@ -454,26 +411,12 @@ const getModalStyles = () =>
       borderRadius: 10,
       alignItems: "center",
       justifyContent: "center",
-      marginLeft: 8,
     },
     buttonText: {
       color: "white",
       fontSize: 16,
       fontWeight: "bold",
     },
-    paymentNumberBadge: {
-      backgroundColor: "#119FB3",
-      paddingVertical: 5,
-      paddingHorizontal: 10,
-      marginVertical: 5,
-      alignSelf: "flex-start",
-      borderRadius: 5,
-    },
-    paymentNumberBadgeText: {
-      color: "white",
-      fontSize: 14,
-      fontWeight: "600",
-    },
   });
 
-export default PaymentModal;
+export default EditPaymentModal;

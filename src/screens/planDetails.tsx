@@ -20,14 +20,17 @@ import BackTabTop from "./BackTopTab";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StackNavigationProp } from "@react-navigation/stack";
 
-type TherapyPlanDetailsRouteProp = RouteProp<RootStackParamList, "planDetails">;
-
-type TherapyNavigationProp = StackNavigationProp<RootStackParamList>;
+// Define proper interfaces
 interface SessionRemark {
   doctor_name: string;
   presession_remark?: string;
   postsession_remarks?: string;
   timestamp: string;
+}
+
+interface Addon {
+  name: string;
+  amount: number;
 }
 
 interface TherapyPlanDetails {
@@ -44,13 +47,18 @@ interface TherapyPlanDetails {
     total_amount: number | string;
     received_amount: string;
     balance: string;
-    extra_addons?: string[] | Array<{ name: string; amount: number }>;
+    extra_addons?: Addon[];
     addons_amount?: number | string;
     presession_remarks?: SessionRemark[];
     postsession_remarks?: SessionRemark[];
   };
   patient_name: string;
 }
+
+type TherapyPlanDetailsRouteProp = RouteProp<RootStackParamList, "planDetails">;
+type TherapyNavigationProp = StackNavigationProp<RootStackParamList>;
+
+// Separate components for better organization
 
 const TherapyPlanDetails: React.FC = () => {
   const route = useRoute<TherapyPlanDetailsRouteProp>();
@@ -64,7 +72,27 @@ const TherapyPlanDetails: React.FC = () => {
     null
   );
   const { planId } = route.params;
+  const ProgressBar: React.FC<{ progress: number }> = ({ progress }) => (
+    <View style={styles.progressBar}>
+      <View style={[styles.progressFill, { width: `${progress}%` }]} />
+    </View>
+  );
 
+  const RemarkItem: React.FC<{
+    doctor_name: string;
+    remark: string;
+    timestamp: string;
+  }> = ({ doctor_name, remark, timestamp }) => (
+    <View style={styles.remarkItem}>
+      <View style={styles.remarkHeader}>
+        <Text style={styles.doctorName}>{doctor_name}</Text>
+        <Text style={styles.timestamp}>
+          {new Date(timestamp).toLocaleDateString()}
+        </Text>
+      </View>
+      <Text style={styles.remarkText}>{remark}</Text>
+    </View>
+  );
   useEffect(() => {
     fetchPlanDetails();
   }, [planId]);
@@ -83,12 +111,6 @@ const TherapyPlanDetails: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-  const handlePaymentNavigation = () => {
-    navigation.navigate("payment", {
-      planId: planId,
-      patientId: patientId,
-    });
   };
 
   const calculateProgress = (startDate: string, endDate: string): number => {
@@ -179,9 +201,7 @@ const TherapyPlanDetails: React.FC = () => {
           <Text style={styles.category}>{plan.patient_therapy_category}</Text>
 
           <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${progress}%` }]} />
-            </View>
+            <ProgressBar progress={progress} />
             <Text style={styles.duration}>
               Duration: {plan.therapy_duration}
             </Text>
@@ -218,7 +238,12 @@ const TherapyPlanDetails: React.FC = () => {
             <Text style={styles.sectionTitle}>Payment Details</Text>
             <TouchableOpacity
               style={styles.paymentInfoButton}
-              onPress={handlePaymentNavigation}
+              onPress={() =>
+                navigation.navigate("payment", {
+                  planId: planId,
+                  patientId: patientId,
+                })
+              }
             >
               <MaterialCommunityIcons
                 name="information-outline"
@@ -269,7 +294,6 @@ const TherapyPlanDetails: React.FC = () => {
           <View style={[styles.card, styles.lastCard]}>
             <Text style={styles.sectionTitle}>Session Remarks</Text>
 
-            {/* Pre-session Remarks Section */}
             {plan.presession_remarks?.some((r) => r.presession_remark) && (
               <View style={styles.remarkSection}>
                 <Text style={styles.remarkSectionTitle}>
@@ -278,24 +302,16 @@ const TherapyPlanDetails: React.FC = () => {
                 {plan.presession_remarks
                   .filter((remark) => remark.presession_remark)
                   .map((remark, index) => (
-                    <View key={`pre-${index}`} style={styles.remarkItem}>
-                      <View style={styles.remarkHeader}>
-                        <Text style={styles.doctorName}>
-                          {remark.doctor_name}
-                        </Text>
-                        <Text style={styles.timestamp}>
-                          {new Date(remark.timestamp).toLocaleDateString()}
-                        </Text>
-                      </View>
-                      <Text style={styles.remarkText}>
-                        {remark.presession_remark}
-                      </Text>
-                    </View>
+                    <RemarkItem
+                      key={`pre-${index}`}
+                      doctor_name={remark.doctor_name}
+                      remark={remark.presession_remark || ""}
+                      timestamp={remark.timestamp}
+                    />
                   ))}
               </View>
             )}
 
-            {/* Post-session Remarks Section */}
             {plan.postsession_remarks?.some((r) => r.postsession_remarks) && (
               <View style={styles.remarkSection}>
                 <Text style={styles.remarkSectionTitle}>
@@ -304,19 +320,12 @@ const TherapyPlanDetails: React.FC = () => {
                 {plan.postsession_remarks
                   .filter((remark) => remark.postsession_remarks)
                   .map((remark, index) => (
-                    <View key={`post-${index}`} style={styles.remarkItem}>
-                      <View style={styles.remarkHeader}>
-                        <Text style={styles.doctorName}>
-                          {remark.doctor_name}
-                        </Text>
-                        <Text style={styles.timestamp}>
-                          {new Date(remark.timestamp).toLocaleDateString()}
-                        </Text>
-                      </View>
-                      <Text style={styles.remarkText}>
-                        {remark.postsession_remarks}
-                      </Text>
-                    </View>
+                    <RemarkItem
+                      key={`post-${index}`}
+                      doctor_name={remark.doctor_name}
+                      remark={remark.postsession_remarks || ""}
+                      timestamp={remark.timestamp}
+                    />
                   ))}
               </View>
             )}

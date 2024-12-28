@@ -355,7 +355,7 @@ const DoctorDashboard: React.FC = () => {
         backgroundColor="black"
         translucent={false}
       />
-    <DashboardHeader />
+      <DashboardHeader />
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -363,7 +363,6 @@ const DoctorDashboard: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-      
         {doctorInfo && (
           <View style={styles.profileSection}>
             <Image
@@ -411,7 +410,7 @@ const DoctorDashboard: React.FC = () => {
             <Text style={styles.statNumber}>
               {doctorInfo?.patients?.length || 0}
             </Text>
-            <Text style={styles.statLabel}>Patient Joined</Text>
+            <Text style={styles.statLabel}>Patients Joined</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -447,21 +446,21 @@ const DoctorDashboard: React.FC = () => {
 
         <View style={styles.section}>
           <View style={styles.appointmentHeader}>
-          {/* <TouchableOpacity
+            {/* <TouchableOpacity
               onPress={() => navigation.navigate("AllAppointments")}
               style={styles.appointmentHeader}
             >
               <Text style={styles.sectionTitle}>
                 {showAllAppointments
                   ? "All Appointments"
-                  : "Today's Appointments"}
+                  : "Today's Appointments"} 
               </Text>
             </TouchableOpacity> */}
-             <Text style={styles.sectionTitle}>
-                {showAllAppointments
-                  ? "All Appointments"
-                  : "Today's Appointments"}
-              </Text>
+            <Text style={styles.sectionTitle}>
+              {showAllAppointments
+                ? "All Appointments"
+                : "Today's Appointments"}
+            </Text>
             <TouchableOpacity
               style={styles.toggleButton}
               onPress={toggleAllAppointments}

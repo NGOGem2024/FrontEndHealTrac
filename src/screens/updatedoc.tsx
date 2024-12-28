@@ -70,18 +70,26 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isValid = emailRegex.test(email);
+
+    setEmailError(isValid ? null : "Please enter a valid email address");
+
+    return isValid;
+  };
 
   const validatePhone = (phone: string): boolean => {
-    const cleanPhone = phone.replace(/[^\d+]/g, '');
+    const cleanPhone = phone.replace(/[^\d+]/g, "");
     const indianPhoneRegex = /^\+91[6-9]\d{9}$/;
     const isValid = indianPhoneRegex.test(cleanPhone);
-    
+
     setPhoneError(
-      isValid
-        ? null
-        : "Please enter a valid phone number starting with 6-9"
+      isValid ? null : "Please enter a valid phone number starting with 6-9"
     );
-    
+
     return isValid;
   };
   useEffect(() => {
@@ -118,16 +126,17 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
   };
   const handlePhoneChange = (value: string) => {
     let formattedValue = value;
-    if (!value.startsWith('+91')) {
-      formattedValue = '+91 ' + value.replace(/[^\d]/g, '');
+    if (!value.startsWith("+91")) {
+      formattedValue = "+91 " + value.replace(/[^\d]/g, "");
     }
     const maxLength = 14;
     const truncatedValue = formattedValue.slice(0, maxLength);
-    const cleanValue = truncatedValue.replace(/[^\d+]/g, '');
-    const finalValue = cleanValue.length > 3 
-      ? `${cleanValue.slice(0, 3)} ${cleanValue.slice(3)}` 
-      : cleanValue;
-  
+    const cleanValue = truncatedValue.replace(/[^\d+]/g, "");
+    const finalValue =
+      cleanValue.length > 3
+        ? `${cleanValue.slice(0, 3)} ${cleanValue.slice(3)}`
+        : cleanValue;
+
     setProfileInfo((prev) => ({ ...prev, doctor_phone: finalValue }));
     validatePhone(finalValue);
   };
@@ -135,11 +144,13 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
   const handleInputChange = (field: keyof ProfileInfo, value: any) => {
     if (field === "doctor_phone") {
       handlePhoneChange(value);
+    } else if (field === "doctor_email") {
+      setProfileInfo((prev) => ({ ...prev, doctor_email: value }));
+      validateEmail(value);
     } else {
       setProfileInfo((prev) => ({ ...prev, [field]: value }));
     }
   };
-
 
   const hasChanges = () => {
     return JSON.stringify(profileInfo) !== JSON.stringify(originalProfileInfo);
@@ -155,9 +166,10 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
       handleError(new Error("You must be logged in to update the profile"));
       return;
     }
-    
+
     const isPhoneValid = validatePhone(profileInfo.doctor_phone);
-    if (!isPhoneValid) {
+    const isEmailValid = validateEmail(profileInfo.doctor_email);
+    if (!isPhoneValid || !isEmailValid) {
       Alert.alert(
         "Invalid Phone Number",
         "Please enter a valid 10-digit Indian mobile number starting with 6-9"
@@ -221,17 +233,15 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-       <BackTabTop screenName="Doctor Profile"  />
+      <BackTabTop screenName="Doctor Profile" />
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        
         <View style={styles.profileImageContainer}>
           <Image source={profilePhoto} style={styles.profilePhoto} />
-          <TouchableOpacity style={styles.editImageButton}>
-          </TouchableOpacity>
+          <TouchableOpacity style={styles.editImageButton}></TouchableOpacity>
         </View>
 
         <View style={styles.formContainer}>
@@ -269,24 +279,28 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, emailError && styles.inputError]}
               value={profileInfo.doctor_email}
               onChangeText={(text) => handleInputChange("doctor_email", text)}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
             />
+            {emailError && <Text style={styles.errorText}>{emailError}</Text>}
           </View>
 
           <View style={styles.inputGroup}>
-          <Text style={styles.label}>Phone</Text>
-          <TextInput
-            style={[styles.input, phoneError && styles.inputError]}
-            value={profileInfo.doctor_phone}
-            onChangeText={(text) => handleInputChange("doctor_phone", text)}
-            keyboardType="phone-pad"
-            placeholder="+91 Enter 10-digit mobile number"
-            maxLength={14} // +91 + space + 10 digits
-          />
-          {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
-        </View>
+            <Text style={styles.label}>Phone</Text>
+            <TextInput
+              style={[styles.input, phoneError && styles.inputError]}
+              value={profileInfo.doctor_phone}
+              onChangeText={(text) => handleInputChange("doctor_phone", text)}
+              keyboardType="phone-pad"
+              placeholder="+91 Enter 10-digit mobile number"
+              maxLength={14} // +91 + space + 10 digits
+            />
+            {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
+          </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Role</Text>
@@ -352,7 +366,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flex: 1,
       backgroundColor: "#119FB3",
     },
-    
+
     loadingContainer: {
       flex: 1,
       justifyContent: "center",

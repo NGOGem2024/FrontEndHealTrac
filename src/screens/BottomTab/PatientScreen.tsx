@@ -139,7 +139,6 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
       />
 
       <ScrollView style={styles.container}>
-        {/* Patient Information Card */}
         <View style={styles.mainCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.patientName}>
@@ -169,7 +168,6 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Quick Actions Card */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActionsContainer}>
@@ -227,7 +225,6 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Therapy Plans Card */}
         {patientData.therapy_plans && patientData.therapy_plans.length > 0 && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Therapy Plans</Text>
@@ -281,7 +278,6 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
                         {new Date(plan.therapy_end).toLocaleDateString()}
                       </Text>
 
-                      {/* Progress Bar */}
                       <View style={styles.progressContainer}>
                         <View
                           style={[

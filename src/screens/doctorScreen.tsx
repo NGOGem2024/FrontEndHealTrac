@@ -222,12 +222,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 5,
     elevation: 5,
-    width: 370,
+    width: 390,
   },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical:5,
+    marginVertical: 5,
   },
   infoText: {
     fontSize: 16,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
   },
-  
+
   main: {
     flex: 1,
     backgroundColor: "#119FB3",
@@ -291,8 +291,8 @@ const styles = StyleSheet.create({
   iconleft: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop:5,
-    marginBottom:5,
+    marginTop: 5,
+    marginBottom: 5,
   },
   iconlist: {
     padding: 7,
@@ -339,7 +339,6 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     alignItems: "flex-start",
     marginBottom: 10,
-    
   },
   profileImage: {
     width: 120,
@@ -361,7 +360,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     marginTop: 5,
-    width:55,
+    width: 55,
   },
   adminBadgeText: {
     color: "#000000",
