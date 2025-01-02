@@ -58,8 +58,8 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
 
-  // Email validation function
   const validateEmail = (email: string): boolean => {
+    if (!email) return true; 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isValid = emailRegex.test(email);
     setErrors((prev) => ({
@@ -95,7 +95,11 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
   const handleEmailChange = (value: string) => {
     const lowerCaseValue = value.toLowerCase();
     setPatientData({ ...patientData, patient_email: lowerCaseValue });
-    validateEmail(lowerCaseValue);
+    if (value) {
+      validateEmail(lowerCaseValue);
+    } else {
+      setErrors(prev => ({ ...prev, email: "" })); 
+    }
   };
 
   const handlePhoneChange = (value: string) => {
@@ -103,8 +107,6 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
     if (!value.startsWith('+91')) {
       formattedValue = '+91 ' + value.replace(/[^\d]/g, '');
     }
-    
-    
     const maxLength = 14; 
     const truncatedValue = formattedValue.slice(0, maxLength);
     const cleanValue = truncatedValue.replace(/[^\d+]/g, '');
@@ -200,14 +202,21 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
       const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
       const formattedStartDate = startDate ? formatDate(startDate) : "";
       const formattedEndDate = endDate ? formatDate(endDate) : "";
+
+      const submissionData = {
+        ...patientData,
+        therepy_start: formattedStartDate,
+        therepy_end: formattedEndDate,
+        therepy_duration: duration,
+      };
+
+      if (!submissionData.patient_email) {
+        delete submissionData.patient_email;
+      }
+
       const response = await axiosInstance.post(
         `/patient/update/${patientId}`,
-        {
-          ...patientData,
-          therepy_start: formattedStartDate,
-          therepy_end: formattedEndDate,
-          therepy_duration: duration,
-        },
+        submissionData,
         {
           headers: {
             "Content-Type": "application/json",
