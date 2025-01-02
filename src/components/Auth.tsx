@@ -14,6 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axiosInstance from "../utils/axiosConfig";
 import { useNavigation } from "@react-navigation/native";
 import { ActivityIndicator } from "react-native-paper";
+import { handleError, showSuccessToast } from "../utils/errorHandler";
 
 interface AuthModalProps {
   isVisible: boolean;
@@ -55,7 +56,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
         setIsOtpSent(true);
       }
     } catch (error) {
-      console.error("Error sending OTP:", error);
+      handleError(error);
       Alert.alert("Error", "Failed to send OTP");
     } finally {
       setLoading(false);
@@ -90,7 +91,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
         Alert.alert("Error", "OTP verification failed");
       }
     } catch (error) {
-      console.error("Error verifying OTP:", error);
+      handleError(error);
       Alert.alert("Error", "Failed to verify OTP. Please try again.");
     } finally {
       setLoading(false);
