@@ -39,7 +39,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     therapy_duration: "",
     therapy_category: "",
     total_amount: "",
-    received_amount: "",
+    received_amount: "0",
     therapy_name: "",
     balance: "",
     payment_type: "recurring",
@@ -458,15 +458,15 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             <View style={styles.inputContainer}>
               <FontAwesome name="rupee" size={24} color="#119FB3" />
               <TextInput
-                style={styles.input}
-                placeholder="Enter received amount"
-                value={therapyPlan.received_amount}
-                onChangeText={(text) =>
-                  setTherapyPlan({ ...therapyPlan, received_amount: text })
-                }
-                keyboardType="numeric"
-                placeholderTextColor="#A0A0A0"
-              />
+            style={styles.input}
+            placeholder="Enter received amount"
+            value={therapyPlan.received_amount}
+            onChangeText={(text) => 
+              setTherapyPlan({ ...therapyPlan, received_amount: text || "0" })
+            }
+            keyboardType="numeric"
+            placeholderTextColor="#A0A0A0"
+          />
             </View>
           </View>
           {errors.received_amount && (

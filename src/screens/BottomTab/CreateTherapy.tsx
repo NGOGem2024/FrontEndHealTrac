@@ -25,6 +25,7 @@ import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../types/types";
 import BackTabTop from "../BackTopTab";
 import NoPlanPopup from "./noplan";
+import { MaterialIcons } from "@expo/vector-icons";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CreateTherapy">;
 interface PickerItem {
@@ -613,20 +614,31 @@ const CreateTherapy = ({ route, navigation }: Props) => {
           </View>
         )}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Date</Text>
-          <View style={styles.dateSelector}>
-            <TouchableOpacity onPress={() => changeDate(-1)}>
-              <Icon name="chevron-left" size={24} color="#119FB3" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-              <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => changeDate(1)}>
-              <Icon name="chevron-right" size={24} color="#119FB3" />
-            </TouchableOpacity>
-          </View>
-        </View>
+<View style={styles.section}>
+              <Text style={styles.sectionTitle}>Select Date</Text>
+              <View style={styles.dateSelector}>
+                <TouchableOpacity onPress={() => changeDate(-1)}>
+                  <Icon name="chevron-left" size={24} color="#119FB3" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  style={styles.dateDisplayContainer}
+                >
+                  <MaterialIcons
+                    name="calendar-month"
+                    size={20}
+                    color="#119FB3"
+                    style={styles.calendarIcon}
+                  />
+                  <Text style={styles.dateText}>
+                    {formatDate(selectedDate)}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => changeDate(1)}>
+                  <Icon name="chevron-right" size={24} color="#119FB3" />
+                </TouchableOpacity>
+              </View>
+            </View>
 
         {showDatePicker && (
           <DateTimePicker
@@ -847,6 +859,19 @@ const createStyles = (colors: any) =>
       justifyContent: "center",
       alignItems: "center",
       zIndex: 1, // Ensure it appears above other content
+    },
+    dateDisplayContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+     // backgroundColor: "#F0F8FF",
+      paddingVertical: 8,
+      paddingHorizontal: 15,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: "white",
+    },
+    calendarIcon: {
+      marginRight: 8,
     },
     bookButton: {
       backgroundColor: "#119FB3",
