@@ -12,10 +12,8 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
 import { useTheme } from "./ThemeContext";
 import { getTheme } from "./Theme";
-import axios from "axios";
 import { useSession } from "../context/SessionContext";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import instance from "../utils/axiosConfig";
@@ -57,20 +55,57 @@ const DoctorProfileEdit: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [previousPhone, setPreviousPhone] = useState("");
 
   const validatePhone = (phone: string): boolean => {
-    const cleanPhone = phone.replace(/[^\d+]/g, '');
+    const cleanPhone = phone.replace(/[^\d+]/g, "");
     const indianPhoneRegex = /^\+91[6-9]\d{9}$/;
     const isValid = indianPhoneRegex.test(cleanPhone);
-    
+
     setPhoneError(
-      isValid
-        ? null
-        : "Please enter a valid phone number starting with 6-9"
+      isValid ? null : "Please enter a valid phone number starting with 6-9"
     );
-    
+
     return isValid;
   };
+
+  const handlePhoneChange = (value: string) => {
+    if (!value.startsWith("+91")) {
+      value = "+91" + value.replace(/^\+9/, "");
+    }
+
+    if (value.length < previousPhone.length) {
+      if (value.length <= 3) {
+        setProfileInfo((prev) => ({ ...prev, doctor_phone: "+91" }));
+        setPreviousPhone("+91");
+        return;
+      }
+
+      const digits = value.replace(/[^\d+]/g, "");
+      const finalValue =
+        digits.length > 3 ? `${digits.slice(0, 3)} ${digits.slice(3)}` : digits;
+
+      setProfileInfo((prev) => ({ ...prev, doctor_phone: finalValue }));
+      setPreviousPhone(finalValue);
+      validatePhone(finalValue);
+      return;
+    }
+
+    const maxLength = 14;
+    const digits = value.replace(/[^\d+]/g, "");
+
+    let finalValue = digits;
+    if (digits.length > 3) {
+      finalValue = `${digits.slice(0, 3)} ${digits.slice(3, 13)}`;
+    }
+
+    finalValue = finalValue.slice(0, maxLength);
+
+    setProfileInfo((prev) => ({ ...prev, doctor_phone: finalValue }));
+    setPreviousPhone(finalValue);
+    validatePhone(finalValue);
+  };
+
   useEffect(() => {
     if (session.idToken) {
       fetchDoctorInfo();
@@ -80,12 +115,9 @@ const DoctorProfileEdit: React.FC = () => {
   }, [session.idToken]);
 
   const fetchDoctorInfo = async () => {
-    if (!session.idToken) {
-      return;
-    }
+    if (!session.idToken) return;
 
     setIsLoading(true);
-
     try {
       const response = await instance.get<ProfileInfo>("/doctor", {
         headers: {
@@ -94,27 +126,12 @@ const DoctorProfileEdit: React.FC = () => {
       });
       setProfileInfo(response.data);
       setOriginalProfileInfo(response.data);
+      setPreviousPhone(response.data.doctor_phone || "+91 ");
     } catch (error) {
       handleError(error);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handlePhoneChange = (value: string) => {
-    let formattedValue = value;
-    if (!value.startsWith('+91')) {
-      formattedValue = '+91 ' + value.replace(/[^\d]/g, '');
-    }
-    const maxLength = 14;
-    const truncatedValue = formattedValue.slice(0, maxLength);
-    const cleanValue = truncatedValue.replace(/[^\d+]/g, '');
-    const finalValue = cleanValue.length > 3 
-      ? `${cleanValue.slice(0, 3)} ${cleanValue.slice(3)}` 
-      : cleanValue;
-  
-    setProfileInfo((prev) => ({ ...prev, doctor_phone: finalValue }));
-    validatePhone(finalValue);
   };
 
   const handleInputChange = (field: keyof ProfileInfo, value: any) => {
@@ -136,7 +153,7 @@ const DoctorProfileEdit: React.FC = () => {
   };
 
   const handleSave = async () => {
- if (!hasChanges()) {
+    if (!hasChanges()) {
       showSuccessToast("No changes were made to the profile.");
       return;
     }
@@ -156,7 +173,6 @@ const DoctorProfileEdit: React.FC = () => {
     }
 
     setIsSaving(true);
-
     try {
       await instance.put(
         `/doctor/update/${profileInfo._id}`,
@@ -208,16 +224,15 @@ const DoctorProfileEdit: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-    <BackTabTop screenName="Profile"  />
+      <BackTabTop screenName="Profile" />
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-         keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.profileImageContainer}>
           <Image source={profilePhoto} style={styles.profilePhoto} />
-          <TouchableOpacity style={styles.editImageButton}>
-          </TouchableOpacity>
+          <TouchableOpacity style={styles.editImageButton}></TouchableOpacity>
         </View>
 
         <View style={styles.formContainer}>
@@ -261,19 +276,18 @@ const DoctorProfileEdit: React.FC = () => {
             />
           </View>
 
-         <View style={styles.inputGroup}>
-                   <Text style={styles.label}>Phone</Text>
-                   <TextInput
-                     style={[styles.input, phoneError && styles.inputError]}
-                     value={profileInfo.doctor_phone}
-                     onChangeText={(text) => handleInputChange("doctor_phone", text)}
-                     keyboardType="phone-pad"
-                     placeholder="+91 Enter 10-digit mobile number"
-                     maxLength={14} 
-                   />
-                   {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
-                 </View>
-         
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Phone</Text>
+            <TextInput
+              style={[styles.input, phoneError && styles.inputError]}
+              value={profileInfo.doctor_phone}
+              onChangeText={(text) => handleInputChange("doctor_phone", text)}
+              keyboardType="phone-pad"
+              placeholder="+91 Enter 10-digit mobile number"
+              maxLength={14}
+            />
+            {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
+          </View>
 
           <TouchableOpacity
             style={[styles.saveButton, isSaving && styles.savingButton]}
@@ -301,16 +315,6 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     scrollView: {
       flex: 1,
       backgroundColor: "#119FB3",
-    },
-    header: {
-      padding: 16,
-      paddingTop: 10,
-      backgroundColor: "#119FB3",
-    },
-    headerText: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: theme.colors.card,
     },
     loadingContainer: {
       flex: 1,
@@ -389,11 +393,11 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       fontWeight: "bold",
     },
     inputError: {
-      borderColor: 'red',
+      borderColor: "red",
       borderWidth: 1,
     },
     errorText: {
-      color: 'red',
+      color: "red",
       fontSize: 12,
       marginTop: 5,
     },
