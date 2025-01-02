@@ -389,7 +389,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 16,
+      marginBottom: 5,
     },
     patientName: {
       fontSize: 24,

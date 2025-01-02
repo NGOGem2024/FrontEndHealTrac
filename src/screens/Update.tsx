@@ -83,6 +83,12 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
   const [hasLiveSwitchAccess, setHasLiveSwitchAccess] =
     useState<boolean>(false);
 
+  const changeDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate);
+  };
+
   const appointmentTypes = ["Liveswitch", "In Clinic", "In Home", "IP/ICU"];
   useEffect(() => {
     fetchDoctors();
@@ -414,32 +420,32 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
             </View>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Appointment Type</Text>
-              <HorizontalScrollView 
+              <HorizontalScrollView
                 horizontal
                 contentContainerStyle={styles.appointmentTypesContainer}
               >
-              <View style={styles.appointmentTypes}>
-                {appointmentTypes.map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.typeButton,
-                      appointmentType === type && styles.selectedTypeButton,
-                    ]}
-                    onPress={() => handleAppointmentTypeChange(type)}
-                  >
-                    <Text
+                <View style={styles.appointmentTypes}>
+                  {appointmentTypes.map((type) => (
+                    <TouchableOpacity
+                      key={type}
                       style={[
-                        styles.typeButtonText,
-                        appointmentType === type &&
-                          styles.selectedTypeButtonText,
+                        styles.typeButton,
+                        appointmentType === type && styles.selectedTypeButton,
                       ]}
+                      onPress={() => handleAppointmentTypeChange(type)}
                     >
-                      {type}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                      <Text
+                        style={[
+                          styles.typeButtonText,
+                          appointmentType === type &&
+                            styles.selectedTypeButtonText,
+                        ]}
+                      >
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </HorizontalScrollView>
             </View>
             {showLiveSwitchLogin && (
@@ -452,16 +458,31 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
                 />
               </View>
             )}
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={styles.label}>Date:</Text>
-              <View style={styles.dateDisplay}>
-                <MaterialIcons name="date-range" size={24} color="#119FB3" />
-                <Text>{formatDate(selectedDate)}</Text>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Select Date</Text>
+              <View style={styles.dateSelector}>
+                <TouchableOpacity onPress={() => changeDate(-1)}>
+                  <Icon name="chevron-left" size={24} color="#119FB3" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  style={styles.dateDisplayContainer}
+                >
+                  <MaterialIcons
+                    name="calendar-month"
+                    size={20}
+                    color="#119FB3"
+                    style={styles.calendarIcon}
+                  />
+                  <Text style={styles.dateText}>
+                    {formatDate(selectedDate)}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => changeDate(1)}>
+                  <Icon name="chevron-right" size={24} color="#119FB3" />
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+            </View>
 
             {showDatePicker && (
               <DateTimePicker
@@ -548,6 +569,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
+  dateSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+  },
+  dateDisplayContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    //backgroundColor: "#F0F8FF",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "white",
+  },
+  calendarIcon: {
+    marginRight: 8,
+  },
+  dateText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333333",
+  },
   modalView: {
     backgroundColor: "white",
     borderRadius: 20,
@@ -568,7 +613,7 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
   },
   appointmentTypes: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 5,
     marginBottom: 15,
   },
@@ -618,7 +663,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: 10,
+    gap: 35,
     marginBottom: 15,
   },
   slotButton: {
@@ -655,7 +700,7 @@ const styles = StyleSheet.create({
     width: "45%",
   },
   cancelButton: {
-    backgroundColor: "#2596be",
+    backgroundColor: "#90a3a6",
   },
   bookButton: {
     backgroundColor: "#119FB3",
