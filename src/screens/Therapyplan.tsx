@@ -47,7 +47,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     estimated_sessions: "",
   });
   const { patientId } = route.params;
-
+  const { session } = useSession();
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -144,11 +144,14 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     if (!therapyPlan.therapy_name.trim()) {
       newErrors.therapy_name = "Therapy name is required";
     }
-    if (!therapyPlan.patient_symptoms.trim()) {
-      newErrors.patient_symptoms = "Patient symptoms are required";
-    }
-    if (!therapyPlan.patient_diagnosis.trim()) {
-      newErrors.patient_diagnosis = "Patient diagnosis is required";
+    if (!session.is_admin) {
+      // Only validate these fields if the user is not an admin
+      if (!therapyPlan.patient_symptoms.trim()) {
+        newErrors.patient_symptoms = "Patient symptoms are required";
+      }
+      if (!therapyPlan.patient_diagnosis.trim()) {
+        newErrors.patient_diagnosis = "Patient diagnosis is required";
+      }
     }
     if (!therapyPlan.therapy_category) {
       newErrors.therapy_category = "Therapy category is required";
@@ -471,7 +474,12 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
                 style={styles.input}
                 placeholder="Enter received amount"
                 value={therapyPlan.received_amount}
-                onChangeText={handleReceivedAmountChange}
+                onChangeText={(text) =>
+                  setTherapyPlan({
+                    ...therapyPlan,
+                    received_amount: text || "0",
+                  })
+                }
                 keyboardType="numeric"
                 placeholderTextColor="#A0A0A0"
               />
