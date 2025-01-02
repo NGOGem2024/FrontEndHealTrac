@@ -112,6 +112,7 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
 
     if (
       patientData.referral_source !== "Social Media" &&
+      patientData.referral_source !== "walkin" &&
       !patientData.referral_details
     ) {
       handleError(new Error("Please enter referral details"));

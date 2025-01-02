@@ -13,10 +13,9 @@ import {
   Easing,
   BackHandler,
   SafeAreaView,
-  StatusBar,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "./ThemeContext";
-import { getTheme } from "./Theme";
 import { openBrowserAsync } from "expo-web-browser";
 import { useSession } from "../context/SessionContext";
 import axiosInstance from "../utils/axiosConfig";
@@ -40,6 +39,16 @@ interface AppointmentDetailsScreenProps {
   onClose: () => void;
 }
 
+interface SessionState {
+  isStarted: boolean;
+  startTime: string | null;
+  elapsedTime: number;
+  previousRemarks: string;
+  postRemarks: string;
+}
+
+const STORAGE_KEY = "appointment_session_";
+
 const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
   appointment,
   onClose,
@@ -57,27 +66,25 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
   const [isModalVisible, setModalVisible] = useState(false);
   const [rotation] = useState(new Animated.Value(0));
 
+  // Load saved session state
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      handleBackPress
-    );
-
-    return () => backHandler.remove();
+    loadSessionState();
   }, []);
 
-  const handleBackPress = () => {
-    onClose();
-    return true;
-  };
+  // Save session state whenever it changes
+  useEffect(() => {
+    saveSessionState();
+  }, [isStarted, startTime, elapsedTime, previousRemarks, postRemarks]);
 
+  // Handle timer and animation
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isStarted && startTime) {
       interval = setInterval(() => {
-        setElapsedTime(
-          Math.floor((new Date().getTime() - startTime.getTime()) / 1000)
+        const elapsed = Math.floor(
+          (new Date().getTime() - startTime.getTime()) / 1000
         );
+        setElapsedTime(elapsed);
       }, 1000);
 
       // Start the rotation animation
@@ -95,6 +102,79 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
       rotation.setValue(0);
     };
   }, [isStarted, startTime, rotation]);
+
+  // Back handler
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handleBackPress
+    );
+    return () => backHandler.remove();
+  }, []);
+
+  const handleBackPress = () => {
+    Alert.alert(
+      "Exit Session",
+      "Your session progress will be saved. Are you sure you want to exit?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Exit", onPress: onClose },
+      ]
+    );
+    return true;
+  };
+
+  const loadSessionState = async () => {
+    try {
+      const savedState = await AsyncStorage.getItem(
+        STORAGE_KEY + appointment._id
+      );
+      if (savedState) {
+        const state: SessionState = JSON.parse(savedState);
+        setIsStarted(state.isStarted);
+        setPreviousRemarks(state.previousRemarks);
+        setPostRemarks(state.postRemarks);
+        if (state.startTime) {
+          const savedStartTime = new Date(state.startTime);
+          setStartTime(savedStartTime);
+          if (state.isStarted) {
+            const elapsed = Math.floor(
+              (new Date().getTime() - savedStartTime.getTime()) / 1000
+            );
+            setElapsedTime(elapsed);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error loading session state:", error);
+    }
+  };
+
+  const saveSessionState = async () => {
+    try {
+      const state: SessionState = {
+        isStarted,
+        startTime: startTime?.toISOString() || null,
+        elapsedTime,
+        previousRemarks,
+        postRemarks,
+      };
+      await AsyncStorage.setItem(
+        STORAGE_KEY + appointment._id,
+        JSON.stringify(state)
+      );
+    } catch (error) {
+      console.error("Error saving session state:", error);
+    }
+  };
+
+  const clearSessionState = async () => {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY + appointment._id);
+    } catch (error) {
+      console.error("Error clearing session state:", error);
+    }
+  };
 
   const handleJoinSession = (joinUrl: string) => {
     openBrowserAsync(joinUrl);
@@ -156,6 +236,7 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
       );
 
       if (response.status === 200) {
+        await clearSessionState();
         setModalVisible(false);
         onClose();
         navigation.navigate("payment", {
@@ -186,7 +267,7 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
     <SafeAreaView style={styles.safeArea}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onClose}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <MaterialIcons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Appointment Details</Text>
@@ -296,7 +377,7 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
               {appointment.therepy_link && (
                 <TouchableOpacity
                   style={styles.joinButton}
-                  onPress={() => handleJoinSession(appointment.therepy_link)}
+                  onPress={() => handleJoinSession(appointment.therepy_link!)}
                 >
                   <MaterialIcons name="video-call" size={24} color="white" />
                   <Text style={styles.buttonText}>Join Session</Text>
