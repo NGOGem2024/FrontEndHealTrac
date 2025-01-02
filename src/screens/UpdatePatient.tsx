@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Keyboard,
   TouchableWithoutFeedback,
+  SafeAreaView,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
@@ -240,18 +241,16 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <>
-        <BackTabTop screenName="Patient" />
-        <KeyboardAwareScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollViewContent}
-          extraScrollHeight={100}
-          enableOnAndroid={true}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+    <SafeAreaView style={styles.safeArea}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.mainContainer}>
+          <BackTabTop screenName="Patient" />
+          <KeyboardAwareScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollViewContent}
+            style={styles.scrollView}
+          >
+            <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
             <Text style={styles.title}>Update Patient</Text>
             <InputField
               icon={<Ionicons name="person" size={24} color="#119FB3" />}
@@ -332,10 +331,11 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
                 <Text style={styles.saveButtonText}>Save</Text>
               )}
             </TouchableOpacity>
-          </Animated.View>
-        </KeyboardAwareScrollView>
-      </>
-    </TouchableWithoutFeedback>
+            </Animated.View>
+          </KeyboardAwareScrollView>
+        </View>
+      </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
 };
 
@@ -362,6 +362,14 @@ const InputField = ({
 );
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F0F8FF",
+  },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: "#F0F8FF",
+  },
   scrollView: {
     backgroundColor: "#F0F8FF",
   },
