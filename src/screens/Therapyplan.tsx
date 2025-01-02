@@ -43,8 +43,8 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     therapy_name: "",
     balance: "",
     payment_type: "recurring",
-    per_session_amount: "", // Added per session amount
-    estimated_sessions: "", // Added estimated number of sessions
+    per_session_amount: "",
+    estimated_sessions: "",
   });
   const { patientId } = route.params;
   const { session } = useSession();
@@ -192,10 +192,20 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
   const paymentTypes = [
     { label: "Recurring Payment", value: "recurring" },
     { label: "One-time Payment", value: "one-time" },
   ];
+
+  const handleReceivedAmountChange = (text: string) => {
+    if (text === "") {
+      setTherapyPlan({ ...therapyPlan, received_amount: "" });
+    } else {
+      const cleanedText = text.replace(/^0+(?=\d)/, "");
+      setTherapyPlan({ ...therapyPlan, received_amount: cleanedText });
+    }
+  };
 
   const handleCreateTherapyPlan = async () => {
     if (!validateForm()) {
