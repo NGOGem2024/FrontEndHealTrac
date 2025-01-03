@@ -90,9 +90,13 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
       handleError(new Error("Please enter a valid 10-digit phone number"));
       return;
     }
-    
+
     if (!isValidIndianMobileNumber(patientData.patient_phone)) {
-      handleError(new Error("Please enter a valid 10-digit Indian mobile number starting with 6-9"));
+      handleError(
+        new Error(
+          "Please enter a valid 10-digit Indian mobile number starting with 6-9"
+        )
+      );
       return;
     }
 
@@ -108,6 +112,7 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
 
     if (
       patientData.referral_source !== "Social Media" &&
+      patientData.referral_source !== "walkin" &&
       !patientData.referral_details
     ) {
       handleError(new Error("Please enter referral details"));
@@ -236,11 +241,12 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
                   maxLength={10}
                 />
               </View>
-              {patientData.patient_phone.length > 0 && !isValidIndianMobileNumber(patientData.patient_phone) && (
-                <Text style={styles.errorText}>
-                  Mobile number must start with 6-9 and be 10 digits
-                </Text>
-              )}
+              {patientData.patient_phone.length > 0 &&
+                !isValidIndianMobileNumber(patientData.patient_phone) && (
+                  <Text style={styles.errorText}>
+                    Mobile number must start with 6-9 and be 10 digits
+                  </Text>
+                )}
             </Animatable.View>
             {/* Referral source picker */}
             <Animatable.View animation="fadeInUp" style={styles.inputContainer}>
@@ -266,13 +272,15 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
                     label="Doctor Reference"
                     value="Doctor Reference"
                   />
+                  <Picker.Item label="Walk In" value="walkin" />
                   <Picker.Item label="Other" value="Other" />
                 </Picker>
               </View>
             </Animatable.View>
             {/* Conditional referral details input */}
             {patientData.referral_source &&
-              patientData.referral_source !== "Social Media" && (
+              patientData.referral_source !== "Social Media" &&
+              patientData.referral_source !== "walkin" && (
                 <Animatable.View
                   animation="fadeInUp"
                   style={styles.inputContainer}
@@ -461,10 +469,10 @@ const styles = StyleSheet.create({
     marginBottom: 2, // Reduced from 5 to 2
   },
   errorText: {
-    color: 'red',
+    color: "red",
     fontSize: 12,
     marginTop: 5,
-    textAlign: 'left'
+    textAlign: "left",
   },
 });
 
