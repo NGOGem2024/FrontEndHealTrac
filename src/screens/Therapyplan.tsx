@@ -199,13 +199,21 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
   ];
 
   const handleReceivedAmountChange = (text: string) => {
-    if (text === "") {
-      setTherapyPlan({ ...therapyPlan, received_amount: "" });
-    } else {
-      const cleanedText = text.replace(/^0+(?=\d)/, "");
-      setTherapyPlan({ ...therapyPlan, received_amount: cleanedText });
+    let cleanedValue = text.replace(/^0+/, '');
+    
+    if (!cleanedValue) {
+      cleanedValue = "0";
     }
+    if (cleanedValue.startsWith('.')) {
+      cleanedValue = '0' + cleanedValue;
+    }
+    
+    setTherapyPlan(prev => ({
+      ...prev,
+      received_amount: cleanedValue
+    }));
   };
+
 
   const handleCreateTherapyPlan = async () => {
     if (!validateForm()) {
@@ -474,12 +482,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
                 style={styles.input}
                 placeholder="Enter received amount"
                 value={therapyPlan.received_amount}
-                onChangeText={(text) =>
-                  setTherapyPlan({
-                    ...therapyPlan,
-                    received_amount: text || "0",
-                  })
-                }
+                onChangeText={handleReceivedAmountChange}
                 keyboardType="numeric"
                 placeholderTextColor="#A0A0A0"
               />
