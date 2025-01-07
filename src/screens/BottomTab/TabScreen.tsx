@@ -7,6 +7,8 @@ import DoctorProfileEdit from "../DoctorProfileUpdate";
 import LogoutScreen from "./Logout";
 import { RootTabParamList } from "../../types/types";
 import { Keyboard } from "react-native";
+import AllAppointmentsPage from "../AllAppointmen";
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
@@ -58,6 +60,16 @@ const TabScreen: React.FC = () => {
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Octicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="AllAppointments"
+        component={AllAppointmentsPage}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Octicons name="calendar" size={size} color={color} />
           ),
         }}
       />

@@ -36,12 +36,17 @@ export type RootStackParamList = {
   SearchPatients: undefined;
   AllAppointments: undefined;
   payment: { planId?: string; patientId?: string };
+  MyPatient: undefined;
 };
 
 export type RootTabParamList = {
   HomeStackNavigator: undefined;
   AddPatient: undefined;
   DoctorProfileEdit: undefined;
+  Dashboard: undefined; // Add this for the DoctorDashboard screen
+  AllPatients: undefined;
+  MainStack: undefined;
+  AllAppointments: undefined;
 };
 
 export type RootStackNavProps<T extends keyof RootStackParamList> = {

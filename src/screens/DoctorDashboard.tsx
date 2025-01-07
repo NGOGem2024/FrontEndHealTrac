@@ -60,6 +60,7 @@ type RootStackParamList = {
   AllDoctors: undefined;
   Logout: undefined;
   DoctorRegister: undefined;
+  MyPatient: undefined;
 };
 
 type DashboardScreenNavigationProp =
@@ -406,12 +407,14 @@ const DoctorDashboard: React.FC = () => {
         )}
 
         <View style={styles.statsSection}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>
-              {doctorInfo?.patients?.length || 0}
-            </Text>
-            <Text style={styles.statLabel}>Patients Joined</Text>
-          </View>
+        <TouchableOpacity onPress={() => navigation.navigate('MyPatient')}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {doctorInfo?.patients?.length || 0}
+              </Text>
+              <Text style={styles.statLabel}>My Patients</Text>
+            </View>
+          </TouchableOpacity>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{todayAppointments.length}</Text>
@@ -466,7 +469,7 @@ const DoctorDashboard: React.FC = () => {
               onPress={toggleAllAppointments}
             >
               <Text style={styles.toggleButtonText}>
-                {showAllAppointments ? "Show My" : "Show All"}
+                {showAllAppointments ? "My Appointment" : "All Appointment"}
               </Text>
             </TouchableOpacity>
           </View>
