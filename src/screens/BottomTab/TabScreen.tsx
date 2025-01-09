@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Octicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Octicons } from "@expo/vector-icons";
 import HomeStackNavigator from "../HomeStackNavigator";
 import PatientRegister from "../PatientRegister";
 import DoctorProfileEdit from "../DoctorProfileUpdate";
@@ -89,7 +89,10 @@ const TabScreen: React.FC = () => {
         options={{
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Octicons name="person" size={size} color={color} />
+            <MaterialCommunityIcons
+                  name="square-edit-outline"
+                  size={size} color={color}
+                />
           ),
         }}
       />

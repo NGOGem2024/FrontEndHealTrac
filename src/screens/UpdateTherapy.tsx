@@ -15,7 +15,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../types/types";
 import { openBrowserAsync } from "expo-web-browser";
@@ -361,7 +361,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
               style={styles.editButton}
               onPress={() => handleEditTherapy(item)}
             >
-              <MaterialIcons name="edit" size={24} color="#119FB3" />
+              <MaterialCommunityIcons name="square-edit-outline" size={24} color="#119FB3" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.deleteButton}

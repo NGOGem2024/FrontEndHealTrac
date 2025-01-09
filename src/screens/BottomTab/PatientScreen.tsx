@@ -144,6 +144,20 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
             <Text style={styles.patientName}>
               {patientData.patient_first_name} {patientData.patient_last_name}
             </Text>
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() =>
+                navigation.navigate("UpdatePatient", {
+                  patientId: patientId,
+                })
+              }
+            >
+              <MaterialCommunityIcons
+                  name="square-edit-outline"
+                  size={24}
+                  color="#119FB3"
+              />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.contactInfo}>
@@ -171,22 +185,6 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActionsContainer}>
-            <TouchableOpacity
-              style={styles.quickActionButton}
-              onPress={() =>
-                navigation.navigate("UpdatePatient", {
-                  patientId: patientId,
-                })
-              }
-            >
-              <MaterialCommunityIcons
-                name="square-edit-outline"
-                size={24}
-                color="#65b6e7"
-              />
-              <Text style={styles.quickActionText}>Update</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={styles.quickActionButton}
               onPress={() =>
@@ -389,7 +387,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 5,
+      marginBottom: 2,
     },
     patientName: {
       fontSize: 24,

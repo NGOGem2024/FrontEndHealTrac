@@ -4,7 +4,8 @@ import { useSession } from "../context/SessionContext";
 import NetInfo from "@react-native-community/netinfo";
 
 const instance = axios.create({
-  baseURL: "http://192.168.1.17:5000", // Adjust to your API URL
+  baseURL: 'https://healtrackapp-production-b2ab.up.railway.app',
+  //baseURL: "http://192.168.1.17:5000", 
   timeout: 60000, // 15 second timeout
   headers: {
     Accept: "application/json",

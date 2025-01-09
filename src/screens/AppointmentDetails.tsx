@@ -12,17 +12,20 @@ import {
   Animated,
   Easing,
   BackHandler,
-  SafeAreaView,
+  Linking,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "./ThemeContext";
-import { openBrowserAsync } from "expo-web-browser";
+import { getTheme } from "./Theme";
+import BackTabTop from "./BackTopTab";
 import { useSession } from "../context/SessionContext";
 import axiosInstance from "../utils/axiosConfig";
 import { RootStackParamList } from "../types/types";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useNavigation } from "@react-navigation/native";
-import { MaterialIcons } from "@expo/vector-icons";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 interface AppointmentDetailsScreenProps {
   appointment: {
@@ -39,24 +42,21 @@ interface AppointmentDetailsScreenProps {
   onClose: () => void;
 }
 
-interface SessionState {
+interface AppointmentState {
   isStarted: boolean;
   startTime: string | null;
   elapsedTime: number;
   previousRemarks: string;
   postRemarks: string;
+  isCompleted: boolean;
 }
-
-const STORAGE_KEY = "appointment_session_";
+const MAX_SESSION_TIME = 10800; // 3 hours in seconds
 
 const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
   appointment,
   onClose,
 }) => {
-  const { theme } = useTheme();
-  const styles = createThemedStyles(theme);
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const { idToken } = useSession();
   const [isStarted, setIsStarted] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -65,26 +65,110 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
   const [loading, setLoading] = useState(false);
   const [isModalVisible, setModalVisible] = useState(false);
   const [rotation] = useState(new Animated.Value(0));
-
-  // Load saved session state
+  const [isCompleted, setIsCompleted] = useState(false);
   useEffect(() => {
-    loadSessionState();
+    const checkTimeLimit = async () => {
+      if (startTime) {
+        const elapsed = Math.floor(
+          (new Date().getTime() - new Date(startTime).getTime()) / 1000
+        );
+        if (elapsed >= MAX_SESSION_TIME) {
+          await handleTimeExceeded();
+        }
+      }
+    };
+    checkTimeLimit();
+  }, []);
+  const handleTimeExceeded = async () => {
+    setIsStarted(false);
+    setStartTime(null);
+    setElapsedTime(0);
+    await clearAppointmentState();
+    Alert.alert(
+      "Session Expired",
+      "The session has exceeded the 3-hour limit and has been automatically ended."
+    );
+  };
+  // Load saved state on component mount
+  useEffect(() => {
+    loadAppointmentState();
   }, []);
 
-  // Save session state whenever it changes
+  // Save state when important values change
   useEffect(() => {
-    saveSessionState();
+    saveAppointmentState();
   }, [isStarted, startTime, elapsedTime, previousRemarks, postRemarks]);
 
-  // Handle timer and animation
+  // Handle back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handleBackPress
+    );
+    return () => backHandler.remove();
+  }, []);
+
+  const handleBackPress = () => {
+    saveAppointmentState();
+    onClose();
+    return true;
+  };
+
+  // Load saved state from AsyncStorage
+  const loadAppointmentState = async () => {
+    try {
+      const savedState = await AsyncStorage.getItem(
+        `appointment_${appointment._id}`
+      );
+      if (savedState) {
+        const state: AppointmentState = JSON.parse(savedState);
+        setIsStarted(state.isStarted);
+        setStartTime(state.startTime ? new Date(state.startTime) : null);
+        setElapsedTime(state.elapsedTime);
+        setPreviousRemarks(state.previousRemarks);
+        setPostRemarks(state.postRemarks);
+        setIsCompleted(state.isCompleted);
+      }
+    } catch (error) {
+      console.error("Error loading appointment state:", error);
+    }
+  };
+
+  // Save current state to AsyncStorage
+  const saveAppointmentState = async () => {
+    try {
+      const state: AppointmentState = {
+        isStarted,
+        startTime: startTime?.toISOString() || null,
+        elapsedTime,
+        previousRemarks,
+        postRemarks,
+        isCompleted,
+      };
+      await AsyncStorage.setItem(
+        `appointment_${appointment._id}`,
+        JSON.stringify(state)
+      );
+    } catch (error) {
+      console.error("Error saving appointment state:", error);
+    }
+  };
+  // Clear saved state
+  const clearAppointmentState = async () => {
+    try {
+      await AsyncStorage.removeItem(`appointment_${appointment._id}`);
+    } catch (error) {
+      console.error("Error clearing appointment state:", error);
+    }
+  };
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isStarted && startTime) {
       interval = setInterval(() => {
-        const elapsed = Math.floor(
-          (new Date().getTime() - startTime.getTime()) / 1000
+        setElapsedTime(
+          Math.floor((new Date().getTime() - startTime.getTime()) / 1000)
         );
-        setElapsedTime(elapsed);
       }, 1000);
 
       // Start the rotation animation
@@ -103,81 +187,23 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
     };
   }, [isStarted, startTime, rotation]);
 
-  // Back handler
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      handleBackPress
-    );
-    return () => backHandler.remove();
-  }, []);
+  const handleJoinSession = async (joinUrl: string | undefined) => {
+    if (!joinUrl) {
+      Alert.alert("Error", "No session URL provided");
+      return;
+    }
 
-  const handleBackPress = () => {
-    Alert.alert(
-      "Exit Session",
-      "Your session progress will be saved. Are you sure you want to exit?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Exit", onPress: onClose },
-      ]
-    );
-    return true;
-  };
-
-  const loadSessionState = async () => {
     try {
-      const savedState = await AsyncStorage.getItem(
-        STORAGE_KEY + appointment._id
-      );
-      if (savedState) {
-        const state: SessionState = JSON.parse(savedState);
-        setIsStarted(state.isStarted);
-        setPreviousRemarks(state.previousRemarks);
-        setPostRemarks(state.postRemarks);
-        if (state.startTime) {
-          const savedStartTime = new Date(state.startTime);
-          setStartTime(savedStartTime);
-          if (state.isStarted) {
-            const elapsed = Math.floor(
-              (new Date().getTime() - savedStartTime.getTime()) / 1000
-            );
-            setElapsedTime(elapsed);
-          }
-        }
+      const supported = await Linking.canOpenURL(joinUrl);
+      if (supported) {
+        await Linking.openURL(joinUrl);
+      } else {
+        Alert.alert("Error", "Cannot open this URL");
       }
     } catch (error) {
-      console.error("Error loading session state:", error);
+      console.error("Error opening URL:", error);
+      Alert.alert("Error", "Failed to open session URL");
     }
-  };
-
-  const saveSessionState = async () => {
-    try {
-      const state: SessionState = {
-        isStarted,
-        startTime: startTime?.toISOString() || null,
-        elapsedTime,
-        previousRemarks,
-        postRemarks,
-      };
-      await AsyncStorage.setItem(
-        STORAGE_KEY + appointment._id,
-        JSON.stringify(state)
-      );
-    } catch (error) {
-      console.error("Error saving session state:", error);
-    }
-  };
-
-  const clearSessionState = async () => {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEY + appointment._id);
-    } catch (error) {
-      console.error("Error clearing session state:", error);
-    }
-  };
-
-  const handleJoinSession = (joinUrl: string) => {
-    openBrowserAsync(joinUrl);
   };
 
   const handleStart = useCallback(async () => {
@@ -191,7 +217,6 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${idToken}`,
           },
         }
       );
@@ -211,6 +236,7 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
   }, [appointment._id, previousRemarks]);
 
   const handleCancel = () => {
+    clearAppointmentState();
     setPreviousRemarks("");
     onClose();
   };
@@ -230,13 +256,13 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${idToken}`,
           },
         }
       );
 
       if (response.status === 200) {
-        await clearSessionState();
+        setIsCompleted(true);
+        await saveAppointmentState();
         setModalVisible(false);
         onClose();
         navigation.navigate("payment", {
@@ -253,6 +279,34 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
       setLoading(false);
     }
   }, [appointment._id, postRemarks]);
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isStarted && startTime) {
+      interval = setInterval(() => {
+        const newElapsedTime = Math.floor(
+          (new Date().getTime() - startTime.getTime()) / 1000
+        );
+        if (newElapsedTime >= MAX_SESSION_TIME) {
+          handleTimeExceeded();
+        } else {
+          setElapsedTime(newElapsedTime);
+        }
+      }, 1000);
+
+      Animated.loop(
+        Animated.timing(rotation, {
+          toValue: 1,
+          duration: 3000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+    return () => {
+      clearInterval(interval);
+      rotation.setValue(0);
+    };
+  }, [isStarted, startTime, rotation]);
 
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -265,416 +319,481 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <MaterialIcons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Appointment Details</Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      {/* Patient Info Card */}
-      <View style={styles.patientInfoCard}>
-        <View style={styles.patientInfoHeader}>
-          <MaterialIcons name="person" size={24} color="#119FB3" />
-          <Text style={styles.patientName}>{appointment.patient_name}</Text>
-        </View>
-        <View style={styles.dateTimeContainer}>
-          <View style={styles.dateTimeItem}>
-            <MaterialIcons name="event" size={20} color="#666" />
-            <Text style={styles.dateTimeText}>
-              {new Date(appointment.therepy_date).toDateString()}
-            </Text>
-          </View>
-          <View style={styles.dateTimeItem}>
-            <MaterialIcons name="access-time" size={20} color="#666" />
-            <Text style={styles.dateTimeText}>
-              {appointment.therepy_start_time}
-            </Text>
-          </View>
-        </View>
-      </View>
-
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-        {!isStarted ? (
-          <View style={styles.contentContainer}>
-            {/* Therapy Type Card */}
-            <View style={styles.infoCard}>
-              <View style={styles.cardHeader}>
-                <MaterialIcons
-                  name="medical-services"
-                  size={20}
-                  color="#119FB3"
-                />
-                <Text style={styles.cardTitle}>Therapy Type</Text>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Appointment Details</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.dateContainer}>
+          <View style={styles.dateIconContainer}>
+            {!isStarted ? (
+              <>
+                <Ionicons name="calendar-outline" size={20} color="#119FB3" />
+                <Text style={styles.dateText1}>
+                  {new Date(appointment.therepy_date)
+                    .toLocaleDateString("en-US", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                    .replace(/(\d+)(?:st|nd|rd|th)/, "$1")}
+                </Text>
+              </>
+            ) : (
+              <View style={styles.dateTextContainer}>
+                <Text style={styles.patientNameText}>
+                  {appointment.patient_name}
+                </Text>
+                <Text style={styles.dateText}>
+                  {new Date(appointment.therepy_date)
+                    .toLocaleDateString("en-US", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                    .replace(/(\d+)(?:st|nd|rd|th)/, "$1")}
+                </Text>
               </View>
-              <Text style={styles.cardContent}>{appointment.therepy_type}</Text>
-            </View>
-
-            {/* Doctor Card */}
-            <View style={styles.infoCard}>
-              <View style={styles.cardHeader}>
-                <MaterialIcons name="person" size={20} color="#119FB3" />
-                <Text style={styles.cardTitle}>Doctor</Text>
-              </View>
-              <Text style={styles.cardContent}>{appointment.doctor_name}</Text>
-            </View>
-
-            {/* Pre-Session Remarks */}
-            <View style={styles.remarksSection}>
-              <Text style={styles.remarksSectionTitle}>
-                Pre-Session Remarks
-              </Text>
-              <TextInput
-                style={styles.remarksInput}
-                multiline
-                numberOfLines={4}
-                onChangeText={setPreviousRemarks}
-                value={previousRemarks}
-                placeholder="Enter previous session remarks"
-                placeholderTextColor="#999"
-              />
-            </View>
-
-            {/* Action Buttons */}
-            <View style={styles.actionButtonsRow}>
-              <TouchableOpacity
-                style={[styles.button, styles.startButton]}
-                onPress={handleStart}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Start Therapy</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
-                onPress={handleCancel}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
+            )}
           </View>
-        ) : (
-          <View style={styles.sessionContainer}>
-            {/* Timer Section */}
+        </View>
+        <View style={styles.detailsContainer}>
+          {isCompleted ? (
+            <View style={styles.completedContainer}>
+              <Ionicons name="checkmark-circle" size={60} color="#27ae60" />
+              <Text style={styles.completedText}>Session Completed</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                <Text style={styles.buttonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          ) : !isStarted ? (
+            <>
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="person" style={styles.icondesign} />
+                  <Text style={styles.detailTitle}>Patient Name</Text>
+                </View>
+                <Text style={styles.detailText}>
+                  {appointment.patient_name}
+                </Text>
+              </View>
+
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="medical" style={styles.icondesign} />
+                  <Text style={styles.detailTitle}>Therapy Type</Text>
+                </View>
+                <Text style={styles.detailText}>
+                  {appointment.therepy_type}
+                </Text>
+              </View>
+
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="time" style={styles.icondesign} />
+                  <Text style={styles.detailTitle}>Therapy Start Time</Text>
+                </View>
+                <Text style={styles.detailText}>
+                  {appointment.therepy_start_time}
+                </Text>
+              </View>
+
+              <View style={styles.remarksSection}>
+                <Text style={styles.detailTitle}>Pre-Session Remarks</Text>
+                <TextInput
+                  style={styles.remarksInput}
+                  multiline
+                  numberOfLines={4}
+                  onChangeText={setPreviousRemarks}
+                  value={previousRemarks}
+                  placeholder="Enter previous session remarks"
+                  placeholderTextColor="#9DA3B4"
+                />
+              </View>
+              {appointment.therepy_link && (
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity
+                    style={styles.uploadButton}
+                    onPress={() => handleJoinSession(appointment.therepy_link)}
+                  >
+                    <Text style={styles.uploadButtonText}>Upload Videos</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              <View style={styles.actionButtonsContainer}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.cancelButton]}
+                  onPress={handleCancel}
+                >
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.startButton]}
+                  onPress={handleStart}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.buttonText}>Start Therapy</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
             <View style={styles.timerContainer}>
               <Animated.View style={styles.timerRing}>
                 <View style={styles.timerInnerRing}>
                   <Text style={styles.timerText}>
                     {formatTime(elapsedTime)}
                   </Text>
-                  <Text style={styles.timerLabel}>Session Duration</Text>
                 </View>
               </Animated.View>
-            </View>
-
-            {/* Session Actions */}
-            <View style={styles.sessionActions}>
               {appointment.therepy_link && (
                 <TouchableOpacity
                   style={styles.joinButton}
-                  onPress={() => handleJoinSession(appointment.therepy_link!)}
+                  onPress={() => handleJoinSession(appointment.therepy_link)}
                 >
-                  <MaterialIcons name="video-call" size={24} color="white" />
                   <Text style={styles.buttonText}>Join Session</Text>
                 </TouchableOpacity>
               )}
-
               <TouchableOpacity
                 style={styles.endButton}
                 onPress={handleShowEndModal}
               >
-                <MaterialIcons name="stop" size={24} color="white" />
                 <Text style={styles.buttonText}>End Therapy</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* End Session Modal */}
-      <Modal visible={isModalVisible} transparent={true} animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Post-Session Remarks</Text>
-            <TextInput
-              style={styles.remarksInput}
-              multiline
-              numberOfLines={4}
-              onChangeText={setPostRemarks}
-              value={postRemarks}
-              placeholder="Enter post session remarks"
-              placeholderTextColor="#999"
-            />
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleEnd}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <>
-                  <MaterialIcons name="check" size={20} color="white" />
-                  <Text style={styles.buttonText}>Submit and End Session</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+          )}
+          <Modal
+            visible={isModalVisible}
+            transparent={true}
+            animationType="slide"
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Post-Session Remarks</Text>
+                <TextInput
+                  style={styles.remarksInput}
+                  multiline
+                  numberOfLines={4}
+                  onChangeText={setPostRemarks}
+                  value={postRemarks}
+                  placeholder="Enter post session remarks"
+                />
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={handleEnd}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.buttonText}>
+                      Submit and End Session
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
         </View>
-      </Modal>
+      </ScrollView>
     </SafeAreaView>
   );
 };
+const styles = StyleSheet.create({
+  dateIconContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dateTextContainer: {
+    flexDirection: "column",
+    gap: 4,
+  },
+  patientNameText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "black",
+  },
+  dateText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  icondesign: {
+    fontSize: 18,
+    color: "#15b9cf",
+    marginTop: -6,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  remarksSection: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "white",
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "black",
+  },
+  header: {
+    height: 56,
+    backgroundColor: "#119FB3",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  backButton: {
+    padding: 2,
+  },
+  headerTitle: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  completedContainer: {
+    alignItems: "center",
+    padding: 20,
+  },
+  completedText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "gary",
+    marginBottom: 20,
+  },
+  headerRight: {
+    width: 40,
+  },
+  cancelButton: {
+    backgroundColor: "gray", //theme.colors.card, // Set the color for cancel button
+    marginTop: 10,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  timerContainer: {
+    alignItems: "center",
+    marginTop: 30,
+    marginBottom: 30,
+  },
+  timerRing: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 10,
+    borderColor: "#119FB3",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  timerInnerRing: {
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: "#f1f2f6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  timerText: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#2c3e50",
+  },
+  joinButton: {
+    backgroundColor: "#27ae60",
+    padding: 15,
+    borderRadius: 25,
+    width: "80%",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  endButton: {
+    backgroundColor: "#e74c3c",
+    padding: 15,
+    borderRadius: 25,
+    width: "80%",
+    alignItems: "center",
+  },
+  actionButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+    gap: 10,
+  },
+  actionButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 15,
+    justifyContent: "center", // Center content vertically
+    alignItems: "center",
+    marginHorizontal: 10,
+    // Shadow for iOS
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  startButton: {
+    // backgroundColor: theme.colors.card, // Set the color for cancel button
+    marginTop: 10,
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: "center",
+    backgroundColor: "#119FB3",
+  },
+  buttonText: {
+    color: "white", //theme.colors.text,
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  dateContainer: {
+    backgroundColor: "#e8eded", // Light neutral background
+    borderLeftWidth: 4,
+    borderLeftColor: "#119FB3", // Accent color matching header
+    width: "90%",
+    padding: 16,
+    marginTop: 16,
+    marginLeft: 20,
+    borderRadius: 8,
+    // Enhanced shadow for depth
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+  },
+  uploadButton: {
+    backgroundColor: "#90D5FF",
+    padding: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 4,
+  },
 
-const createThemedStyles = (theme: any) =>
-  StyleSheet.create({
-    actionButtonsRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginTop: 16,
-    },
-    button: {
-      flex: 1,
-      padding: 14,
-      borderRadius: 8,
-      alignItems: "center",
-      marginHorizontal: 8,
-    },
-    startButton: {
-      backgroundColor: "#119FB3",
-    },
-    cancelButton: {
-      backgroundColor: "#878787",
-    },
-    buttonText: {
-      color: "#fff",
-      fontSize: 16,
-      fontWeight: "600",
-    },
+  uploadButtonText: {
+    color: "black",
+    textAlign: "center",
+  },
+  dateText1: {
+    color: "black",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "left",
+    letterSpacing: 0.5,
+  },
+  timerLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "black",
+    marginBottom: 8,
+  },
+  timerBox: {
+    backgroundColor: "#e0e0e0",
+    borderRadius: 15,
+    padding: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
 
-    safeArea: {
-      flex: 1,
-      backgroundColor: theme.colors?.primary || "#f5f5f5",
-    },
-    header: {
-      height: 56,
-      backgroundColor: theme.colors?.primary || "#119FB3",
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      elevation: 4,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 2,
-    },
-    backButton: {
-      padding: 2,
-    },
-    headerTitle: {
-      color: "white",
-      fontSize: 20,
-      fontWeight: "bold",
-    },
-    headerRight: {
-      width: 40,
-    },
-    patientInfoCard: {
-      backgroundColor: "white",
-      margin: 16,
-      borderRadius: 12,
-      padding: 16,
-      elevation: 4,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-    },
-    patientInfoHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 12,
-    },
-    patientName: {
-      fontSize: 18,
-      fontWeight: "bold",
-      marginLeft: 8,
-      color: "#333",
-    },
-    dateTimeContainer: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    dateTimeItem: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    dateTimeText: {
-      marginLeft: 4,
-      color: "#666",
-      fontSize: 14,
-    },
-    container: {
-      flex: 1,
-      backgroundColor: "#f5f5f5",
-    },
-    contentContainer: {
-      padding: 16,
-    },
-    infoCard: {
-      backgroundColor: "white",
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 16,
-      elevation: 2,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
-    },
-    cardHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 8,
-    },
-    cardTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      marginLeft: 8,
-      color: "#119FB3",
-    },
-    cardContent: {
-      fontSize: 16,
-      color: "#333",
-      marginLeft: 28,
-    },
-    remarksSection: {
-      marginBottom: 24,
-    },
-    remarksSectionTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: "#333",
-      marginBottom: 8,
-    },
-    remarksInput: {
-      backgroundColor: "white",
-      borderRadius: 12,
-      padding: 12,
-      height: 120,
-      textAlignVertical: "top",
-      fontSize: 16,
-      borderWidth: 1,
-      borderColor: "#E0E0E0",
-    },
-    actionButtons: {
-      gap: 12,
-    },
-    uploadButton: {
-      backgroundColor: "#90D5FF",
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 16,
-      borderRadius: 12,
-      gap: 8,
-    },
-    uploadButtonText: {
-      color: "white",
-      fontSize: 16,
-      fontWeight: "600",
-    },
-    sessionContainer: {
-      padding: 24,
-      alignItems: "center",
-    },
-    timerContainer: {
-      alignItems: "center",
-      marginBottom: 32,
-    },
-    timerRing: {
-      width: 240,
-      height: 240,
-      borderRadius: 120,
-      borderWidth: 12,
-      borderColor: "#119FB3",
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    timerInnerRing: {
-      width: 200,
-      height: 200,
-      borderRadius: 100,
-      backgroundColor: "white",
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    timerText: {
-      fontSize: 36,
-      fontWeight: "bold",
-      color: "#119FB3",
-      marginBottom: 4,
-    },
-    timerLabel: {
-      fontSize: 14,
-      color: "#666",
-    },
-    sessionActions: {
-      width: "100%",
-      gap: 16,
-    },
-    joinButton: {
-      backgroundColor: "#4CAF50",
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 16,
-      borderRadius: 12,
-      gap: 8,
-    },
-    endButton: {
-      backgroundColor: "#FF6B6B",
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 16,
-      borderRadius: 12,
-      gap: 8,
-    },
-    modalContainer: {
-      flex: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
-      justifyContent: "center",
-      padding: 24,
-    },
-    modalContent: {
-      backgroundColor: "white",
-      borderRadius: 16,
-      padding: 24,
-    },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: "bold",
-      color: "#333",
-      marginBottom: 16,
-      textAlign: "center",
-    },
-    modalButton: {
-      backgroundColor: "#119FB3",
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 16,
-      borderRadius: 12,
-      marginTop: 16,
-      gap: 8,
-    },
-  });
+  headerText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#119FB3",
+    marginLeft: 16,
+    marginTop: 20,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  detailsContainer: {
+    padding: 16,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 1,
+  },
+  card: {
+    backgroundColor: "#e8eded",
+    borderRadius: 15,
+    padding: 12,
+    marginBottom: 16,
+  },
+  detailTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "black",
+    marginBottom: 4,
+    paddingLeft: 5,
+  },
+  detailText: {
+    fontSize: 14,
+    color: "black",
+    marginLeft: 25,
+  },
+  remarksInput: {
+    borderRadius: 8,
+    padding: 8,
+    height: 100,
+    color: "gray",
+    textAlignVertical: "top",
+    marginBottom: 16,
+    backgroundColor: "#e8eded",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10,
+    width: "90%",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#119FB3",
+    textAlign: "center",
+  },
+  modalButton: {
+    backgroundColor: "#119FB3",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 16,
+  },
+});
 
 export default AppointmentDetailsScreen;

@@ -470,7 +470,7 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
                     });
                   }}
                 >
-                  <Text style={styles.buttonText}>Set up an Appointment</Text>
+                  <Text style={styles.buttonText}>Next Appointment</Text>
                 </TouchableOpacity>
               </View>
             </View>
