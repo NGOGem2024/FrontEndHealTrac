@@ -462,7 +462,7 @@ const DoctorDashboard: React.FC = () => {
             <Text style={styles.sectionTitle}>
               {showAllAppointments
                 ? "All Appointments"
-                : "Today's Appointments"}
+                : "My Appointments"}
             </Text>
             <TouchableOpacity
               style={styles.toggleButton}
