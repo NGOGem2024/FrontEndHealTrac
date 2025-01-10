@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
   StatusBar,
+  RefreshControl,
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../../types/types";
@@ -43,6 +44,8 @@ interface TherapyPlan {
   total_amount: string;
   received_amount: string;
   balance: string;
+  estimated_sessions: string;
+  therapy_sessions: string;
   _id: string;
 }
 
@@ -55,28 +58,45 @@ interface PatientData {
   patient_address1: string;
   therapy_plans: TherapyPlan[];
 }
-const calculateTherapyProgress = (
-  startDate: string,
-  endDate: string
-): number => {
-  const start = new Date(startDate).getTime();
-  const end = new Date(endDate).getTime();
-  const now = new Date().getTime();
 
-  // If the therapy hasn't started yet
-  if (now < start) return 0;
+const calculateTherapyProgress = (therapyPlan: TherapyPlan): number => {
+  try {
+    // Guard clause - return 0 if plan doesn't exist or is invalid
+    if (!therapyPlan) return 0;
 
-  // If the therapy has already ended
-  if (now > end) return 100;
+    // Check if therapy_sessions exists and is an array
+    if (
+      !therapyPlan.therapy_sessions ||
+      !Array.isArray(therapyPlan.therapy_sessions)
+    ) {
+      return 0;
+    }
 
-  // Calculate the progress percentage
-  const totalDuration = end - start;
-  const elapsedDuration = now - start;
-  const progressPercentage = (elapsedDuration / totalDuration) * 100;
+    // Check if estimated_sessions exists and is a valid number
+    if (
+      !therapyPlan.estimated_sessions ||
+      typeof therapyPlan.estimated_sessions !== "number" ||
+      therapyPlan.estimated_sessions <= 0
+    ) {
+      return 0;
+    }
 
-  return Math.min(Math.max(progressPercentage, 0), 100);
+    // Safely count completed sessions
+    const completedSessions = therapyPlan.therapy_sessions.filter(
+      (session) => session && session.status === "Completed"
+    ).length;
+
+    // Calculate progress percentage
+    const progress = (completedSessions / therapyPlan.estimated_sessions) * 100;
+
+    // Ensure progress is between 0 and 100 and is a valid number
+    return Number.isFinite(progress) ? Math.min(Math.max(progress, 0), 100) : 0;
+  } catch (error) {
+    // If anything goes wrong, return 0 instead of breaking
+    console.warn("Error calculating therapy progress:", error);
+    return 0;
+  }
 };
-
 const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
   const { theme } = useTheme();
   const styles = getStyles(getTheme(theme));
@@ -84,29 +104,53 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
   const { patientId } = route.params;
   const [patientData, setPatientData] = useState<PatientData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const fetchPatientData = async (showLoadingIndicator = true) => {
+    if (!session.idToken) return;
+
+    try {
+      if (showLoadingIndicator) {
+        setIsRefreshing(true);
+      }
+
+      const response = await axiosInstance.get(`/patient/${patientId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.idToken,
+        },
+      });
+
+      setPatientData(response.data.patientData);
+    } catch (error) {
+      handleError(error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const onRefresh = useCallback(() => {
+    fetchPatientData(true);
+  }, []);
 
   useEffect(() => {
-    const fetchPatientData = async () => {
-      if (!session.idToken || patientData) return;
+    const loadInitialData = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const response = await axiosInstance.get(`/patient/${patientId}`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + session.idToken,
-          },
-        });
-        setPatientData(response.data.patientData);
-      } catch (error) {
-        handleError(error);
+        await fetchPatientData(false);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchPatientData();
-  }, [patientId, session.idToken, patientData]);
+    loadInitialData();
 
+    const unsubscribe = navigation.addListener("focus", () => {
+      fetchPatientData(true);
+    });
+
+    return unsubscribe;
+  }, [patientId, session.idToken, navigation]);
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -138,7 +182,17 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
         translucent={false}
       />
 
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#119FB3"]} // Android
+            tintColor="#119FB3" // iOS
+          />
+        }
+      >
         <View style={styles.mainCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.patientName}>
@@ -153,9 +207,9 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
               }
             >
               <MaterialCommunityIcons
-                  name="square-edit-outline"
-                  size={24}
-                  color="#119FB3"
+                name="square-edit-outline"
+                size={24}
+                color="#119FB3"
               />
             </TouchableOpacity>
           </View>
@@ -222,7 +276,11 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </View>
-
+        {isRefreshing && (
+          <View style={styles.refreshLoadingContainer}>
+            <ActivityIndicator size="small" color="black" />
+          </View>
+        )}
         {patientData.therapy_plans && patientData.therapy_plans.length > 0 && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Therapy Plans</Text>
@@ -230,10 +288,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
               .slice()
               .reverse()
               .map((plan, index) => {
-                const progressPercentage = calculateTherapyProgress(
-                  plan.therapy_start,
-                  plan.therapy_end
-                );
+                const progressPercentage = calculateTherapyProgress(plan);
 
                 return (
                   <TouchableOpacity
@@ -311,6 +366,12 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       overflow: "hidden",
       flexDirection: "row",
       alignItems: "center",
+    },
+    refreshLoadingContainer: {
+      padding: 8,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
     },
     progressBar: {
       height: "100%",
