@@ -89,7 +89,7 @@ const EditTherapy: React.FC<EditTherapyProps> = ({
     setSelectedDate(newDate);
   };
 
-  const appointmentTypes = ["Liveswitch", "In Clinic", "In Home", "IP/ICU"];
+  const appointmentTypes = ["In Clinic", "In Home", "IP/ICU", "Liveswitch"];
   useEffect(() => {
     fetchDoctors();
   }, []);

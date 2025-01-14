@@ -72,7 +72,7 @@ const CreateTherapy = ({ route, navigation }: Props) => {
 
   const styles = createStyles(colors);
 
-  const appointmentTypes = ["Liveswitch", "In Clinic", "In Home", "IP/ICU"];
+  const appointmentTypes = ["In Clinic", "In Home", "IP/ICU", "Liveswitch"];
 
   useEffect(() => {
     setShowLiveSwitchLogin(
@@ -614,31 +614,29 @@ const CreateTherapy = ({ route, navigation }: Props) => {
           </View>
         )}
 
-<View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Date</Text>
-              <View style={styles.dateSelector}>
-                <TouchableOpacity onPress={() => changeDate(-1)}>
-                  <Icon name="chevron-left" size={24} color="#119FB3" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setShowDatePicker(true)}
-                  style={styles.dateDisplayContainer}
-                >
-                  <MaterialIcons
-                    name="calendar-month"
-                    size={20}
-                    color="#119FB3"
-                    style={styles.calendarIcon}
-                  />
-                  <Text style={styles.dateText}>
-                    {formatDate(selectedDate)}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => changeDate(1)}>
-                  <Icon name="chevron-right" size={24} color="#119FB3" />
-                </TouchableOpacity>
-              </View>
-            </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Select Date</Text>
+          <View style={styles.dateSelector}>
+            <TouchableOpacity onPress={() => changeDate(-1)}>
+              <Icon name="chevron-left" size={24} color="#119FB3" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowDatePicker(true)}
+              style={styles.dateDisplayContainer}
+            >
+              <MaterialIcons
+                name="calendar-month"
+                size={20}
+                color="#119FB3"
+                style={styles.calendarIcon}
+              />
+              <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => changeDate(1)}>
+              <Icon name="chevron-right" size={24} color="#119FB3" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {showDatePicker && (
           <DateTimePicker
@@ -863,7 +861,7 @@ const createStyles = (colors: any) =>
     dateDisplayContainer: {
       flexDirection: "row",
       alignItems: "center",
-     // backgroundColor: "#F0F8FF",
+      // backgroundColor: "#F0F8FF",
       paddingVertical: 8,
       paddingHorizontal: 15,
       borderRadius: 8,
