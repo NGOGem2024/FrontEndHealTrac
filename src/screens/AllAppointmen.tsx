@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,18 +10,18 @@ import {
   StatusBar,
   Animated,
   Dimensions,
-} from 'react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/Ionicons';
-import {useTheme} from './ThemeContext';
-import {getTheme} from './Theme';
-import axiosInstance from '../utils/axiosConfig';
-import {handleError} from '../utils/errorHandler';
-import AppointmentDetailsScreen from './AppointmentDetails';
-import NoAppointmentsPopup from './Noappointmentspopup';
-import BackTabTop from './BackTopTab';
-import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../types/types';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Icon from "react-native-vector-icons/Ionicons";
+import { useTheme } from "./ThemeContext";
+import { getTheme } from "./Theme";
+import axiosInstance from "../utils/axiosConfig";
+import { handleError } from "../utils/errorHandler";
+import AppointmentDetailsScreen from "./AppointmentDetails";
+import NoAppointmentsPopup from "./Noappointmentspopup";
+import BackTabTop from "./BackTopTab";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../types/types";
 
 type Props = NativeStackScreenProps<RootStackParamList>;
 
@@ -48,18 +48,7 @@ const HEADER_MAX_HEIGHT = 200;
 const HEADER_MIN_HEIGHT = 80;
 const DAYS_TO_LOAD = 7; // Number of days to load at once
 
-const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
-  //const {theme} = useTheme();
-  //const insets = useSafeAreaInsets();
- // const isDarkMode = theme.name === 'dark';
-  // //const styles = getStyles(
-  //   getTheme(
-  //     theme.name as 'purple' | 'blue' | 'green' | 'orange' | 'pink' | 'dark',
-  //   ),
-  //   insets,
-  //   isDarkMode,
-  // );
-
+const AllAppointmentsPage: React.FC<Props> = ({ navigation }) => {
   const [isAppointmentModalVisible, setIsAppointmentModalVisible] =
     useState(false);
   const [data, setData] = useState<DayData[]>([]);
@@ -74,11 +63,11 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
   const flatListRef = useRef<FlatList>(null);
 
   const fetchAppointmentsForDate = async (
-    date: Date,
+    date: Date
   ): Promise<Appointment[]> => {
     try {
-      const formattedDate = date.toISOString().split('T')[0];
-      const response = await axiosInstance.post('/get/appointments', {
+      const formattedDate = date.toISOString().split("T")[0];
+      const response = await axiosInstance.post("/get/appointments", {
         date: formattedDate,
       });
       console.log(response.data);
@@ -89,13 +78,13 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
   };
   const fetchAppointmentsForDateRange = async (
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<DayData[]> => {
     try {
-      const formattedStartDate = startDate.toISOString().split('T')[0];
-      const formattedEndDate = endDate.toISOString().split('T')[0];
+      const formattedStartDate = startDate.toISOString().split("T")[0];
+      const formattedEndDate = endDate.toISOString().split("T")[0];
 
-      const response = await axiosInstance.post('/get/appointments/dates', {
+      const response = await axiosInstance.post("/get/appointments/dates", {
         startDate: formattedStartDate,
         endDate: formattedEndDate,
       });
@@ -109,7 +98,7 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
       const endDateObj = new Date(endDate);
 
       while (currentDate <= endDateObj) {
-        const dateString = currentDate.toISOString().split('T')[0];
+        const dateString = currentDate.toISOString().split("T")[0];
         dayDataArray.push({
           date: new Date(currentDate),
           appointments: appointments[dateString] || [],
@@ -126,7 +115,7 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
 
   const scrollToToday = () => {
     const index = data.findIndex(
-      dayData => dayData.date.toDateString() === new Date().toDateString(),
+      (dayData) => dayData.date.toDateString() === new Date().toDateString()
     );
     if (index !== -1 && flatListRef.current) {
       flatListRef.current.scrollToIndex({
@@ -150,13 +139,13 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
 
       const appointments = await fetchAppointmentsForDateRange(
         startDate,
-        endDate,
+        endDate
       );
       setData(appointments);
 
       // Find today's index
       const todayIdx = appointments.findIndex(
-        day => day.date.toDateString() === today.toDateString(),
+        (day) => day.date.toDateString() === today.toDateString()
       );
       setTodayIndex(todayIdx);
     } catch (error) {
@@ -178,8 +167,9 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
     return (
       <TouchableOpacity
         style={styles.loadPreviousButton}
-        onPress={() => loadMoreDays('past')}
-        disabled={loadingMore}>
+        onPress={() => loadMoreDays("past")}
+        disabled={loadingMore}
+      >
         <View style={styles.loadPreviousContent}>
           {loadingMore ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
@@ -194,12 +184,11 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
     );
   };
 
- 
-  const loadMoreDays = async (direction: 'past' | 'future') => {
+  const loadMoreDays = async (direction: "past" | "future") => {
     if (
       loadingMore ||
-      (direction === 'past' && !hasMorePast) ||
-      (direction === 'future' && !hasMoreFuture)
+      (direction === "past" && !hasMorePast) ||
+      (direction === "future" && !hasMoreFuture)
     ) {
       return;
     }
@@ -207,14 +196,14 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
     setLoadingMore(true);
     try {
       const baseDate =
-        direction === 'past'
+        direction === "past"
           ? new Date(data[0].date)
           : new Date(data[data.length - 1].date);
 
       const startDate = new Date(baseDate);
       const endDate = new Date(baseDate);
 
-      if (direction === 'past') {
+      if (direction === "past") {
         startDate.setDate(baseDate.getDate() - DAYS_TO_LOAD);
         endDate.setDate(baseDate.getDate() - 1);
       } else {
@@ -224,18 +213,18 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
 
       const newAppointments = await fetchAppointmentsForDateRange(
         startDate,
-        endDate,
+        endDate
       );
 
       if (newAppointments.length === 0) {
-        if (direction === 'past') {
+        if (direction === "past") {
           setHasMorePast(false);
         } else {
           setHasMoreFuture(false);
         }
       } else {
-        setData(currentData => {
-          return direction === 'past'
+        setData((currentData) => {
+          return direction === "past"
             ? [...newAppointments, ...currentData]
             : [...currentData, ...newAppointments];
         });
@@ -252,39 +241,69 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
   };
 
   useEffect(() => {
+    const loadInitialData1 = async () => {
+      try {
+        const today = new Date();
+        const startDate = new Date(today);
+        const endDate = new Date(today);
+
+        startDate.setDate(today.getDate() - 2); // Past 2 days
+        endDate.setDate(today.getDate() + DAYS_TO_LOAD - 2); // Next days
+
+        const appointments = await fetchAppointmentsForDateRange(
+          startDate,
+          endDate
+        );
+        setData(appointments);
+
+        const todayIdx = appointments.findIndex(
+          (day) => day.date.toDateString() === today.toDateString()
+        );
+        setTodayIndex(todayIdx);
+      } catch (error) {
+        handleError(error);
+      }
+    };
+
     loadInitialData();
-  }, []);
+
+    const unsubscribe = navigation.addListener("focus", () => {
+      loadInitialData1();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const getStatusColor = (status?: string) => {
-    const colors =  {
-          completed: '#4CAF50',
-          in_progress: '#FFA726',
-          default: '#119FB3',
-        };
+    const colors = {
+      completed: "#4CAF50",
+      in_progress: "#FFA726",
+      default: "#119FB3",
+    };
 
     switch (status?.toLowerCase()) {
-      case 'completed':
+      case "completed":
         return colors.completed;
-      case 'in_progress':
+      case "in_progress":
         return colors.in_progress;
       default:
         return colors.default;
     }
   };
   const getFormattedStatus = (status?: string) => {
-    if (!status) return 'Scheduled';
+    if (!status) return "Scheduled";
 
     switch (status.toLowerCase()) {
-      case 'in_progress':
-        return 'In Progress';
+      case "in_progress":
+        return "In Progress";
       default:
         // Capitalize first letter of each word
         return status
-          .split('_')
+          .split("_")
           .map(
-            word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+            (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
           )
-          .join(' ');
+          .join(" ");
     }
   };
   const formatDate = (date: Date) => {
@@ -295,17 +314,17 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return 'Today';
+      return "Today";
     } else if (date.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
+      return "Tomorrow";
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
+      return "Yesterday";
     }
 
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'short',
-      day: 'numeric',
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
     });
   };
   const renderStartButton = (appointment: Appointment) => (
@@ -316,29 +335,33 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
         setIsAppointmentModalVisible(true);
       }}
       activeOpacity={0.7}
-      style={styles.startButtonContainer}>
+      style={styles.startButtonContainer}
+    >
       <Icon name="play" size={12} color="black" />
       <Text style={styles.startButtonText}>Start</Text>
     </TouchableOpacity>
   );
 
-  const renderAppointment = ({item}: {item: Appointment}) => (
+  const renderAppointment = ({ item }: { item: Appointment }) => (
     <Animated.View style={[styles.appointmentItem]}>
       <View style={styles.appointmentContent}>
         <TouchableOpacity
           style={styles.mainContentTouchable}
           onPress={() => {
-            navigation.navigate('UpdateTherapy', {
+            navigation.navigate("UpdateTherapy", {
               patientId: item.patient_id,
             });
-          }}>
+          }}
+        >
           <View style={styles.timeContainer}>
-            <Text style={styles.appointmentTime}>{item.therepy_start_time}</Text>
+            <Text style={styles.appointmentTime}>
+              {item.therepy_start_time}
+            </Text>
             <Icon
               name={
-                item.therepy_type.toLowerCase().includes('video')
-                  ? 'videocam'
-                  : 'person'
+                item.therepy_type.toLowerCase().includes("video")
+                  ? "videocam"
+                  : "person"
               }
               size={24}
               color="#119FB3"
@@ -349,7 +372,7 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
           <View style={styles.appointmentInfo}>
             <View style={styles.typeAndButtonContainer}>
               <Text style={styles.appointmentType}>{item.therepy_type}</Text>
-              {(!item.status || item.status.toLowerCase() !== 'completed') &&
+              {(!item.status || item.status.toLowerCase() !== "completed") &&
                 renderStartButton(item)}
             </View>
 
@@ -370,9 +393,10 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
                   {
                     backgroundColor: getStatusColor(item.status),
                   },
-                ]}>
+                ]}
+              >
                 <Text style={styles.statusText}>
-                  {item.status || 'Scheduled'}
+                  {item.status || "Scheduled"}
                 </Text>
               </View>
             </View>
@@ -391,13 +415,13 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
     </View>
   );
 
-  const renderDaySection = ({item}: {item: DayData}) => (
+  const renderDaySection = ({ item }: { item: DayData }) => (
     <View style={styles.daySection}>
       <Text style={styles.daySectionHeader}>{formatDate(item.date)}</Text>
       {item.appointments.length > 0
-        ? item.appointments.map(appointment => (
+        ? item.appointments.map((appointment) => (
             <View key={appointment._id}>
-              {renderAppointment({item: appointment})}
+              {renderAppointment({ item: appointment })}
             </View>
           ))
         : renderNoAppointments()}
@@ -425,8 +449,8 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar
-       // barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={'white'}
+        // barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        backgroundColor={"white"}
       />
       <BackTabTop screenName="Appointments" />
       <View style={styles.view}>
@@ -434,16 +458,16 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
           ref={flatListRef}
           data={data}
           renderItem={renderDaySection}
-          keyExtractor={item => item.date.toISOString()}
-          onEndReached={() => loadMoreDays('future')}
+          keyExtractor={(item) => item.date.toISOString()}
+          onEndReached={() => loadMoreDays("future")}
           onEndReachedThreshold={0.5}
           onRefresh={loadInitialData}
           refreshing={loading}
           ListHeaderComponent={renderLoadPreviousButton}
           ListFooterComponent={renderFooter}
           ListEmptyComponent={!loading ? renderNoAppointments : null}
-          onScrollToIndexFailed={info => {
-            const wait = new Promise(resolve => setTimeout(resolve, 100));
+          onScrollToIndexFailed={(info) => {
+            const wait = new Promise((resolve) => setTimeout(resolve, 100));
             wait.then(() => {
               if (flatListRef.current) {
                 flatListRef.current.scrollToIndex({
@@ -455,13 +479,13 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
             });
           }}
           onScroll={Animated.event(
-            [{nativeEvent: {contentOffset: {y: scrollY}}}],
-            {useNativeDriver: false},
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
           )}
           scrollEventThrottle={16}
           contentContainerStyle={[
             styles.listContainer,
-            data.length === 0 && {flex: 1, justifyContent: 'center'},
+            data.length === 0 && { flex: 1, justifyContent: "center" },
           ]}
         />
       </View>
@@ -477,254 +501,254 @@ const AllAppointmentsPage: React.FC<Props> = ({navigation}) => {
   );
 };
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "black",
+  },
+  mainContentTouchable: {
+    flex: 1,
+    flexDirection: "row",
+  },
 
-    safeArea: {
-      flex: 1,
-      backgroundColor: 'black',
-    },   mainContentTouchable: {
-      flex: 1,
-      flexDirection: 'row',
-    },
-    
-    appointmentContent: {
-      flex: 1,
-      padding: 16,
-      position: 'relative',
-    },
+  appointmentContent: {
+    flex: 1,
+    padding: 16,
+    position: "relative",
+  },
 
-    startButtonContainer: {
-      backgroundColor: '#aeebbd',
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      borderRadius: 8,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 2,
-      zIndex: 2, // Ensure button is above other elements
-      elevation: 2, // For Android
-      position: 'absolute',  
-      right: 2,            
-      top: '20%',           
-      transform: [{translateY: 22}, {translateX: 25}], 
-    },
-    startButtonText: {
-      color: 'black',
-      fontSize: 16,
-      fontWeight: '600',
-    },
-    fullScreenModal: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'white',
-      zIndex: 1000,
-    },
-    typeAndButtonContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 4,
-      width: '85%',
-    },
-    
-    appointmentActions: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginTop: 8,
-    },
-    startButton: {
-      backgroundColor: '#27ae60',
-      paddingHorizontal: 16,
-      paddingVertical: 6,
-      borderRadius: 12,
-      marginLeft: 8,
-    },
-    loadPreviousButton: {
-      backgroundColor: '#306b73',
-      marginHorizontal: 16,
-      marginVertical: 8,
-      borderRadius: 12,
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-    },
-    loadPreviousContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 8,
-      borderRadius: 8,
-      backgroundColor:"#306b73",
-    },
-    loadPreviousText: {
-      color: '#b7c7c9',
-      fontSize: 16,
-      fontWeight: '600',
-      marginLeft: 8,
-    },
-    view: {
-      flex: 1,
-      backgroundColor: '#119FB3',
-    },
-    header: {
-      backgroundColor:'#119FB3',
-      justifyContent: 'flex-end',
-      paddingHorizontal: 20,
-      borderBottomLeftRadius: 30,
-      borderBottomRightRadius: 30,
-      elevation: 4,
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      zIndex: 1000,
-    },
-    headerTitleExpanded: {
-      position: 'absolute',
-      bottom: 20,
-      left: 20,
-      color: '#FFFFFF',
-      fontWeight: 'bold',
-    },
-    headerTitleCollapsed: {
-      position: 'absolute',
-      bottom: 20,
-      left: 20,
-      color: '#FFFFFF',
-      fontWeight: 'bold',
-      fontSize: 24,
-    },
-    listContainer: {
-      flexGrow: 1,
-      paddingTop: 16,
-    },
-    daySection: {
-      marginBottom: 20,
-    },
-    daySectionHeader: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color:  'black',
-      marginBottom: 12,
-      paddingHorizontal: 16,
-    },
-    headerTitle: {
-      fontSize: 24,
-      fontWeight: 'bold',
-      color: '#FFFFFF',
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor:  '#F5F6FA',
-    },
-    loadingText: {
-      marginTop: 10,
-      fontSize: 16,
-      color:  '#119FB3',
-    },
-    loadingMore: {
-      paddingVertical: 20,
-      alignItems: 'center',
-    },
-    appointmentItem: {
-      marginHorizontal: 16,
-      marginBottom: 12,
-      borderRadius: 16,
-      backgroundColor:  '#FFFFFF',
-      elevation: 4,
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      borderColor: 'white',
-      borderWidth: 1,
-    },
-   
-    timeContainer: {
-      alignItems: 'center',
-      marginRight: 16,
-      paddingRight: 16,
-      borderRightWidth: 1,
-      borderRightColor:  '#E0E0E0',
-    },
-    appointmentTime: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color:  '#2C3E50',
-      marginBottom: 8,
-    },
-    appointmentIcon: {
-      backgroundColor: '#E8F6F8',
-      padding: 8,
-      borderRadius: 12,
-    },
-    appointmentInfo: {
-      flex: 1,
-    },
-    appointmentType: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: '#2C3E50',
-      marginBottom: 4,
-    },
-    patientName: {
-      fontSize: 14,
-      color: '#7F8C8D',
-      marginBottom: 2,
-    },
-    doctorName: {
-      fontSize: 14,
-      color:  '#119FB3',
-      marginBottom: 8,
-    },
-    noAppointmentsContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor:  '#FFFFFF',
-      borderRadius: 16,
-      padding: 24,
-      margin: 16,
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity:  0.1,
-      shadowRadius: 4,
-      borderColor: 'white',
-      borderWidth: 1,
-      minHeight: 150,
-    },
-    noAppointmentsText: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: '#2C3E50',
-      marginTop: 12,
-      marginBottom: 4,
-    },
-    noAppointmentsSubText: {
-      fontSize: 14,
-      color: '#7F8C8D',
-      textAlign: 'center',
-    },
-    statusBadge: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      borderRadius: 12,
-    },
-    statusText: {
-      color: '#FFFFFF',
-      fontSize: 12,
-      fontWeight: '600',
-    },
-  });
+  startButtonContainer: {
+    backgroundColor: "#aeebbd",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    zIndex: 2, // Ensure button is above other elements
+    elevation: 2, // For Android
+    position: "absolute",
+    right: 2,
+    top: "20%",
+    transform: [{ translateY: 22 }, { translateX: 25 }],
+  },
+  startButtonText: {
+    color: "black",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  fullScreenModal: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "white",
+    zIndex: 1000,
+  },
+  typeAndButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+    width: "85%",
+  },
+
+  appointmentActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  startButton: {
+    backgroundColor: "#27ae60",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  loadPreviousButton: {
+    backgroundColor: "#306b73",
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  loadPreviousContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#306b73",
+  },
+  loadPreviousText: {
+    color: "#b7c7c9",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  view: {
+    flex: 1,
+    backgroundColor: "#119FB3",
+  },
+  header: {
+    backgroundColor: "#119FB3",
+    justifyContent: "flex-end",
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    zIndex: 1000,
+  },
+  headerTitleExpanded: {
+    position: "absolute",
+    bottom: 20,
+    left: 20,
+    color: "#FFFFFF",
+    fontWeight: "bold",
+  },
+  headerTitleCollapsed: {
+    position: "absolute",
+    bottom: 20,
+    left: 20,
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    fontSize: 24,
+  },
+  listContainer: {
+    flexGrow: 1,
+    paddingTop: 16,
+  },
+  daySection: {
+    marginBottom: 20,
+  },
+  daySectionHeader: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "black",
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F6FA",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#119FB3",
+  },
+  loadingMore: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  appointmentItem: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderColor: "white",
+    borderWidth: 1,
+  },
+
+  timeContainer: {
+    alignItems: "center",
+    marginRight: 16,
+    paddingRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: "#E0E0E0",
+  },
+  appointmentTime: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#2C3E50",
+    marginBottom: 8,
+  },
+  appointmentIcon: {
+    backgroundColor: "#E8F6F8",
+    padding: 8,
+    borderRadius: 12,
+  },
+  appointmentInfo: {
+    flex: 1,
+  },
+  appointmentType: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2C3E50",
+    marginBottom: 4,
+  },
+  patientName: {
+    fontSize: 14,
+    color: "#7F8C8D",
+    marginBottom: 2,
+  },
+  doctorName: {
+    fontSize: 14,
+    color: "#119FB3",
+    marginBottom: 8,
+  },
+  noAppointmentsContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 24,
+    margin: 16,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderColor: "white",
+    borderWidth: 1,
+    minHeight: 150,
+  },
+  noAppointmentsText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#2C3E50",
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  noAppointmentsSubText: {
+    fontSize: 14,
+    color: "#7F8C8D",
+    textAlign: "center",
+  },
+  statusBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+});
 
 export default AllAppointmentsPage;
