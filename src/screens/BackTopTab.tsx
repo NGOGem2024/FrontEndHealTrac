@@ -41,6 +41,7 @@ const BackTabTop: React.FC<{ screenName: string }> = ({ screenName }) => {
           style={styles.logoImage}
           resizeMode="contain"
         />
+        <Text style={styles.versionText}>v0.5</Text>
       </TouchableOpacity>
       <View style={styles.rightSection}>
         <Text style={styles.screenNameText}>{screenName}</Text>
@@ -92,6 +93,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#119FB3",
     borderBottomWidth: 1,
     borderBottomColor: "white",
+  },
+  versionText: {
+    position: "absolute",
+    bottom: 1,
+    right: -18,
+    color: "#FFFFFF",
+    fontSize: 12,
+    opacity: 0.8,
+    fontWeight: "bold",
   },
   backButton: {
     flexDirection: "row",

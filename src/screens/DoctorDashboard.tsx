@@ -304,11 +304,14 @@ const DoctorDashboard: React.FC = () => {
 
     return (
       <View style={styles.dashboardHeader}>
-        <Image
-          source={require("../assets/logo3.png")}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
+        <View>
+          <Image
+            source={require("../assets/logo3.png")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.versionText}>v0.5</Text>
+        </View>
         <TouchableOpacity style={styles.profileButton} onPress={toggleDropdown}>
           <Ionicons name="person-circle-outline" size={30} color="#FFFFFF" />
         </TouchableOpacity>
@@ -553,6 +556,15 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       borderRadius: 5,
       // height:25,
       paddingVertical: 5,
+    },
+    versionText: {
+      position: "absolute",
+      bottom: 1,
+      right: -18,
+      color: "#FFFFFF",
+      fontSize: 12,
+      opacity: 0.8,
+      fontWeight: "bold",
     },
     dashboardHeader: {
       position: "absolute",
