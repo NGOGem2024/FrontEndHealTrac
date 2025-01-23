@@ -26,6 +26,7 @@ import TherapyPlanDetails from "./planDetails";
 import PaymentDetailsScreen from "./paymentpage";
 import AllAppointmentsScreen from "./AllAppointmentsScreen";
 import DoctorPatients from "./DoctorPatients";
+import TherapySessionsList from "./sessiondetails";
 
 const Stack = createNativeStackNavigator();
 
@@ -64,6 +65,11 @@ const HomeStackNavigator = () => {
       <Stack.Screen
         name="Auth"
         component={Auth}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="therapySessions"
+        component={TherapySessionsList}
         options={{ headerShown: false }}
       />
       <Stack.Screen
@@ -146,11 +152,11 @@ const HomeStackNavigator = () => {
         component={AllAppointmentsScreen}
         options={{ headerShown: false }}
       />
-        <Stack.Screen
-      name="MyPatient"
-      component={DoctorPatients}
-      options={{headerShown: false}}
-    />
+      <Stack.Screen
+        name="MyPatient"
+        component={DoctorPatients}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 };

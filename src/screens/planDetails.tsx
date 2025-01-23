@@ -225,7 +225,15 @@ const TherapyPlanDetails: React.FC = () => {
               </Text>
 
               {plan.therapy_sessions.map((session, index) => (
-                <View key={session._id} style={styles.sessionItem}>
+                <TouchableOpacity
+                  key={session._id}
+                  style={styles.sessionItem}
+                  onPress={() =>
+                    navigation.navigate("therapySessions", {
+                      planId: plan._id,
+                    })
+                  }
+                >
                   <View style={styles.sessionHeader}>
                     <Text style={styles.sessionNumber}>
                       Session {index + 1}
@@ -244,7 +252,7 @@ const TherapyPlanDetails: React.FC = () => {
                       <Text style={styles.statusText}>{session.status}</Text>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </>
           )}

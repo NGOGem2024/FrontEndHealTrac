@@ -16,6 +16,7 @@ import {
   MaterialIcons,
   AntDesign,
   Octicons,
+  FontAwesome,
   MaterialCommunityIcons,
   Ionicons,
 } from "@expo/vector-icons";
@@ -57,6 +58,7 @@ interface PatientData {
   patient_id: string;
   patient_address1: string;
   therapy_plans: TherapyPlan[];
+  doctor_name: string;
 }
 
 const calculateTherapyProgress = (therapyPlan: TherapyPlan): number => {
@@ -219,6 +221,12 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
               <View style={styles.infoRow}>
                 <MaterialIcons name="email" size={20} color="#119FB3" />
                 <Text style={styles.infoText}>{patientData.patient_email}</Text>
+              </View>
+            )}
+            {patientData?.doctor_name && (
+              <View style={styles.infoRow}>
+                <FontAwesome name="user-md" size={20} color="#119FB3" />
+                <Text style={styles.infoText}>{patientData.doctor_name}</Text>
               </View>
             )}
             <View style={styles.infoRow}>

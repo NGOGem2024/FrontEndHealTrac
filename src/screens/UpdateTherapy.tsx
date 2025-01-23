@@ -44,6 +44,7 @@ interface Therapy {
   therepy_start_time: string;
   therepy_end_time?: string;
   status?: string;
+  doctor_name?: string; 
   therepy_cost?: string;
 }
 
@@ -361,7 +362,11 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
               style={styles.editButton}
               onPress={() => handleEditTherapy(item)}
             >
-              <MaterialCommunityIcons name="square-edit-outline" size={24} color="#119FB3" />
+              <MaterialCommunityIcons
+                name="square-edit-outline"
+                size={24}
+                color="#119FB3"
+              />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.deleteButton}
@@ -377,6 +382,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
         </View>
         <View style={styles.therapyDetails}>
           <Text style={styles.therapyText}>Date: {item.therepy_date}</Text>
+          <Text style={styles.therapyText}>Doctor: {item.doctor_name}</Text>
           <Text style={styles.therapyText}>
             Start Time: {item.therepy_start_time}
           </Text>

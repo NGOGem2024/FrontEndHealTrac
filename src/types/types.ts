@@ -30,6 +30,7 @@ export type RootStackParamList = {
   AppointmentDetails: { appointment: any };
   AppointmentDetailsScreen: { appointment: any };
   UpdateDoctor: { doctorId?: string };
+  therapySessions: { planId?: string };
   HomeStackNavigator: undefined;
   TodaysAppointments: undefined;
   AllDoctors: undefined;
