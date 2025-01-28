@@ -24,6 +24,8 @@ import { RadioButton } from "react-native-paper";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import axiosInstance from "../utils/axiosConfig";
 import BackTabTop from "./BackTopTab";
+import LoadingScreen from "../components/loadingScreen";
+import { CustomPicker, CustomRadioGroup } from "./customradio";
 
 const { width } = Dimensions.get("window");
 
@@ -211,11 +213,11 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#119FB3" />
-        <Text style={styles.loadingText}>Loading profile information...</Text>
+        <LoadingScreen />
       </View>
     );
   }
+
 
   if (!session.idToken) {
     return (
@@ -304,39 +306,27 @@ const EditDoctor: React.FC<DoctorScreenProps> = ({ navigation, route }) => {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Role</Text>
-            <Picker
+            <CustomPicker
               selectedValue={profileInfo.is_admin}
-              style={styles.picker}
-              onValueChange={(itemValue) =>
-                handleInputChange("is_admin", itemValue)
-              }
-            >
-              <Picker.Item label="Doctor" value={false} />
-              <Picker.Item label="Admin" value={true} />
-            </Picker>
+              onValueChange={value => handleInputChange('is_admin', value)}
+              label="Role"
+              style={styles.input}
+              textColor='black'
+            />
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Status</Text>
-            <View style={styles.radioButtonContainer}>
-              <RadioButton
-                value="active"
-                status={
-                  profileInfo.status === "active" ? "checked" : "unchecked"
-                }
-                onPress={() => handleInputChange("status", "active")}
-              />
-              <Text style={styles.labelText}>Active</Text>
-
-              <RadioButton
-                value="inactive"
-                status={
-                  profileInfo.status === "inactive" ? "checked" : "unchecked"
-                }
-                onPress={() => handleInputChange("status", "inactive")}
-              />
-              <Text style={styles.labelText}>Inactive</Text>
-            </View>
+            <CustomRadioGroup
+              value={profileInfo.status}
+              onValueChange={value => handleInputChange('status', value)}
+              options={[
+                {label: 'Active', value: 'active'},
+                {label: 'Inactive', value: 'inactive'},
+              ]}
+              label="Status"
+              textColor='black'
+            />
           </View>
 
           <TouchableOpacity
@@ -364,7 +354,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     scrollView: {
       flex: 1,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
 
     loadingContainer: {
@@ -394,7 +384,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       position: "absolute",
       bottom: 0,
       right: width / 2 - 75,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       borderRadius: 20,
       padding: 8,
     },
@@ -409,7 +399,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     label: {
       fontSize: 16,
-      color: "#119FB3",
+      color:'#007B8E',
       marginBottom: 5,
       fontWeight: "bold",
     },
@@ -442,7 +432,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 20,
     },
     saveButton: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       borderRadius: 10,
       padding: 15,
       alignItems: "center",

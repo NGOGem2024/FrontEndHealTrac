@@ -19,6 +19,7 @@ import { RootStackParamList } from "../types/types";
 import BackTabTop from "./BackTopTab";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StackNavigationProp } from "@react-navigation/stack";
+import LoadingScreen from "../components/loadingScreen";
 
 // Define proper interfaces
 interface SessionRemark {
@@ -182,16 +183,11 @@ const TherapyPlanDetails: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor="black"
-          translucent={false}
-        />
-        <ActivityIndicator size="large" color="#119FB3" />
-        <Text style={styles.loadingText}>Loading Plan Details...</Text>
+        <LoadingScreen />
       </View>
     );
   }
+
   const renderSessionsCard = () => {
     if (!plan.estimated_sessions && !plan.therapy_sessions) return null;
 
@@ -302,7 +298,7 @@ const TherapyPlanDetails: React.FC = () => {
                 <MaterialCommunityIcons
                   name="calendar-clock"
                   size={24}
-                  color="#119FB3"
+                  color='#007B8E'
                 />
               </TouchableOpacity>
               <TouchableOpacity
@@ -316,7 +312,7 @@ const TherapyPlanDetails: React.FC = () => {
                 <MaterialCommunityIcons
                   name="square-edit-outline"
                   size={24}
-                  color="#119FB3"
+                  color='#007B8E'
                 />
               </TouchableOpacity>
             </View>
@@ -372,7 +368,7 @@ const TherapyPlanDetails: React.FC = () => {
               <MaterialCommunityIcons
                 name="information-outline"
                 size={24}
-                color="#119FB3"
+                color='#007B8E'
               />
             </TouchableOpacity>
           </View>
@@ -484,7 +480,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     sessionItem: {
       borderLeftWidth: 2,
-      borderLeftColor: "#119FB3",
+      borderLeftColor: '#007B8E',
       paddingLeft: 12,
       marginBottom: 12,
     },
@@ -542,7 +538,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     remarkSectionTitle: {
       fontSize: 16,
       fontWeight: "600",
-      color: "#119FB3",
+      color: '#007B8E',
       marginBottom: 12,
       marginTop: 8,
     },
@@ -558,7 +554,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     remarkItem: {
       marginBottom: 16,
       borderLeftWidth: 2,
-      borderLeftColor: "#119FB3",
+      borderLeftColor:'#007B8E',
       paddingLeft: 12,
     },
     remarkHeader: {
@@ -584,17 +580,17 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     safeArea: {
       flex: 1,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     container: {
       flex: 1,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     loadingContainer: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     loadingText: {
       marginTop: 10,
@@ -605,7 +601,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     errorText: {
       color: "#FFFFFF",
@@ -615,7 +611,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flexDirection: "row",
       alignItems: "center",
       padding: 16,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     backButton: {
       marginRight: 16,
@@ -660,12 +656,12 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     patientName: {
       fontSize: 18,
-      color: "#119FB3",
+      color: '#007B8E',
       marginBottom: 4,
     },
     category: {
       fontSize: 16,
-      color: "#119FB3",
+      color: '#007B8E',
       marginBottom: 16,
     },
     progressContainer: {
@@ -679,7 +675,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     progressFill: {
       height: "100%",
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       borderRadius: 2,
     },
     duration: {
@@ -721,7 +717,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginLeft: 8,
     },
     balance: {
-      color: "#119FB3",
+      color: '#007B8E',
       fontWeight: "bold",
     },
     paymentInfo: {
@@ -732,7 +728,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
 
     remarkLabel: {
       fontSize: 14,
-      color: "#119FB3",
+      color: '#007B8E',
       marginBottom: 4,
     },
   });

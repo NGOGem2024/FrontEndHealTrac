@@ -19,6 +19,7 @@ import { RootStackNavProps } from "../types/types";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import BackTopTab from "./BackTopTab";
 import instance from "../utils/axiosConfig";
+import LoadingScreen from "../components/loadingScreen";
 
 interface Doctor {
   _id: string;
@@ -106,11 +107,10 @@ const AllDoctors: React.FC<RootStackNavProps<"AllDoctors">> = ({
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#119FB3" />
+        <LoadingScreen />
       </View>
     );
   }
-
   return (
     <ImageBackground
       source={require("../assets/bac2.jpg")}
@@ -134,18 +134,18 @@ const AllDoctors: React.FC<RootStackNavProps<"AllDoctors">> = ({
                       {item.doctor_first_name} {item.doctor_last_name}
                     </Text>
                     <View style={styles.microicon}>
-                      <MaterialIcons name="call" size={12} color="#119FB3" />
+                      <MaterialIcons name="call" size={12} color='#007B8E' />
                       <Text style={styles.doctorInfo}>{item.doctor_phone}</Text>
                     </View>
                     <View style={styles.microicon}>
-                      <MaterialIcons name="email" size={12} color="#119FB3" />
+                      <MaterialIcons name="email" size={12} color='#007B8E' />
                       <Text style={styles.doctorInfo}>{item.doctor_email}</Text>
                     </View>
                     <View style={styles.microicon}>
                       <MaterialIcons
                         name="business"
                         size={12}
-                        color="#119FB3"
+                        color='#007B8E'
                       />
                       <Text style={styles.doctorInfo}>
                         {item.organization_name}
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
   },
   backgroundImage: {
     flex: 1,
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
     justifyContent: "flex-start",
   },
   backButton: {
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 10,
     right: 10,
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 4,

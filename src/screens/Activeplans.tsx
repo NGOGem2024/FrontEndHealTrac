@@ -139,7 +139,7 @@ const ActiveTherapyPlans: React.FC = () => {
 const getStyles = (theme: ReturnType<typeof getTheme>) =>
   StyleSheet.create({
     container: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     loadingContainer: {
       padding: 20,
@@ -203,7 +203,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     progressFill: {
       height: "100%",
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       borderRadius: 2,
     },
     daysRemaining: {

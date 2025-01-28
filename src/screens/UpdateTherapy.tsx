@@ -31,6 +31,7 @@ import Animated, {
 } from "react-native-reanimated";
 import BackTabTop from "./BackTopTab";
 import AppointmentDetails from "./AppointmentDetails";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface Therapy {
   _id: string;
@@ -365,7 +366,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
               <MaterialCommunityIcons
                 name="square-edit-outline"
                 size={24}
-                color="#119FB3"
+                color='#007B8E'
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -377,7 +378,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
           </View>
         )}
         <View style={styles.therapyHeader}>
-          <MaterialIcons name="event" size={24} color="#119FB3" />
+          <MaterialIcons name="event" size={24} color='#007B8E' />
           <Text style={styles.therapyType}>{item.therepy_type}</Text>
         </View>
         <View style={styles.therapyDetails}>
@@ -425,10 +426,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
   };
 
   return (
-    <ImageBackground
-      source={require("../assets/bac2.jpg")}
-      style={styles.backgroundImage}
-    >
+    <SafeAreaView style={styles.safeArea}>
       <BackTabTop screenName="Appointments" />
       <View style={styles.container}>
         {error && <Text style={styles.error}>{error}</Text>}
@@ -651,7 +649,7 @@ const TherapyHistory: React.FC<TherapyHistoryScreenProps> = ({
           />
         </View>
       )}
-    </ImageBackground>
+      </SafeAreaView>
   );
 };
 
@@ -662,11 +660,14 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(17, 159, 179, 0.1)",
   },
   selectedDropdownText: {
-    color: "#119FB3",
+    color: '#007B8E',
     fontWeight: "bold",
   },
   dropdownText: {
     color: "#333333",
+  },
+  safeArea: {
+    flex: 1,
   },
   dropdownItem: {
     padding: 12,
@@ -741,7 +742,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF6B6B",
   },
   doneButton: {
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
   },
   centeredView: {
     flex: 1,
@@ -768,7 +769,7 @@ const styles = StyleSheet.create({
   newUserTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#119FB3",
+    color: '#007B8E',
     marginBottom: 15,
   },
   newUserText: {
@@ -778,7 +779,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   createTherapyButton: {
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
     borderRadius: 10,
     padding: 10,
     elevation: 2,
@@ -790,12 +791,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   loadingText: {
-    color: "#FFFFFF",
+    color: "#000000",
     textAlign: "center",
     fontSize: 16,
   },
   buttonSave: {
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
   },
 
   therapyCard: {
@@ -817,7 +818,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#119FB3",
+    borderColor: '#007B8E',
     borderRadius: 5,
     height: 40,
     marginBottom: 20,
@@ -834,7 +835,7 @@ const styles = StyleSheet.create({
   therapyType: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#119FB3",
+    color: '#007B8E',
     marginLeft: 8,
   },
   therapyDetails: {
@@ -860,7 +861,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   joinButton: {
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
   },
   recordButton: {
     backgroundColor: "#2596be",
@@ -876,7 +877,7 @@ const styles = StyleSheet.create({
     fontSize: windowWidth > 360 ? 16 : 14,
   },
   noTherapyText: {
-    color: "#FFFFFF",
+    color: "#000000",
     textAlign: "center",
     fontSize: 16,
     marginTop: 20,
@@ -885,7 +886,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(17, 159, 179, 0.8)",
+    backgroundColor:'#007B8E',
     padding: 10,
     borderRadius: 5,
     marginBottom: 10,
@@ -917,7 +918,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 15,
-    color: "#119FB3",
+    color: '#007B8E',
   },
   modalText: {
     marginBottom: 10,
@@ -937,7 +938,7 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   buttonClose: {
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
   },
   textStyle: {
     color: "white",

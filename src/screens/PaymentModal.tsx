@@ -171,7 +171,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               <FontAwesome
                 name={isAdditionalServicesOpen ? "minus" : "plus"}
                 size={20}
-                color="#119FB3"
+                color='#007B8E'
               />
               <Text style={styles.servicesHeaderText}>Additional Services</Text>
             </TouchableOpacity>
@@ -242,7 +242,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   );
 };
 const COLORS = {
-  primary: "#119FB3",
+  primary: '#007B8E',
   secondary: "#6c757d",
   text: "#2c3e50",
   border: "#ced4da",
@@ -385,7 +385,7 @@ const getModalStyles = () =>
       fontSize: 13,
     },
     addButton: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       paddingVertical: 12,
       paddingHorizontal: 16,
       borderRadius: 10,
@@ -411,7 +411,7 @@ const getModalStyles = () =>
     addonAmount: {
       flex: 1,
       fontSize: 16,
-      color: "#119FB3",
+      color: '#007B8E',
       fontWeight: "500",
       textAlign: "right",
       marginRight: 12,
@@ -432,7 +432,7 @@ const getModalStyles = () =>
     },
     totalAmount: {
       fontSize: 20,
-      color: "#119FB3",
+      color: '#007B8E',
       fontWeight: "bold",
     },
     footer: {
@@ -449,7 +449,7 @@ const getModalStyles = () =>
     },
     confirmButton: {
       width: "50%",
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       paddingVertical: 12,
       borderRadius: 10,
       alignItems: "center",
@@ -462,7 +462,7 @@ const getModalStyles = () =>
       fontWeight: "bold",
     },
     paymentNumberBadge: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       paddingVertical: 5,
       paddingHorizontal: 10,
       marginVertical: 5,

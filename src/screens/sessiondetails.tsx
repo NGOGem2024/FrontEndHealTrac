@@ -170,18 +170,18 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     container: {
       flex: 1,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       padding: 16,
     },
     loadingContainer: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "#119FB3",
+      backgroundColor:'#007B8E',
     },
     loadingText: {
       marginTop: 10,
@@ -244,7 +244,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flex: 1,
     },
     linkButton: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",

@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2a7fba", // Changed to match Google sign-in button color
   },
   refreshButton: {
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
   },
   buttonText: {
     color: "#fff",

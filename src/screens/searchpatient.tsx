@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -7,20 +7,18 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+  SafeAreaView,
+} from 'react-native';
 import {
   NavigationProp,
   ParamListBase,
   useNavigation,
-  useIsFocused,
-} from "@react-navigation/native";
-import axios from "axios";
-import { useSession } from "../context/SessionContext";
-import Icon from "react-native-vector-icons/FontAwesome";
-import axiosInstance from "../utils/axiosConfig";
-import BackTabTop from "./BackTopTab";
+} from '@react-navigation/native';
+import axios from 'axios';
+import {useSession} from '../context/SessionContext';
+import Icon from 'react-native-vector-icons/FontAwesome';
+import axiosInstance from '../utils/axiosConfig';
+import BackTabTop from './BackTopTab';
 
 interface Patient {
   _id: string;
@@ -34,58 +32,54 @@ interface Props {
   navigation: NavigationProp<ParamListBase>;
 }
 
-const SearchPatients: React.FC<Props> = ({ navigation }) => {
-  const [searchQuery, setSearchQuery] = useState("");
+const SearchPatients: React.FC<Props> = ({navigation}) => {
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [noResultsMessage, setNoResultsMessage] = useState("");
+  const [noResultsMessage, setNoResultsMessage] = useState('');
   const searchInputRef = useRef<TextInput>(null);
-  const isFocused = useIsFocused();
 
-  const { session } = useSession();
+  const {session} = useSession();
 
-  // Auto-focus the search input when the screen is focused
   useEffect(() => {
-    if (isFocused && searchInputRef.current) {
-      // Small delay to ensure the keyboard shows up properly after navigation
-      const timer = setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
+    // Auto-focus the search input when component mounts
+    const focusTimeout = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100); // Small delay to ensure component is fully mounted
 
-      return () => clearTimeout(timer);
-    }
-  }, [isFocused]);
+    return () => clearTimeout(focusTimeout);
+  }, []);
 
   useEffect(() => {
     if (searchQuery.length > 2) {
       handleSearch();
     } else {
       setSearchResults([]);
-      setNoResultsMessage("");
+      setNoResultsMessage('');
     }
   }, [searchQuery]);
 
   const handleSearch = async () => {
     setIsLoading(true);
-    setNoResultsMessage("");
+    setNoResultsMessage('');
     try {
       const response = await axiosInstance.get(
         `/search/patient?query=${searchQuery}`,
         {
           headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + session.idToken,
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + session.idToken,
           },
-        }
+        },
       );
       setSearchResults(response.data.patients);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         setSearchResults([]);
-        setNoResultsMessage("No patients found with this name.");
+        setNoResultsMessage('No patients found with this name.');
       } else {
-        console.error("Error searching patients:", error);
-        setNoResultsMessage("Type something Please...");
+        console.error('Error searching patients:', error);
+        setNoResultsMessage('Type something Please...');
       }
     } finally {
       setIsLoading(false);
@@ -93,14 +87,13 @@ const SearchPatients: React.FC<Props> = ({ navigation }) => {
   };
 
   const navigateToPatient = (patientId: string) => {
-    navigation.navigate("Patient", { patientId });
+    navigation.navigate('Patient', {patientId});
   };
 
-  const renderPatientItem = ({ item }: { item: Patient }) => (
+  const renderPatientItem = ({item}: {item: Patient}) => (
     <TouchableOpacity
       style={styles.patientItem}
-      onPress={() => navigateToPatient(item._id)}
-    >
+      onPress={() => navigateToPatient(item._id)}>
       <Text style={styles.patientName}>
         {item.patient_first_name} {item.patient_last_name}
       </Text>
@@ -110,99 +103,99 @@ const SearchPatients: React.FC<Props> = ({ navigation }) => {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-    >
-      <View style={styles.searchContainer}>
-        <TextInput
-          ref={searchInputRef}
-          style={styles.searchBar}
-          placeholder="Search by name"
-          placeholderTextColor="rgba(255, 255, 255, 0.8)"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoFocus={true} // Enable auto-focus
-          returnKeyType="search"
-          onSubmitEditing={handleSearch}
-        />
-        <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
-          <Icon
-            name="search"
-            size={20}
-            color="#333333"
-            style={styles.searchIcon}
+    <SafeAreaView style={styles.safeArea}>
+      <BackTabTop screenName="Search" />
+      <View style={styles.container}>
+        <View style={styles.searchContainer}>
+          <TextInput
+            ref={searchInputRef}
+            style={styles.searchBar}
+            placeholder="Search by name"
+            placeholderTextColor="rgba(255, 255, 255, 0.8)"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus={true}
           />
-        </TouchableOpacity>
+          <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
+            <Icon
+              name="search"
+              size={20}
+              color="#333333"
+              style={styles.searchIcon}
+            />
+          </TouchableOpacity>
+        </View>
+        {isLoading ? (
+          <ActivityIndicator size="large" color="white" />
+        ) : (
+          <FlatList
+            data={searchResults}
+            renderItem={renderPatientItem}
+            keyExtractor={item => item._id}
+            ListEmptyComponent={
+              noResultsMessage ? (
+                <Text style={styles.emptyText}>{noResultsMessage}</Text>
+              ) : null
+            }
+          />
+        )}
       </View>
-      {isLoading ? (
-        <ActivityIndicator size="large" color="white" />
-      ) : (
-        <FlatList
-          data={searchResults}
-          renderItem={renderPatientItem}
-          keyExtractor={(item) => item._id}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={
-            noResultsMessage ? (
-              <Text style={styles.emptyText}>{noResultsMessage}</Text>
-            ) : null
-          }
-        />
-      )}
-    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
-// Updated styles
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    // backgroundColor: 'black',
+  },
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: "#119FB3",
+    padding: 10,
+    backgroundColor: '#007B8E',
   },
   searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
     borderRadius: 20,
-    padding: 10,
-    marginTop: 10,
+    padding: 2,
     marginBottom: 16,
   },
   searchBar: {
     flex: 1,
     fontSize: 16,
-    color: "#ffffff",
+    color: '#ffffff',
+    paddingLeft: 15
   },
   searchIcon: {
     marginLeft: 8,
     marginRight: 8,
-    color: "#333333",
+    color: '#333333',
   },
   searchButton: {
     padding: 10,
   },
   patientItem: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: '#FFFFFF',
     padding: 10,
     borderRadius: 5,
     marginBottom: 10,
   },
   patientName: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: 'bold',
+    color: '#000000'
   },
   patientDetails: {
     fontSize: 14,
-    color: "#666666",
+    color: '#666666',
   },
   emptyText: {
-    textAlign: "center",
+    textAlign: 'center',
     marginTop: 20,
     fontSize: 16,
-    color: "#666666",
+    color: '#666666',
   },
 });
 

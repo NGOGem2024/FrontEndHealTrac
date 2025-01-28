@@ -28,6 +28,7 @@ import BackTopTab from "../BackTopTab";
 import axiosInstance from "../../utils/axiosConfig";
 import { useTheme } from "../ThemeContext";
 import { getTheme } from "../Theme";
+import LoadingScreen from "../../components/loadingScreen";
 
 type PatientScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "Patient">;
@@ -153,16 +154,11 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
 
     return unsubscribe;
   }, [patientId, session.idToken, navigation]);
+  
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor="#119FB3"
-          translucent={false}
-        />
-        <ActivityIndicator size="large" color="#119FB3" />
-        <Text style={styles.loadingText}>Loading patient information...</Text>
+        <LoadingScreen />
       </View>
     );
   }
@@ -190,8 +186,8 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#119FB3"]} // Android
-            tintColor="#119FB3" // iOS
+            colors={['#007B8E']} // Android
+            tintColor='#007B8E' // iOS
           />
         }
       >
@@ -211,7 +207,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
               <MaterialCommunityIcons
                 name="square-edit-outline"
                 size={24}
-                color="#119FB3"
+                color='#007B8E'
               />
             </TouchableOpacity>
           </View>
@@ -219,23 +215,23 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
           <View style={styles.contactInfo}>
             {patientData.patient_email && (
               <View style={styles.infoRow}>
-                <MaterialIcons name="email" size={20} color="#119FB3" />
+                <MaterialIcons name="email" size={20} color='#007B8E' />
                 <Text style={styles.infoText}>{patientData.patient_email}</Text>
               </View>
             )}
             {patientData?.doctor_name && (
               <View style={styles.infoRow}>
-                <FontAwesome name="user-md" size={20} color="#119FB3" />
+                <FontAwesome name="user-md" size={20} color='#007B8E' />
                 <Text style={styles.infoText}>{patientData.doctor_name}</Text>
               </View>
             )}
             <View style={styles.infoRow}>
-              <MaterialIcons name="call" size={20} color="#119FB3" />
+              <MaterialIcons name="call" size={20} color='#007B8E' />
               <Text style={styles.infoText}>{patientData.patient_phone}</Text>
             </View>
             {patientData.patient_address1 && (
               <View style={styles.infoRow}>
-                <MaterialIcons name="location-on" size={20} color="#119FB3" />
+                <MaterialIcons name="location-on" size={20} color='#007B8E' />
                 <Text style={styles.infoText}>
                   {patientData.patient_address1}
                 </Text>
@@ -323,7 +319,7 @@ const PatientScreen: React.FC<PatientScreenProps> = ({ navigation, route }) => {
                         <MaterialCommunityIcons
                           name="square-edit-outline"
                           size={24}
-                          color="#119FB3"
+                          color='#007B8E'
                         />
                       </TouchableOpacity>
                     </View>
@@ -383,7 +379,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     progressBar: {
       height: "100%",
-      backgroundColor: "#119FB3",
+      backgroundColor: "#007B8E",
       borderRadius: 10,
     },
     progressText: {
@@ -401,17 +397,17 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     safeArea: {
       flex: 1,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     container: {
       flex: 1,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     loadingContainer: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     loadingText: {
       marginTop: 10,
@@ -422,7 +418,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     errorText: {
       color: "#FFFFFF",
@@ -461,7 +457,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     patientName: {
       fontSize: 24,
       fontWeight: "bold",
-      color: "#119FB3",
+      color: '#007B8E',
     },
     contactInfo: {
       marginTop: 8,
@@ -511,7 +507,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     therapyPlanTitle: {
       fontSize: 16,
       fontWeight: "600",
-      color: "#119FB3",
+      color: '#007B8E',
     },
     therapyPlanName: {
       fontSize: 16,

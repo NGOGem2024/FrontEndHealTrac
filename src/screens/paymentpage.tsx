@@ -241,7 +241,7 @@ const PaymentDetailsScreen: React.FC<PaymentPageProps> = ({
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#119FB3" />
+        <ActivityIndicator size="large" color='#007B8E' />
       </View>
     );
   }
@@ -494,7 +494,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       backgroundColor: "white",
     },
     fixedHeader: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       height: Platform.OS === "ios" ? 50 : 45,
       justifyContent: "center",
       alignItems: "center",
@@ -593,7 +593,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       textAlign: "center",
     },
     actionButton: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       padding: 14,
       borderRadius: 8,
       alignItems: "center",
@@ -638,7 +638,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       alignItems: "center",
     },
     selectedTypeButton: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     typeButtonText: {
       fontSize: 16,
@@ -661,7 +661,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       flex: 1,
       padding: 12,
       borderRadius: 8,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       marginLeft: 8,
       alignItems: "center",
     },
@@ -687,7 +687,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       elevation: 5,
     },
     recordPaymentButton: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     closeButton: {
       backgroundColor: "gray",
@@ -713,7 +713,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginBottom: 16,
     },
     retryButton: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       padding: 12,
       borderRadius: 8,
       minWidth: 120,
@@ -775,7 +775,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     addonsValue: {
       fontSize: 16,
       fontWeight: "bold",
-      color: "#119FB3",
+      color: '#007B8E',
     },
     sectionTitle: {
       fontSize: 18,
@@ -816,7 +816,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       marginRight: 8,
     },
     paymentTypeBadge: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       paddingHorizontal: 12,
       paddingVertical: 4,
       borderRadius: 16,
@@ -879,7 +879,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     paymentHistoryAmount: {
       fontSize: 16,
       fontWeight: "bold",
-      color: "#119FB3",
+      color: '#007B8E',
     },
     paymentHistoryType: {
       fontSize: 12,

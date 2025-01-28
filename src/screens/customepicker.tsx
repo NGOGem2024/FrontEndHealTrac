@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   androidPicker: {
-    height: 48,
+    height: 50,
     width: '100%',
     backgroundColor: '#FFFFFF',
     color: '#000000',

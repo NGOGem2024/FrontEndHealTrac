@@ -460,7 +460,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanScreenProps> = ({
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#119FB3" />
+        <ActivityIndicator size="large" color='#007B8E' />
         <Text style={styles.loadingText}>Loading therapy plan...</Text>
       </View>
     );
@@ -491,7 +491,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanScreenProps> = ({
           )}
 
           <InputField
-            icon={<MaterialIcons name="edit" size={24} color="#119FB3" />}
+            icon={<MaterialIcons name="edit" size={24} color='#007B8E'/>}
             placeholder="Therapy Name"
             value={therapyPlan.therapy_name}
             onChangeText={text =>
@@ -502,7 +502,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanScreenProps> = ({
             <Text style={styles.errorText}>{errors.therapy_name}</Text>
           )}
           <InputField
-            icon={<MaterialIcons name="healing" size={24} color="#119FB3" />}
+            icon={<MaterialIcons name="healing" size={24} color='#007B8E' />}
             placeholder="Patient Symptoms"
             value={therapyPlan.patient_symptoms}
             onChangeText={text =>
@@ -514,7 +514,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanScreenProps> = ({
           )}
           <InputField
             icon={
-              <MaterialIcons name="local-hospital" size={24} color="#119FB3" />
+              <MaterialIcons name="local-hospital" size={24} color='#007B8E' />
             }
             placeholder="Patient Diagnosis"
             value={therapyPlan.patient_diagnosis}
@@ -547,7 +547,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanScreenProps> = ({
           {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
 
           <View style={styles.durationContainer}>
-            <MaterialIcons name="timer" size={24} color="#119FB3" />
+            <MaterialIcons name="timer" size={24} color='#007B8E' />
             <Text style={styles.durationValue}>
               Duration: {therapyPlan.therapy_duration}
             </Text>
@@ -580,7 +580,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanScreenProps> = ({
           <View style={styles.labeledInputContainer}>
             <Text style={styles.inputLabel}>Estimated Sessions</Text>
             <View style={styles.inputContainer}>
-              <MaterialIcons name="event-repeat" size={24} color="#119FB3" />
+              <MaterialIcons name="event-repeat" size={24} color='#007B8E'/>
               <TextInput
                 style={styles.input}
                 placeholder="Enter estimated sessions"
@@ -609,7 +609,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanScreenProps> = ({
               <View style={styles.labeledInputContainer}>
                 <Text style={styles.inputLabel}>Amount Per Session</Text>
                 <View style={styles.inputContainer}>
-                  <FontAwesome name="rupee" size={24} color="#119FB3" />
+                  <FontAwesome name="rupee" size={24} color='#007B8E'/>
                   <TextInput
                     style={styles.input}
                     placeholder="Enter amount per session"
@@ -642,7 +642,7 @@ const EditTherapyPlan: React.FC<EditTherapyPlanScreenProps> = ({
           <View style={styles.labeledInputContainer}>
             <Text style={styles.inputLabel}>Total Amount</Text>
             <View style={styles.inputContainer}>
-              <FontAwesome name="rupee" size={24} color="#119FB3" />
+              <FontAwesome name="rupee" size={24} color='#007B8E' />
               <TextInput
                 style={styles.input}
                 placeholder="Enter total amount"
@@ -709,7 +709,7 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
       <FontAwesome
         name="calendar"
         size={24}
-        color={disabled ? '#A0A0A0' : '#119FB3'}
+        color={disabled ? '#A0A0A0' : '#007B8E'}
       />
     </TouchableOpacity>
     {showDatePicker && !disabled && (
@@ -725,7 +725,7 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
 
 const Dropdown: React.FC<DropdownProps> = ({value, onValueChange, items}) => (
   <View style={styles.inputContainer}>
-    <MaterialIcons name="category" size={24} color="#119FB3" />
+    <MaterialIcons name="category" size={24} color='#007B8E'/>
     <Picker
       selectedValue={value}
       onValueChange={onValueChange}
@@ -772,7 +772,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   saveButton: {
-    backgroundColor: '#119FB3',
+    backgroundColor: '#007B8E',
   },
   saveButtonText: {
     color: '#FFFFFF',
@@ -809,7 +809,7 @@ const styles = StyleSheet.create({
   },
   radioButtonSelected: {
     backgroundColor: '#E6F7F9',
-    borderColor: '#119FB3',
+    borderColor: '#007B8E',
     borderWidth: 1,
   },
   disabledDateContainer: {
@@ -823,7 +823,7 @@ const styles = StyleSheet.create({
     width: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#119FB3',
+    borderColor: '#007B8E',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
@@ -832,7 +832,7 @@ const styles = StyleSheet.create({
     height: 10,
     width: 10,
     borderRadius: 5,
-    backgroundColor: '#119FB3',
+    backgroundColor: '#007B8E',
   },
   radioLabel: {
     fontSize: 12,
@@ -849,7 +849,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#119FB3',
+    color: '#007B8E',
     textAlign: 'center',
     marginBottom: 20,
     marginTop: 25,
@@ -901,13 +901,13 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#119FB3',
+    color: '#007B8E',
     marginBottom: 5,
   },
   dateTimeLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#119FB3',
+    color: '#007B8E',
     marginBottom: 5,
   },
   dateTimeContainer: {
@@ -933,7 +933,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#119FB3',
+    color:'#007B8E',
   },
   patientName: {
     fontSize: 18,

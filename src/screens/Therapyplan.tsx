@@ -275,6 +275,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
     const balance = total - received;
     setTherapyPlan({ ...therapyPlan, balance: balance.toString() });
   }, [therapyPlan.total_amount, therapyPlan.received_amount]);
+  
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -306,7 +307,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             <Text style={styles.errorText}>{errors.therapy_category}</Text>
           )}
           <InputField
-            icon={<MaterialIcons name="edit" size={24} color="#119FB3" />}
+            icon={<MaterialIcons name="edit" size={24} color='#007B8E' />}
             placeholder="Therapy Name"
             value={therapyPlan.therapy_name}
             onChangeText={(text) =>
@@ -317,7 +318,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             <Text style={styles.errorText}>{errors.therapy_name}</Text>
           )}
           <InputField
-            icon={<MaterialIcons name="healing" size={24} color="#119FB3" />}
+            icon={<MaterialIcons name="healing" size={24} color='#007B8E' />}
             placeholder="Patient Symptoms"
             value={therapyPlan.patient_symptoms}
             onChangeText={(text) =>
@@ -329,7 +330,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
           )}
           <InputField
             icon={
-              <MaterialIcons name="local-hospital" size={24} color="#119FB3" />
+              <MaterialIcons name="local-hospital" size={24} color='#007B8E' />
             }
             placeholder="Patient Diagnosis"
             value={therapyPlan.patient_diagnosis}
@@ -361,7 +362,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
           {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
 
           <View style={styles.durationContainer}>
-            <MaterialIcons name="timer" size={24} color="#119FB3" />
+            <MaterialIcons name="timer" size={24} color='#007B8E'/>
             <Text style={styles.durationValue}>
               Duration: {therapyPlan.therapy_duration}
             </Text>
@@ -394,7 +395,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
           <View style={styles.labeledInputContainer}>
             <Text style={styles.inputLabel}>Estimated Sessions</Text>
             <View style={styles.inputContainer}>
-              <MaterialIcons name="event-repeat" size={24} color="#119FB3" />
+              <MaterialIcons name="event-repeat" size={24} color='#007B8E' />
               <TextInput
                 style={styles.input}
                 placeholder="Enter estimated sessions"
@@ -423,7 +424,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
               <View style={styles.labeledInputContainer}>
                 <Text style={styles.inputLabel}>Amount Per Session</Text>
                 <View style={styles.inputContainer}>
-                  <FontAwesome name="rupee" size={24} color="#119FB3" />
+                  <FontAwesome name="rupee" size={24} color='#007B8E' />
                   <TextInput
                     style={styles.input}
                     placeholder="Enter amount per session"
@@ -457,7 +458,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
           <View style={styles.labeledInputContainer}>
             <Text style={styles.inputLabel}>Total Amount</Text>
             <View style={styles.inputContainer}>
-              <FontAwesome name="rupee" size={24} color="#119FB3" />
+              <FontAwesome name="rupee" size={24} color='#007B8E' />
               <TextInput
                 style={styles.input}
                 placeholder="Enter total amount"
@@ -477,7 +478,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
           <View style={styles.labeledInputContainer}>
             <Text style={styles.inputLabel}>Received Amount</Text>
             <View style={styles.inputContainer}>
-              <FontAwesome name="rupee" size={24} color="#119FB3" />
+              <FontAwesome name="rupee" size={24} color='#007B8E' />
               <TextInput
                 style={styles.input}
                 placeholder="Enter received amount"
@@ -492,7 +493,7 @@ const CreateTherapyPlan: React.FC<CreateTherapyPlanProps> = ({
             <Text style={styles.errorText}>{errors.received_amount}</Text>
           )}
           <View style={styles.balanceContainer}>
-            <MaterialIcons name="account-balance" size={24} color="#119FB3" />
+            <MaterialIcons name="account-balance" size={24} color='#007B8E'/>
             <Text style={styles.balanceValue}>
               Balance: {therapyPlan.balance} Rs
             </Text>
@@ -543,7 +544,7 @@ const DatePickerField = ({
     <Text style={styles.dateTimeLabel}>{label}</Text>
     <TouchableOpacity style={styles.dateTimeContainer} onPress={onPress}>
       <Text style={styles.dateTimeText}>{date.toLocaleDateString()}</Text>
-      <FontAwesome name="calendar" size={24} color="#119FB3" />
+      <FontAwesome name="calendar" size={24} color='#007B8E' />
     </TouchableOpacity>
     {showDatePicker && (
       <DateTimePicker
@@ -558,7 +559,7 @@ const DatePickerField = ({
 
 const Dropdown = ({ value, onValueChange, items }) => (
   <View style={styles.inputContainer}>
-    <MaterialIcons name="category" size={24} color="#119FB3" />
+    <MaterialIcons name="category" size={24} color='#007B8E' />
     <Picker
       selectedValue={value}
       onValueChange={onValueChange}
@@ -589,7 +590,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#119FB3",
+    color: '#007B8E',
     textAlign: "center",
     marginBottom: 20,
     paddingHorizontal: 10,
@@ -641,13 +642,13 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#119FB3",
+    color: '#007B8E',
     marginBottom: 5,
   },
   dateTimeLabel: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#119FB3",
+    color: '#007B8E',
     marginBottom: 5,
   },
   dateTimeContainer: {
@@ -680,7 +681,7 @@ const styles = StyleSheet.create({
     color: "#333333",
   },
   saveButton: {
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
     paddingVertical: 12,
     borderRadius: 10,
     width: "100%",
@@ -724,7 +725,7 @@ const styles = StyleSheet.create({
   },
   radioButtonSelected: {
     backgroundColor: "#E6F7F9",
-    borderColor: "#119FB3",
+    borderColor: '#007B8E',
     borderWidth: 1,
   },
   radio: {
@@ -732,7 +733,7 @@ const styles = StyleSheet.create({
     width: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#119FB3",
+    borderColor: '#007B8E',
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -741,7 +742,7 @@ const styles = StyleSheet.create({
     height: 10,
     width: 10,
     borderRadius: 5,
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
   },
   radioLabel: {
     fontSize: 12,

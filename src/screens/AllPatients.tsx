@@ -19,6 +19,7 @@ import { useSession } from "../context/SessionContext";
 import { handleError } from "../utils/errorHandler";
 import axiosInstance from "../utils/axiosConfig";
 import BackTabTop from "./BackTopTab";
+import LoadingScreen from "../components/loadingScreen";
 
 interface Props {
   navigation: NavigationProp<ParamListBase>;
@@ -202,11 +203,10 @@ const AllPatients: React.FC<Props> = ({ navigation }) => {
   if (isLoading && page === 1) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#119FB3" />
+        <LoadingScreen />
       </View>
     );
   }
-
   const renderPatientItem = ({
     item,
     index,
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
   },
   backgroundImage: {
     flex: 1,
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
   },
   title: {
     fontSize: 18,
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.5)",
     borderRadius: 20,
-    padding: 10,
+    padding: 5,
     marginBottom: 16,
   },
   loadingIndicator: {},
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   loadingText: {
-    color: "#119FB3",
+    color: '#007B8E',
     marginTop: 5,
     fontSize: 12,
     textAlign: "center",
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   loadMoreButtonText: {
-    color: "#119FB3",
+    color: '#007B8E',
     fontWeight: "bold",
   },
   filtersContainer1: {
@@ -378,6 +378,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
     backgroundColor: "rgba(255, 255, 255, 0.7)",
     borderRadius: 20,
+    overflow: 'hidden',
     padding: 0,
   },
   filterLabel: {
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   addButton: {
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
     borderRadius: 50,
     width: 50,
     height: 50,
@@ -444,7 +445,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
     justifyContent: "space-between",
   },
   backButton: {

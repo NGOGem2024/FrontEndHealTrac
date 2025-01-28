@@ -331,7 +331,7 @@ const AppointmentDetailsScreen: React.FC<AppointmentDetailsScreenProps> = ({
           <View style={styles.dateIconContainer}>
             {!isStarted ? (
               <>
-                <Ionicons name="calendar-outline" size={20} color="#119FB3" />
+                <Ionicons name="calendar-outline" size={20} color='#007B8E' />
                 <Text style={styles.dateText1}>
                   {new Date(appointment.therepy_date)
                     .toLocaleDateString("en-US", {
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
   },
   icondesign: {
     fontSize: 18,
-    color: "#15b9cf",
+    color: "#007B8E",
     marginTop: -6,
   },
   cardHeader: {
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
   },
   header: {
     height: 56,
-    backgroundColor: "#119FB3",
+    backgroundColor: "#007B8E",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 100,
     borderWidth: 10,
-    borderColor: "#119FB3",
+    borderColor: "#007B8E",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 10,
     alignItems: "center",
-    backgroundColor: "#119FB3",
+    backgroundColor: "#007B8E",
   },
   buttonText: {
     color: "white", //theme.colors.text,
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
   dateContainer: {
     backgroundColor: "#e8eded", // Light neutral background
     borderLeftWidth: 4,
-    borderLeftColor: "#119FB3", // Accent color matching header
+    borderLeftColor: "#007B8E", // Accent color matching header
     width: "90%",
     padding: 16,
     marginTop: 16,
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#119FB3",
+    color: "#007B8E",
     marginLeft: 16,
     marginTop: 20,
     marginBottom: 10,
@@ -784,11 +784,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10,
-    color: "#119FB3",
+    color: "#007B8E",
     textAlign: "center",
   },
   modalButton: {
-    backgroundColor: "#119FB3",
+    backgroundColor: "#007B8E",
     padding: 12,
     borderRadius: 8,
     alignItems: "center",

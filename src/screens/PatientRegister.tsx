@@ -1,47 +1,93 @@
-import React, { useState } from "react";
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
-  ImageBackground,
   KeyboardType,
   Platform,
-} from "react-native";
-import { StackNavigationProp } from "@react-navigation/stack";
-import { RootStackParamList } from "../types/types";
-import {
-  GestureHandlerRootView,
-  ScrollView,
-} from "react-native-gesture-handler";
-import axios from "axios";
-import * as Animatable from "react-native-animatable";
-import { Ionicons } from "@expo/vector-icons";
-import { useSession } from "../context/SessionContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Picker } from "@react-native-picker/picker";
-import { handleError, showSuccessToast } from "../utils/errorHandler";
-import axiosInstance from "../utils/axiosConfig";
-import BackTabTop from "./BackTopTab";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+  StyleSheet,
+  useColorScheme,
+  Appearance,
+  SafeAreaView,
+  Dimensions,
+} from 'react-native';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../types/types';
+import * as Animatable from 'react-native-animatable';
+import {useSession} from '../context/SessionContext';
+import {handleError, showSuccessToast} from '../utils/errorHandler';
+import axiosInstance from '../utils/axiosConfig';
+import BackTabTop from './BackTopTab';
+import {KeyboardAwareScrollView} from 'react-native-keyboard-aware-scroll-view';
+import CustomPicker from './patientpicker';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon2 from 'react-native-vector-icons/FontAwesome';
+import PhoneInput from 'react-native-phone-number-input';
+import CustomCountryPicker from './CustomCountryPicker';
+const {width} = Dimensions.get('window');
 
 type PatientRegisterScreenProps = {
-  navigation: StackNavigationProp<RootStackParamList, "PatientRegister">;
+  navigation: StackNavigationProp<RootStackParamList, 'PatientRegister'>;
 };
 
-const initialPatientData = {
-  patient_first_name: "",
-  patient_last_name: "",
-  patient_email: "",
-  patient_phone: "",
-  referral_source: "",
-  referral_details: "",
+interface PatientData {
+  patient_first_name: string;
+  patient_last_name: string;
+  patient_email: string;
+  patient_phone: string;
+  referral_source: string;
+  referral_details: string;
+  formattedPhone: string;
+}
+
+const theme = {
+  light: {
+    background: '#f8f9fa',
+    card: '#ffffff',
+    primary: '#007B8E',
+    secondary: '#007B8E',
+    text: '#1f2937',
+    inputBg: '#f3f4f6',
+    inputBorder: '#03858c',
+    placeholderText: '#9ca3af',
+    error: '#ef4444',
+    success: '#22c55e',
+    mandatory: '#dc2626',
+    optional: '#059669',
+  },
+  dark: {
+    background: '#161c24',
+    card: '#272d36',
+    primary: '#007B8E',
+    secondary: '#007B8E',
+    text: '#f3f4f6',
+    inputBg: '#282d33',
+    inputBorder: '#03858c',
+    placeholderText: '#9ca3af',
+    error: '#f87171',
+    success: '#34d399',
+    mandatory: '#ef4444',
+    optional: '#10b981',
+  },
 };
 
-const initialFieldStatus = {
+const initialPatientData: PatientData = {
+  patient_first_name: '',
+  patient_last_name: '',
+  patient_email: '',
+  patient_phone: '',
+  referral_source: '',
+  referral_details: '',
+  formattedPhone: '',
+};
+
+interface FieldStatus {
+  [key: string]: boolean;
+}
+
+const initialFieldStatus: FieldStatus = {
   patient_first_name: false,
   patient_last_name: false,
   patient_email: false,
@@ -50,97 +96,121 @@ const initialFieldStatus = {
   referral_details: false,
 };
 
+interface Country {
+  name: string;
+  code: string;
+  flag: string;
+  callingCode: string;
+}
+
 const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
   navigation,
 }) => {
-  const { idToken } = useSession();
-  const [patientData, setPatientData] = useState(initialPatientData);
+  const {session} = useSession();
+  const [patientData, setPatientData] =
+    useState<PatientData>(initialPatientData);
   const [isLoading, setIsLoading] = useState(false);
-  const [fieldStatus, setFieldStatus] = useState(initialFieldStatus);
+  const [fieldStatus, setFieldStatus] =
+    useState<FieldStatus>(initialFieldStatus);
+  const [isDarkMode, setIsDarkMode] = useState(useColorScheme() === 'dark');
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const phoneInput = useRef<PhoneInput>(null);
+  const [selectedCountry, setSelectedCountry] = useState<Country>({
+    name: 'India',
+    code: 'IN',
+    flag: '🇮🇳',
+    callingCode: '91',
+  });
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
 
-  const handleInputChange = (field: string, value: string) => {
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({colorScheme}) => {
+      setIsDarkMode(colorScheme === 'dark');
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const colors = theme[isDarkMode ? 'dark' : 'light'];
+
+  const validateField = (field: keyof PatientData, value: string): string => {
+    switch (field) {
+      case 'patient_email':
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          return 'Invalid email address';
+        }
+        break;
+      case 'patient_phone':
+        if (phoneInput.current?.isValidNumber(value)) {
+          return '';
+        } else if (value) {
+          return 'Invalid phone number';
+        }
+        break;
+    }
+    return '';
+  };
+
+  const handleInputChange = (field: keyof PatientData, value: string) => {
     let newValue = value;
-    if (field === "patient_first_name" || field === "patient_last_name") {
-      newValue = value.replace(/[^a-zA-Z\s]/g, "");
-    } else if (field === "patient_phone") {
-      newValue = value.replace(/[^0-9]/g, "");
-    } else if (field === "patient_email") {
+    if (field.includes('name')) {
+      newValue = value.replace(/[^a-zA-Z\s]/g, '');
+    } else if (field === 'patient_phone') {
+      newValue = value.replace(/[^0-9]/g, '');
+    } else if (field === 'patient_email') {
       newValue = value.toLowerCase();
     }
-    setPatientData({ ...patientData, [field]: newValue });
-    setFieldStatus({ ...fieldStatus, [field]: newValue.length > 0 });
+
+    setPatientData(prev => ({...prev, [field]: newValue}));
+    setFieldStatus(prev => ({...prev, [field]: newValue.length > 0}));
+
+    const error = validateField(field, newValue);
+    setErrors(prev => ({...prev, [field]: error}));
   };
 
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const isValidIndianMobileNumber = (phone: string) => {
-    const indianMobileRegex = /^[6-9]\d{9}$/;
-    return indianMobileRegex.test(phone);
-  };
   const handlePatientRegister = async () => {
-    if (!patientData.patient_first_name || !patientData.patient_last_name) {
-      handleError(new Error("First name and last name are required"));
-      return;
-    }
+    const newErrors: {[key: string]: string} = {};
 
-    if (patientData.patient_phone.length !== 10) {
-      handleError(new Error("Please enter a valid 10-digit phone number"));
-      return;
+    // Validation checks
+    if (!patientData.patient_first_name) {
+      newErrors.patient_first_name = 'First name is required';
     }
-
-    if (!isValidIndianMobileNumber(patientData.patient_phone)) {
-      handleError(
-        new Error(
-          "Please enter a valid 10-digit Indian mobile number starting with 6-9"
-        )
-      );
-      return;
+    if (!patientData.patient_last_name) {
+      newErrors.patient_last_name = 'Last name is required';
     }
-
-    if (patientData.patient_email && !isValidEmail(patientData.patient_email)) {
-      handleError(new Error("Please enter a valid email address"));
-      return;
+    if (!patientData.patient_phone) {
+      newErrors.patient_phone = 'Phone number is required';
     }
-
     if (!patientData.referral_source) {
-      handleError(new Error("Please select a referral source"));
-      return;
+      newErrors.referral_source = 'Referral source is required';
     }
 
-    if (
-      patientData.referral_source !== "Social Media" &&
-      patientData.referral_source !== "walkin" &&
-      !patientData.referral_details
-    ) {
-      handleError(new Error("Please enter referral details"));
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     setIsLoading(true);
     try {
-      const liveSwitchToken = await AsyncStorage.getItem("liveSwitchToken");
       const formattedData = {
         ...patientData,
-        patient_phone: "+91" + patientData.patient_phone,
+        patient_phone: `+${selectedCountry.callingCode}${patientData.patient_phone}`,
       };
 
       const response = await axiosInstance.post(
-        "/patient/registration",
+        '/patient/registration',
         formattedData,
         {
           headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + idToken,
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + session.idToken,
           },
-        }
+        },
       );
-      showSuccessToast("Patient registered successfully");
+
+      showSuccessToast('Patient registered successfully');
       setPatientData(initialPatientData);
       setFieldStatus(initialFieldStatus);
-      navigation.navigate("UpdatePatient", {
+      navigation.navigate('UpdatePatient', {
         patientId: response.data.patient._id,
       });
     } catch (error) {
@@ -150,217 +220,353 @@ const PatientRegister: React.FC<PatientRegisterScreenProps> = ({
     }
   };
 
-  const getInputStyle = (field: string) => {
-    const isMandatory = [
-      "patient_first_name",
-      "patient_last_name",
-      "patient_phone",
-      "referral_source",
-    ].includes(field);
-    if (fieldStatus[field]) {
-      return [styles.input, styles.filledInput];
-    }
-    return [
-      styles.input,
-      isMandatory ? styles.mandatoryInput : styles.optionalInput,
-    ];
-  };
-
   const renderInput = (
+    label: string,
     placeholder: string,
-    value: string,
-    field: string,
-    keyboardType: KeyboardType = "default",
-    isMandatory: boolean = false
+    field: keyof PatientData,
+    keyboardType: KeyboardType = 'default',
+    icon: string,
+    isMandatory: boolean = false,
   ) => (
-    <Animatable.View animation="fadeInUp" style={styles.inputContainer}>
-      <TextInput
-        style={getInputStyle(field)}
-        placeholder={placeholder}
-        value={value}
-        onChangeText={(text) => handleInputChange(field, text)}
-        keyboardType={keyboardType}
-        autoCapitalize={field === "patient_email" ? "none" : "sentences"}
-      />
+    <Animatable.View
+      animation="fadeInUp"
+      duration={800}
+      style={styles.inputContainer}>
+      <View style={styles.labelContainer}>
+        <Text style={[styles.label, {color: colors.text}]}>
+          {label}
+          {isMandatory && <Text style={{color: colors.mandatory}}> *</Text>}
+        </Text>
+      </View>
+      <View
+        style={[
+          styles.inputWrapper,
+          {
+            backgroundColor: colors.inputBg,
+            borderColor: errors[field] ? colors.error : colors.inputBorder,
+          },
+        ]}>
+        <Icon
+          name={icon}
+          size={20}
+          color={colors.secondary}
+          style={styles.inputIcon}
+        />
+        <TextInput
+          style={[styles.input, {color: colors.text}]}
+          placeholder={placeholder}
+          placeholderTextColor={colors.placeholderText}
+          value={patientData[field]}
+          onChangeText={text => handleInputChange(field, text)}
+          keyboardType={keyboardType}
+          autoCapitalize={field === 'patient_email' ? 'none' : 'words'}
+        />
+      </View>
+      {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+    </Animatable.View>
+  );
+
+  const renderPhoneInput = () => (
+    <Animatable.View
+      animation="fadeInUp"
+      duration={800}
+      style={styles.inputContainer}>
+      <View style={styles.labelContainer}>
+        <Text style={[styles.label, {color: colors.text}]}>
+          Phone Number <Text style={{color: colors.mandatory}}>*</Text>
+        </Text>
+      </View>
+      <View style={styles.phoneInputContainer}>
+        <TouchableOpacity
+          style={[
+            styles.countryPickerButton,
+            {
+              backgroundColor: colors.inputBg,
+              borderColor: errors.doctor_phone
+                ? colors.error
+                : colors.inputBorder,
+            },
+          ]}
+          onPress={() => setShowCountryPicker(true)}>
+          <Text style={styles.flag}>{selectedCountry.flag}</Text>
+          <Text style={[styles.callingCodeText, {color: colors.text}]}>
+            +{selectedCountry.callingCode}
+          </Text>
+        </TouchableOpacity>
+
+        <TextInput
+          style={[
+            styles.phoneInput,
+            {
+              backgroundColor: colors.inputBg,
+              borderColor: errors.doctor_phone
+                ? colors.error
+                : colors.inputBorder,
+              color: colors.text,
+            },
+          ]}
+          placeholder="Phone Number"
+          placeholderTextColor={colors.placeholderText}
+          value={patientData.patient_phone}
+          onChangeText={text => handleInputChange('patient_phone', text)}
+          keyboardType="numeric"
+          maxLength={10}
+        />
+
+        <CustomCountryPicker
+          selectedCountry={selectedCountry}
+          onSelect={(country: Country) => {
+            setSelectedCountry(country);
+          }}
+          visible={showCountryPicker}
+          onClose={() => setShowCountryPicker(false)}
+          theme={colors}
+        />
+      </View>
+      {errors.doctor_phone && (
+        <Text style={styles.errorText}>{errors.doctor_phone}</Text>
+      )}
     </Animatable.View>
   );
 
   return (
-    <ImageBackground
-      source={require("../assets/bac2.jpg")}
-      style={styles.backgroundImage}
-    >
-      <BackTabTop screenName="Patient" />
+    <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.container, {backgroundColor: colors.background}]}>
+      <BackTabTop screenName="Register Patient" />
       <KeyboardAwareScrollView
+      style={styles.scrollView}
         contentContainerStyle={styles.scrollContainer}
         enableOnAndroid={true}
-        enableAutomaticScroll={Platform.OS === "ios"}
-        extraScrollHeight={100}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.centerContainer}>
-          <Animatable.View animation="fadeInUp" style={styles.container}>
-            <Text style={styles.title}>Register Patient</Text>
+        enableAutomaticScroll={Platform.OS === 'ios'}
+        extraScrollHeight={140}
+        keyboardShouldPersistTaps="handled">
+      
+          <Animatable.View
+            animation="fadeInUp"
+            duration={1000}
+            style={[styles.card, {backgroundColor: colors.card}]}>
+            <View style={styles.headerContainer}>
+              <Text style={[styles.title, {color: colors.primary}]}>
+                Register
+              </Text>
+              <Icon2 name="user-plus" size={25} color={colors.primary} />
+            </View>
+
             {renderInput(
-              "First Name",
-              patientData.patient_first_name,
-              "patient_first_name",
-              "default",
-              true
+              'First Name',
+              'Enter first name',
+              'patient_first_name',
+              'default',
+              'account',
+              true,
             )}
+
             {renderInput(
-              "Last Name",
-              patientData.patient_last_name,
-              "patient_last_name",
-              "default",
-              true
+              'Last Name',
+              'Enter last name',
+              'patient_last_name',
+              'default',
+              'account',
+              true,
             )}
+
             {renderInput(
-              "Email",
-              patientData.patient_email,
-              "patient_email",
-              "email-address"
+              'Email',
+              'Enter email address',
+              'patient_email',
+              'email-address',
+              'email',
+              false,
             )}
-            {/* Phone input */}
-            <Animatable.View animation="fadeInUp" style={styles.inputContainer}>
-              <View
-                style={[
-                  styles.phoneInputContainer,
-                  getInputStyle("patient_phone"),
+
+            {renderPhoneInput()}
+
+            <Animatable.View
+              animation="fadeInUp"
+              duration={800}
+              style={styles.inputContainer}>
+              <View style={styles.labelContainer}>
+                <Text style={[styles.label, {color: colors.text}]}>
+                  Referral Source{' '}
+                  <Text style={{color: colors.mandatory}}>*</Text>
+                </Text>
+              </View>
+              <CustomPicker
+                selectedValue={patientData.referral_source}
+                onValueChange={(itemValue: string) =>
+                  handleInputChange('referral_source', itemValue)
+                }
+                items={[
+                  {label: 'Select Referral Source', value: ''},
+                  {label: 'Social Media', value: 'Social Media'},
+                  {label: 'Patient Reference', value: 'Patient Reference'},
+                  {label: 'Hospital Reference', value: 'Hospital Reference'},
+                  {label: 'Walk-in', value: 'walkin'},
+                  {label: 'Doctor Reference', value: 'Doctor Reference'},
+                  {label: 'Other', value: 'Other'},
                 ]}
-              >
-                <Text style={styles.phonePrefix}>+91</Text>
-                <TextInput
-                  style={styles.phoneInput}
-                  placeholder="Contact No."
-                  value={patientData.patient_phone}
-                  onChangeText={(text) =>
-                    handleInputChange("patient_phone", text)
-                  }
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-              </View>
-              {patientData.patient_phone.length > 0 &&
-                !isValidIndianMobileNumber(patientData.patient_phone) && (
-                  <Text style={styles.errorText}>
-                    Mobile number must start with 6-9 and be 10 digits
-                  </Text>
-                )}
+                placeholder="Select Referral Source"
+                style={[
+                  styles.picker,
+                  {
+                    backgroundColor: colors.inputBg,
+                    borderColor: errors.referral_source
+                      ? colors.error
+                      : colors.inputBorder,
+                  },
+                ]}
+                textColor={colors.text}
+              />
             </Animatable.View>
-            {/* Referral source picker */}
-            <Animatable.View animation="fadeInUp" style={styles.inputContainer}>
-              <View style={getInputStyle("referral_source")}>
-                <Picker
-                  selectedValue={patientData.referral_source}
-                  style={styles.picker}
-                  onValueChange={(itemValue) =>
-                    handleInputChange("referral_source", itemValue)
-                  }
-                >
-                  <Picker.Item label="Select Referral Source" value="" />
-                  <Picker.Item label="Social Media" value="Social Media" />
-                  <Picker.Item
-                    label="Patient Reference"
-                    value="Patient Reference"
-                  />
-                  <Picker.Item
-                    label="Hospital Reference"
-                    value="Hospital Reference"
-                  />
-                  <Picker.Item
-                    label="Doctor Reference"
-                    value="Doctor Reference"
-                  />
-                  <Picker.Item label="Walk In" value="walkin" />
-                  <Picker.Item label="Other" value="Other" />
-                </Picker>
-              </View>
-            </Animatable.View>
-            {/* Conditional referral details input */}
+
             {patientData.referral_source &&
-              patientData.referral_source !== "Social Media" &&
-              patientData.referral_source !== "walkin" && (
-                <Animatable.View
-                  animation="fadeInUp"
-                  style={styles.inputContainer}
-                >
-                  <TextInput
-                    style={getInputStyle("referral_details")}
-                    placeholder="Referral Details"
-                    value={patientData.referral_details}
-                    onChangeText={(text) =>
-                      handleInputChange("referral_details", text)
-                    }
-                  />
+              patientData.referral_source !== 'walkin' && (
+                <Animatable.View animation="fadeInUp" duration={800}>
+                  {patientData.referral_source === 'Social Media' ? (
+                    <View style={styles.inputContainer}>
+                      <View style={styles.labelContainer}>
+                        <Text style={[styles.label, {color: colors.text}]}>
+                          Social Media Platform{' '}
+                          <Text style={{color: colors.mandatory}}>*</Text>
+                        </Text>
+                      </View>
+                      <CustomPicker
+                        selectedValue={patientData.referral_details}
+                        onValueChange={(itemValue: string) =>
+                          handleInputChange('referral_details', itemValue)
+                        }
+                        items={[
+                          {label: 'Select Platform', value: ''},
+                          {label: 'Instagram', value: 'Instagram'},
+                          {label: 'Facebook', value: 'Facebook'},
+                          {label: 'WhatsApp', value: 'WhatsApp'},
+                          {label: 'YouTube', value: 'YouTube'},
+                          {label: 'Google', value: 'Google'},
+                        ]}
+                        placeholder="Select Social Media Platform"
+                        style={[
+                          styles.picker,
+                          {
+                            backgroundColor: colors.inputBg,
+                            borderColor: colors.inputBorder,
+                          },
+                        ]}
+                        textColor={colors.text}
+                      />
+                    </View>
+                  ) : (
+                    renderInput(
+                      'Referral Details',
+                      'Enter referral details',
+                      'referral_details',
+                      'default',
+                      'information',
+                      true,
+                    )
+                  )}
                 </Animatable.View>
               )}
-            {patientData.referral_source === "Social Media" && (
-              <Animatable.View
-                animation="fadeInUp"
-                style={styles.inputContainer}
-              >
-                <View style={getInputStyle("referral_details")}>
-                  <Picker
-                    selectedValue={patientData.referral_details}
-                    style={styles.picker}
-                    onValueChange={(itemValue) =>
-                      handleInputChange("referral_details", itemValue)
-                    }
-                  >
-                    <Picker.Item
-                      label="Select Social Media Platform"
-                      value=""
+
+            <Animatable.View
+              animation="fadeInUp"
+              duration={800}
+              style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.button, {backgroundColor: colors.primary}]}
+                onPress={handlePatientRegister}
+                disabled={isLoading}>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Icon
+                      name="check-circle"
+                      size={20}
+                      color="#FFFFFF"
+                      style={styles.buttonIcon}
                     />
-                    <Picker.Item label="Instagram" value="Instagram" />
-                    <Picker.Item label="Facebook" value="Facebook" />
-                    <Picker.Item label="WhatsApp" value="WhatsApp" />
-                    <Picker.Item label="YouTube" value="YouTube" />
-                    <Picker.Item label="Google" value="Google" />
-                  </Picker>
-                </View>
-              </Animatable.View>
-            )}
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handlePatientRegister}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>Register</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.backButton1}
-              onPress={() => navigation.navigate("DoctorDashboard")}
-            >
-              <Text style={styles.backButtonText1}>Back to Home</Text>
-            </TouchableOpacity>
+                    <Text style={styles.buttonText}>Register Patient</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.secondaryButton, {borderColor: colors.primary}]}
+                onPress={() => navigation.navigate('DoctorDashboard')}>
+                <Icon
+                  name="home"
+                  size={20}
+                  color={colors.primary}
+                  style={styles.buttonIcon}
+                />
+                <Text
+                  style={[styles.secondaryButtonText, {color: colors.primary}]}>
+                  Back to Home
+                </Text>
+              </TouchableOpacity>
+            </Animatable.View>
           </Animatable.View>
-        </View>
+        
       </KeyboardAwareScrollView>
-    </ImageBackground>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  centerContainer: {
-    width: "100%",
-    alignItems: "center",
+  safeArea: {
+    flex: 1,
+    backgroundColor: 'Black',
   },
   container: {
-    width: "90%",
-    padding: 20,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    shadowColor: "#000",
+    flex: 1,
+  },
+  scrollView: {
+    flex:1,
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingRight: 5,
+  },
+  countryPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    minWidth: 50,
+    height: 50,
+  },
+  callingCodeText: {
+    fontSize: 16,
+    paddingRight: 5,
+  },
+  flag: {
+    fontSize: 20,
+    marginRight: 4,
+  },
+  phoneInput: {
+    flex: 1,
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingVertical: 20,
+    paddingBottom: 20, 
+  },
+  card: {
+    width: width * 0.9,
+    alignSelf: 'center',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 5, 
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -368,111 +574,118 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-    marginTop: 10,
   },
-  input: {
-    borderWidth: 1,
-    borderRadius: 5,
-    padding: 10,
-    color: "#333333",
-    backgroundColor: "#FFFFFF",
-  },
-  mandatoryInput: {
-    borderColor: "#c30010", // Yellow for mandatory fields
-  },
-  optionalInput: {
-    borderColor: "#90EE90", // Light green for optional fields
-  },
-  filledInput: {
-    borderColor: "#90EE90", // Bright green for filled fields
-  },
-  phoneInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 5,
-    backgroundColor: "#FFFFFF",
-  },
-  phoneInput: {
-    flex: 1,
-    padding: 5,
-    color: "#333333",
-  },
-  picker: {
-    height: 45,
-    width: "100%",
-  },
-  backgroundImage: {
-    flex: 1,
-    resizeMode: "cover",
-  },
-  phonePrefix: {
-    paddingHorizontal: 10,
-    fontSize: 16,
-    color: "#333333",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    backgroundColor: "#119FB3",
-  },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  backButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    marginLeft: 5,
-    fontSize: 18,
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center', // Center the items horizontally
+    marginVertical: 20, // Add spacing around the header
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
-    color: "#119FB3",
-    marginBottom: 20,
-    textAlign: "center",
+    fontWeight: 'bold',
+    marginRight: 5, // Space between "Register" and the icon
   },
   inputContainer: {
-    marginBottom: 10, // Reduced from 20 to 10
+    marginBottom: 15,
+  },
+  labelContainer: {
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 50,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 8,
+  },
+  picker: {
+    borderWidth: 1,
+    borderRadius: 12,
+    height: 50,
+    justifyContent: 'center',
+  },
+  buttonContainer: {
+    marginTop: 20,
+    gap: 12,
   },
   button: {
-    backgroundColor: "#119FB3",
-    paddingVertical: 15,
-    borderRadius: 5,
-    alignItems: "center",
-    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   buttonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
-  backButton1: {
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 10,
-    borderRadius: 5,
-    alignItems: "center",
-    marginTop: 10,
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#119FB3",
   },
-  backButtonText1: {
-    color: "#119FB3",
-    fontWeight: "bold",
-  },
-  asterisk: {
-    color: "red",
-    fontSize: 14,
-    marginBottom: 2, // Reduced from 5 to 2
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   errorText: {
-    color: "red",
+    color: '#ef4444',
     fontSize: 12,
-    marginTop: 5,
-    textAlign: "left",
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  phonePrefix: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  mandatoryText: {
+    color: '#ef4444',
+    marginLeft: 4,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 20,
+    opacity: 0.2,
+  },
+  pickerContainer: {
+    marginBottom: 15,
+  },
+  pickerLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 8,
   },
 });
 

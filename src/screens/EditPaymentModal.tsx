@@ -35,7 +35,8 @@ const EditPaymentModal: React.FC<EditPaymentModalProps> = ({
   paymentData,
 }) => {
   const [amount, setAmount] = useState<string>("");
-  const [isAdditionalServicesOpen, setIsAdditionalServicesOpen] = useState(false);
+  const [isAdditionalServicesOpen, setIsAdditionalServicesOpen] =
+    useState(false);
   const [addonInput, setAddonInput] = useState<string>("");
   const [addonAmount, setAddonAmount] = useState<string>("");
   const [addons, setAddons] = useState<Addon[]>([]);
@@ -72,7 +73,10 @@ const EditPaymentModal: React.FC<EditPaymentModalProps> = ({
           newAddons[existingAddonIndex].amount = numAmount;
           setAddons(newAddons);
         } else {
-          setAddons([...addons, { name: addonInput.trim(), amount: numAmount }]);
+          setAddons([
+            ...addons,
+            { name: addonInput.trim(), amount: numAmount },
+          ]);
         }
         setAddonInput("");
         setAddonAmount("");
@@ -137,7 +141,11 @@ const EditPaymentModal: React.FC<EditPaymentModalProps> = ({
                 style={styles.picker}
               >
                 <Picker.Item label="Cash" value="CASH" style={styles.item} />
-                <Picker.Item label="Online" value="ONLINE" style={styles.item} />
+                <Picker.Item
+                  label="Online"
+                  value="ONLINE"
+                  style={styles.item}
+                />
               </Picker>
             </View>
           </View>
@@ -146,12 +154,14 @@ const EditPaymentModal: React.FC<EditPaymentModalProps> = ({
           <View style={styles.servicesSection}>
             <TouchableOpacity
               style={styles.servicesHeader}
-              onPress={() => setIsAdditionalServicesOpen(!isAdditionalServicesOpen)}
+              onPress={() =>
+                setIsAdditionalServicesOpen(!isAdditionalServicesOpen)
+              }
             >
               <FontAwesome
                 name={isAdditionalServicesOpen ? "minus" : "plus"}
                 size={20}
-                color="#119FB3"
+                color="#007B8E"
               />
               <Text style={styles.servicesHeaderText}>Additional Services</Text>
             </TouchableOpacity>
@@ -223,7 +233,7 @@ const EditPaymentModal: React.FC<EditPaymentModalProps> = ({
 };
 
 const COLORS = {
-  primary: "#119FB3",
+  primary: "#007B8E",
   secondary: "#6c757d",
   text: "#2c3e50",
   border: "#ced4da",
@@ -376,7 +386,7 @@ const getModalStyles = () =>
     addonAmount: {
       flex: 1,
       fontSize: 16,
-      color: "#119FB3",
+      color: "#007B8E",
       fontWeight: "500",
       textAlign: "right",
       marginRight: 12,
@@ -397,7 +407,7 @@ const getModalStyles = () =>
     },
     totalAmount: {
       fontSize: 20,
-      color: "#119FB3",
+      color: "#007B8E",
       fontWeight: "bold",
     },
     footer: {
@@ -406,7 +416,7 @@ const getModalStyles = () =>
     },
     confirmButton: {
       width: "50%",
-      backgroundColor: "#119FB3",
+      backgroundColor: "#007B8E",
       paddingVertical: 12,
       borderRadius: 10,
       alignItems: "center",

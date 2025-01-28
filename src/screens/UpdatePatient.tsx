@@ -253,7 +253,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
             <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
             <Text style={styles.title}>Update Patient</Text>
             <InputField
-              icon={<Ionicons name="person" size={24} color="#119FB3" />}
+              icon={<Ionicons name="person" size={24} color='#007B8E' />}
               placeholder="First Name"
               value={patientData.patient_first_name}
               onChangeText={(text) =>
@@ -261,7 +261,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
               }
             />
             <InputField
-              icon={<Ionicons name="person" size={24} color="#119FB3" />}
+              icon={<Ionicons name="person" size={24} color='#007B8E' />}
               placeholder="Last Name"
               value={patientData.patient_last_name}
               onChangeText={(text) =>
@@ -270,7 +270,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
             />
             <View>
               <InputField
-                icon={<MaterialIcons name="email" size={24} color="#119FB3" />}
+                icon={<MaterialIcons name="email" size={24} color='#007B8E' />}
                 placeholder="Email"
                 value={patientData.patient_email}
                 onChangeText={handleEmailChange}
@@ -283,7 +283,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
 
             <View>
               <InputField
-                icon={<Ionicons name="call" size={24} color="#119FB3" />}
+                icon={<Ionicons name="call" size={24} color='#007B8E' />}
                 placeholder="Contact No"
                 value={patientData.patient_phone}
                 onChangeText={handlePhoneChange}
@@ -293,7 +293,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
               ) : null}
             </View>
             <InputField
-              icon={<Ionicons name="location" size={24} color="#119FB3" />}
+              icon={<Ionicons name="location" size={24} color='#007B8E'/>}
               placeholder="Address 1"
               value={patientData.patient_address1}
               onChangeText={(text) =>
@@ -301,7 +301,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
               }
             />
             <InputField
-              icon={<Ionicons name="location" size={24} color="#119FB3" />}
+              icon={<Ionicons name="location" size={24} color='#007B8E' />}
               placeholder="Address 2"
               value={patientData.patient_address2}
               onChangeText={(text) =>
@@ -309,7 +309,7 @@ const UpdatePatient: React.FC<UpdatePatientProps> = ({ navigation, route }) => {
               }
             />
             <InputField
-              icon={<MaterialIcons name="numbers" size={24} color="#119FB3" />}
+              icon={<MaterialIcons name="numbers" size={24} color='#007B8E' />}
               placeholder="Age"
               value={patientData.patient_age}
               onChangeText={(text) =>
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#119FB3",
+    color: '#007B8E',
     textAlign: "center",
     marginBottom: 20,
   },
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0, 0, 0, 0.1)",
   },
   genderButtonSelected: {
-    borderColor: "#119FB3",
+    borderColor: '#007B8E',
     backgroundColor: "#E6F7FB",
   },
   genderButtonText: {
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     color: "#333333",
   },
   genderButtonTextSelected: {
-    color: "#119FB3",
+    color: '#007B8E',
     fontWeight: "bold",
   },
   dateRow: {
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
   dateLabel: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#119FB3",
+    color: '#007B8E',
     marginBottom: 5,
   },
   dateContainer: {
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   saveButton: {
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: "center",

@@ -18,6 +18,7 @@ import { useSession } from "../context/SessionContext";
 import { handleError, showSuccessToast } from "../utils/errorHandler";
 import instance from "../utils/axiosConfig";
 import BackTabTop from "./BackTopTab";
+import LoadingScreen from "../components/loadingScreen";
 
 const { width } = Dimensions.get("window");
 
@@ -202,11 +203,11 @@ const DoctorProfileEdit: React.FC = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#119FB3" />
-        <Text style={styles.loadingText}>Loading profile information...</Text>
+        <LoadingScreen />
       </View>
     );
   }
+
 
   if (!session.idToken) {
     return (
@@ -314,7 +315,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     scrollView: {
       flex: 1,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
     },
     loadingContainer: {
       flex: 1,
@@ -343,7 +344,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       position: "absolute",
       bottom: 0,
       right: width / 2 - 75,
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       borderRadius: 20,
       padding: 8,
     },
@@ -358,7 +359,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     label: {
       fontSize: 16,
-      color: "#119FB3",
+      color:'#007B8E',
       marginBottom: 5,
       fontWeight: "bold",
     },
@@ -375,7 +376,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       color: "#888888",
     },
     saveButton: {
-      backgroundColor: "#119FB3",
+      backgroundColor: '#007B8E',
       borderRadius: 10,
       padding: 15,
       alignItems: "center",

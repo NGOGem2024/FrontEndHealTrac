@@ -18,6 +18,7 @@ import {
 import ActiveTherapyPlans from "./Activeplans";
 import axios from "axios";
 import Icon from "react-native-vector-icons/Ionicons";
+import FontAwesome from "react-native-vector-icons/FontAwesome";
 import { useTheme } from "./ThemeContext";
 import { getTheme } from "./Theme";
 import { useNavigation } from "@react-navigation/native";
@@ -30,6 +31,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
 import axiosInstance from "../utils/axiosConfig";
 import NoAppointmentsPopup from "./Noappointmentspopup";
+import LoadingScreen from "../components/loadingScreen";
 
 interface DoctorInfo {
   _id: string;
@@ -282,8 +284,33 @@ const DoctorDashboard: React.FC = () => {
     setShowAllAppointments((prev) => !prev);
   };
 
+  const renderCard = (item: Item, index: number) => {
+    const IconComponent = item.label === "All Doctors" ? FontAwesome : Icon;
+    const iconName = item.label === "All Doctors" ? "user-md" : item.icon;
+
+    return (
+      <TouchableOpacity
+        key={index}
+        style={[
+          styles.card,
+          !item.screen && { opacity: 0.5 },
+          { width: (width - 64) / 3 },
+        ]}
+        onPress={() => item.screen && handleNavigation(item.screen)}
+        disabled={!item.screen}
+      >
+        <IconComponent
+          name={iconName}
+          size={32}
+          color={styles.cardIcon.color}
+        />
+        <Text style={styles.cardText}>{item.label}</Text>
+      </TouchableOpacity>
+    );
+  };
+
   const items: Item[] = [
-    { icon: "medical-outline", label: "All Doctors", screen: "AllDoctors" },
+    { icon: "user-md", label: "All Doctors", screen: "AllDoctors" },
     { icon: "list-outline", label: "View Patients", screen: "AllPatients" },
     {
       icon: "add-circle-outline",
@@ -306,7 +333,7 @@ const DoctorDashboard: React.FC = () => {
       <View style={styles.dashboardHeader}>
         <View>
           <Image
-            source={require("../assets/logo3.png")}
+            source={require("../assets/healtrack_logo1.png")}
             style={styles.logoImage}
             resizeMode="contain"
           />
@@ -351,14 +378,7 @@ const DoctorDashboard: React.FC = () => {
   if (doctorLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <StatusBar
-          barStyle="light-content"
-          backgroundColor="black"
-          translucent={false}
-        />
-
-        <ActivityIndicator size="large" color="#119FB3" />
-        <Text style={styles.loadingText}>Loading Doctor Dashboard...</Text>
+        <LoadingScreen />
       </View>
     );
   }
@@ -449,40 +469,11 @@ const DoctorDashboard: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Management</Text>
           <View style={styles.cardContainer}>
-            {items.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.card,
-                  !item.screen && { opacity: 0.5 },
-                  { width: (width - 64) / 3 },
-                ]}
-                onPress={() => item.screen && handleNavigation(item.screen)}
-                disabled={!item.screen}
-              >
-                <Icon
-                  name={item.icon}
-                  size={32}
-                  color={styles.cardIcon.color}
-                />
-                <Text style={styles.cardText}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
+            {items.map((item, index) => renderCard(item, index))}
           </View>
         </View>
-
         <View style={styles.section}>
           <View style={styles.appointmentHeader}>
-            {/* <TouchableOpacity
-              onPress={() => navigation.navigate("AllAppointments")}
-              style={styles.appointmentHeader}
-            >
-              <Text style={styles.sectionTitle}>
-                {showAllAppointments
-                  ? "All Appointments"
-                  : "Today's Appointments"} 
-              </Text>
-            </TouchableOpacity> */}
             <Text style={styles.sectionTitle}>
               {showAllAppointments ? "All Appointments" : "My Appointments"}
             </Text>
@@ -560,7 +551,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     versionText: {
       position: "absolute",
       bottom: 1,
-      right: -18,
+      right: -14,
       color: "#FFFFFF",
       fontSize: 12,
       opacity: 0.8,
@@ -573,14 +564,17 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       justifyContent: "space-between",
       paddingVertical: 10,
       paddingHorizontal: 15,
-      paddingTop: 10,
-      backgroundColor: "#119FB3",
+      backgroundColor: "#007B8E",
       zIndex: 10,
       width: "100%",
+      borderBottomWidth: 1,
+      borderBottomColor: "white",
+      borderTopColor: "white",
+      borderTopWidth: 1,
     },
     logoImage: {
-      width: 120,
-      height: 40,
+      width: 110,
+      height: 35,
     },
     profileButton: {
       alignItems: "flex-end",
@@ -629,7 +623,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     scrollView: {
       flex: 1,
-      backgroundColor: "#119FB3",
+      backgroundColor: "#007B8E",
     },
     header: {
       flexDirection: "row",
@@ -728,7 +722,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     profileOrg: {
       fontSize: 18,
       // color: theme.colors.primary,
-      color: "#119FB3",
+      color: "#007B8E",
     },
     profileDetail: {
       flexDirection: "row",
@@ -739,7 +733,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     profileDetailIcon: {
       // color: theme.colors.primary,
-      color: "#119FB3",
+      color: "#007B8E",
       marginRight: 12,
     },
     profileDetailText: {
@@ -795,7 +789,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       display: "flex",
       margin: 16,
       marginBottom: 0,
-      backgroundColor: "#119FB3",
+      backgroundColor: "#007B8E",
     },
     sectionTitle: {
       fontSize: 22,
@@ -858,7 +852,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
       textAlign: "right",
     },
     joinButton: {
-      backgroundColor: "#119FB3",
+      backgroundColor: "#007B8E",
       padding: 8,
       borderRadius: 8,
       marginLeft: 8,
@@ -869,7 +863,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     iconColor: {
       // color: theme.colors.primary,
-      color: "#119FB3",
+      color: "#007B8E",
     },
     cardContainer: {
       flexDirection: "row",
@@ -895,7 +889,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     },
     cardIcon: {
       // color: theme.colors.primary,
-      color: "#119FB3",
+      color: "#007B8E",
     },
     cardText: {
       color: theme.colors.text,

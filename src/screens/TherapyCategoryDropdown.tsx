@@ -45,14 +45,14 @@ const TherapyCategoryDropdown: React.FC<TherapyCategoryDropdownProps> = ({
         style={styles.dropdownButton}
         onPress={() => setModalVisible(true)}
       >
-        <MaterialIcons name="category" size={24} color="#119FB3" />
+        <MaterialIcons name="category" size={24} color='#007B8E' />
         <Text style={[
           styles.dropdownButtonText, 
           !value && styles.placeholderText
         ]}>
           {value || 'Select Therapy Category'}
         </Text>
-        <MaterialIcons name="arrow-drop-down" size={24} color="#119FB3" />
+        <MaterialIcons name="arrow-drop-down" size={24} color='#007B8E' />
       </TouchableOpacity>
 
       <Modal
@@ -69,7 +69,7 @@ const TherapyCategoryDropdown: React.FC<TherapyCategoryDropdownProps> = ({
                 onPress={() => setModalVisible(false)}
                 style={styles.closeButton}
               >
-                <MaterialIcons name="close" size={24} color="#119FB3" />
+                <MaterialIcons name="close" size={24} color='#007B8E' />
               </TouchableOpacity>
             </View>
             <FlatList
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#119FB3',
+    color: '#007B8E',
   },
   closeButton: {
     padding: 5,

@@ -37,7 +37,7 @@ const BackTabTop: React.FC<{ screenName: string }> = ({ screenName }) => {
       >
         <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
         <Image
-          source={require("../assets/logo3.png")}
+          source={require('../assets/healtrack_logo1.png')}
           style={styles.logoImage}
           resizeMode="contain"
         />
@@ -84,24 +84,25 @@ const BackTabTop: React.FC<{ screenName: string }> = ({ screenName }) => {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 10,
     paddingHorizontal: 15,
-    paddingTop: 20,
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
     borderBottomWidth: 1,
-    borderBottomColor: "white",
+    borderBottomColor: 'white',
+    borderTopColor: 'white',
+    borderTopWidth: 1,
   },
   versionText: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 1,
-    right: -18,
-    color: "#FFFFFF",
+    right: -14,
+    color: '#FFFFFF',
     fontSize: 12,
     opacity: 0.8,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
   backButton: {
     flexDirection: "row",

@@ -41,7 +41,7 @@ const NoAppointmentsPopup: React.FC<NoAppointmentsPopupProps> = ({
         { transform: [{ scale: scaleAnim }] },
       ]}
     >
-      <Icon name="calendar-outline" size={50} color="#119FB3" />
+      <Icon name="calendar-outline" size={50} color='#007B8E' />
       <Text style={styles.noAppointmentsTitle}>No Appointments Today</Text>
       <Text style={styles.noAppointmentsText}>
         Enjoy your free time or catch up on other tasks!
@@ -69,7 +69,7 @@ const getStyles = (theme: ReturnType<typeof getTheme>) =>
     noAppointmentsTitle: {
       fontSize: 22,
       fontWeight: "bold",
-      color: "#119FB3",
+      color: '#007B8E',
       marginTop: 10,
       marginBottom: 5,
     },

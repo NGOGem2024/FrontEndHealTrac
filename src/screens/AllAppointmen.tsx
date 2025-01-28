@@ -22,6 +22,7 @@ import NoAppointmentsPopup from "./Noappointmentspopup";
 import BackTabTop from "./BackTopTab";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/types";
+import LoadingScreen from "../components/loadingScreen";
 
 type Props = NativeStackScreenProps<RootStackParamList>;
 
@@ -278,7 +279,7 @@ const AllAppointmentsPage: React.FC<Props> = ({ navigation }) => {
     const colors = {
       completed: "#4CAF50",
       in_progress: "#FFA726",
-      default: "#119FB3",
+      default: '#007B8E',
     };
 
     switch (status?.toLowerCase()) {
@@ -364,7 +365,7 @@ const AllAppointmentsPage: React.FC<Props> = ({ navigation }) => {
                   : "person"
               }
               size={24}
-              color="#119FB3"
+              color='#007B8E'
               style={styles.appointmentIcon}
             />
           </View>
@@ -407,7 +408,7 @@ const AllAppointmentsPage: React.FC<Props> = ({ navigation }) => {
   );
   const renderNoAppointments = () => (
     <View style={styles.noAppointmentsContainer}>
-      <Icon name="calendar-outline" size={48} color="#119FB3" />
+      <Icon name="calendar-outline" size={48} color='#007B8E' />
       <Text style={styles.noAppointmentsText}>No appointments scheduled</Text>
       <Text style={styles.noAppointmentsSubText}>
         Your appointments for this day will appear here
@@ -432,7 +433,7 @@ const AllAppointmentsPage: React.FC<Props> = ({ navigation }) => {
     if (!loadingMore) return null;
     return (
       <View style={styles.loadingMore}>
-        <ActivityIndicator size="small" color="#119FB3" />
+        <ActivityIndicator size="small" color='#007B8E' />
       </View>
     );
   };
@@ -440,8 +441,7 @@ const AllAppointmentsPage: React.FC<Props> = ({ navigation }) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#119FB3" />
-        <Text style={styles.loadingText}>Loading appointments...</Text>
+        <LoadingScreen />
       </View>
     );
   }
@@ -594,10 +594,10 @@ const styles = StyleSheet.create({
   },
   view: {
     flex: 1,
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
   },
   header: {
-    backgroundColor: "#119FB3",
+    backgroundColor: '#007B8E',
     justifyContent: "flex-end",
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#119FB3",
+    color: '#007B8E',
   },
   loadingMore: {
     paddingVertical: 20,
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
   },
   doctorName: {
     fontSize: 14,
-    color: "#119FB3",
+    color: '#007B8E',
     marginBottom: 8,
   },
   noAppointmentsContainer: {
